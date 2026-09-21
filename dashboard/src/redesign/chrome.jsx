@@ -27,9 +27,9 @@ export function TopNav({ tab, setTab, busy }) {
   const status = !online ? 'Offline' : busy ? 'Working' : 'Local';
   return (
     <header className="topnav">
-      <div className="brand" aria-label="ClippyMe home">
+      <div className="brand" aria-label="ViralForge home">
         <img src={logoMark} alt="" aria-hidden="true" />
-        <span>Clippy<span className="me">Me</span></span>
+        <span>Viral<span className="me">Forge</span></span>
       </div>
       <nav className="tabs" aria-label="Primary navigation">
         {TABS.map((item) => (
@@ -44,7 +44,7 @@ export function TopNav({ tab, setTab, busy }) {
           <i aria-hidden="true" style={busy && online ? { background: 'var(--brand-blue)', boxShadow: '0 0 0 3px rgba(10,129,217,.16)' } : null} />
           <span className="sd-lbl">{status}</span>
         </span>
-        <div className="avatar" aria-hidden="true">CM</div>
+        <div className="avatar" aria-hidden="true">VF</div>
       </div>
     </header>
   );

@@ -1,31 +1,32 @@
 <a id="readme-top"></a>
 
 <div align="center">
-  <img src="dashboard/public/logo.svg" alt="ClippyMe logo" width="90" />
+  <img src="dashboard/public/logo.svg" alt="ViralForge logo" width="90" />
 
-  <h1>ClippyMe</h1>
+  <h1>ViralForge</h1>
 
-  <p><b>Self-hosted AI pipeline that turns long videos (YouTube or upload) into viral 9:16 vertical shorts.</b></p>
+  <p><b>Open-source AI viral content forge. Discover trending videos, transcribe with local Whisper, generate high-retention hooks & copy with AI, and render vertical shorts with dynamic captions.</b></p>
 
   <p>
-    <img src="https://img.shields.io/github/license/fralapo/clippyme?style=flat-square&color=3b82f6" alt="MIT license" />
+    <img src="https://img.shields.io/github/license/luis-henrique-carvalho/viralforge?style=flat-square&color=3b82f6" alt="MIT license" />
     <img src="https://img.shields.io/badge/python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11" />
     <img src="https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI" />
     <img src="https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React 18" />
     <img src="https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker ready" />
-    <img src="https://img.shields.io/github/stars/fralapo/clippyme?style=flat-square&color=eab308" alt="GitHub stars" />
+    <img src="https://img.shields.io/github/stars/luis-henrique-carvalho/viralforge?style=flat-square&color=eab308" alt="GitHub stars" />
   </p>
 
   <p>
     <a href="#quick-start-docker">Quick start</a> ·
+    <a href="#viral-content-studio">Viral Studio</a> ·
     <a href="#configuration">Configuration</a> ·
     <a href="#api">API</a> ·
     <a href="#security-posture">Security</a> ·
-    <a href="https://github.com/fralapo/clippyme/issues">Report a bug</a>
+    <a href="https://github.com/luis-henrique-carvalho/viralforge/issues">Report a bug</a>
   </p>
 </div>
 
-Fork of OpenShorts, hardened and extended: cloud-or-local transcription, Gemini viral-moment detection, active-speaker 9:16 reframing, compose-on-download editing, and one-click multi-platform scheduling.
+AI-powered viral video pipeline & studio: multiplatform video discovery, cloud or local transcription (Whisper), AI copy and hook generation (Gemini / Ollama), active-speaker 9:16 reframing, kinetic subtitles, and one-click multi-platform distribution.
 
 > Status: personal/self-hosted project. Both published ports bind to **loopback by default** (`CLIPPYME_BIND=127.0.0.1`); opening them to a LAN (`CLIPPYME_BIND=0.0.0.0`) is a deliberate choice — pair it with `CLIPPYME_API_TOKEN` so every API request needs the shared secret. **Do not expose it to the public internet** without a reverse proxy terminating TLS in front.
 
@@ -86,8 +87,8 @@ While a job runs you stay in control:
 ## Quick start (Docker)
 
 ```bash
-git clone https://github.com/fralapo/clippyme.git
-cd clippyme
+git clone https://github.com/luis-henrique-carvalho/viralforge.git
+cd viralforge
 docker compose up --build
 ```
 
@@ -455,7 +456,8 @@ The CPU image runs everywhere (Linux x86_64, ARM64, Apple Silicon via Docker Des
 
 ## Acknowledgements
 
-- [OpenShorts](https://github.com/SamurAIGPT/Open-Source-Shorts-Maker): original starting point.
+- [ClippyMe](https://github.com/fralapo/clippyme): foundational project and pipeline architecture.
+- [OpenShorts](https://github.com/SamurAIGPT/Open-Source-Shorts-Maker): original inspiration.
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp), [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper), [Deepgram](https://deepgram.com), [Google Gemini](https://ai.google.dev), [Ultralytics YOLO](https://github.com/ultralytics/ultralytics), [MediaPipe](https://github.com/google/mediapipe), [auto-editor](https://github.com/WyattBlue/auto-editor), [Zernio](https://zernio.com).
 - [ClipsAI](https://github.com/ClipsAI/clipsai): TextTiling topic-segmentation algorithm (the no-AI clip-finding fallback is a lexical port; see [`docs/clipsai-analysis.md`](docs/clipsai-analysis.md)).
 - [React](https://react.dev), [Vite](https://vitejs.dev), [Tailwind CSS](https://tailwindcss.com), [lucide](https://lucide.dev).
