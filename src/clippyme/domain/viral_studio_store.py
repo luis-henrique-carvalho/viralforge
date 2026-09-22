@@ -1024,7 +1024,7 @@ def get_next_available_slots(
                 except (ValueError, TypeError):
                     continue
 
-    # Determine base_date
+    # Determine base_date (Gap Filling: start from today or specified start_date)
     if start_date:
         try:
             start_date_obj = (
@@ -1035,14 +1035,13 @@ def get_next_available_slots(
             base_date = max(start_date_obj, now.date())
         except ValueError:
             base_date = now.date()
-    elif occupied_dates:
-        base_date = max(occupied_dates) + timedelta(days=1)
     else:
         target_today = datetime.combine(now.date(), pref_time, tzinfo=tz)
         if now < target_today:
             base_date = now.date()
         else:
             base_date = now.date() + timedelta(days=1)
+
 
     slots: List[datetime] = []
     candidate_date = base_date

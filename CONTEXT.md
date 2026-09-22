@@ -82,3 +82,29 @@ _Avoid_: PromptField, AIWidget, OutputRule, GeneratorItem
 The domain subsystem responsible for multimodal prompt assembly, dynamic GenerationTask schema resolution, placeholder interpolation, provider routing (cloud or local), and structured copy extraction.
 _Avoid_: PromptGenerator, TextBuilder, LLMWrapper
 
+## Configuration & Provider Infrastructure
+
+**SystemConfiguration**:
+The persisted operational dictionary holding provider credentials, active provider selectors, and service endpoints (`data/config.json`).
+_Avoid_: AppSettings, EnvVars, GlobalPreferences
+
+**CredentialVault**:
+The security boundary and masking mechanism ensuring secrets (API keys, auth tokens) are never leaked verbatim to UI clients or stored unencrypted/unprotected.
+_Avoid_: KeyStore, PasswordManager, SecretHolder
+
+**ProviderSelector**:
+The domain configuration directive designating the currently active provider adapter (e.g. `PublishingProvider`: `zernio` | `mock`; `TranscriptionProvider`: `deepgram` | `elevenlabs` | `whisper`).
+_Avoid_: ActiveEngine, DriverToggle, ServiceSwitch
+
+**PlatformSessionCookie**:
+An authenticated Netscape-formatted session cookie file scoped to a specific media platform (YouTube, TikTok, Instagram) enabling high-bandwidth stream extraction and bypassing IP throttling.
+_Avoid_: LoginToken, AuthFile, YtCookie
+
+**HardwareTelemetry**:
+The runtime probing mechanism that detects host compute capability (CUDA, ROCm, CPU), VRAM allocation, and dynamically resolves Whisper model geometry without exhausting memory.
+_Avoid_: SystemStats, DeviceProbe, GpuMonitor
+
+**BrandAsset**:
+Uploaded visual and typographic brand artifacts (transparent PNG logo, licensed TTF/OTF subtitle fonts) utilized across the rendering and burn-in pipelines.
+_Avoid_: MediaAsset, CustomFile, SubtitleFont
+

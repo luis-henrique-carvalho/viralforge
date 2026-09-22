@@ -220,20 +220,20 @@ flowchart LR
     Fase0["✅ Fase 0: Setup & Theme"] --> Fase1["✅ Fase 1: Shell, Router & Testes"]
     Fase1 --> Fase2["✅ Fase 2: Viral Studio Core"]
     Fase2 --> Fase3["✅ Fase 3: Viral Editor (CONCLUÍDO)"]
-    Fase3 --> Fase4["🎯 Fase 4: Fila & Publicação (FECHA V1)"]
-    Fase4 -.-> Fase5["⏳ Fase 5: Templates Konva (V2)"]
-    Fase5 -.-> Fase6["⏳ Fase 6: Fila Global /publishing (V2)"]
-    Fase6 -.-> Fase7["⏳ Fase 7: Discovery (V2)"]
-    Fase7 -.-> Fase8["⏳ Fase 8: Clips & Settings (V2)"]
+    Fase3 --> Fase4["✅ Fase 4: Fila & Publicação (CONCLUÍDO)"]
+    Fase4 --> Fase5["🎯 Fase 5: Painel de Configurações & Provedores (/settings)"]
+    Fase5 -.-> Fase6["⏳ Fase 6: Templates Konva & IA Modular (V2)"]
+    Fase6 -.-> Fase7["⏳ Fase 7: Fila Global /publishing (V2)"]
+    Fase7 -.-> Fase8["⏳ Fase 8: Discovery & Pipeline Clips (V2)"]
     Fase8 -.-> Fase9["⏳ Fase 9: Homologação & Docker (V2)"]
 
     classDef completed fill:#059669,stroke:#10b981,color:#ffffff;
     classDef current fill:#2563eb,stroke:#60a5fa,color:#ffffff,stroke-width:3px;
     classDef pending fill:#374151,stroke:#4b5563,color:#9ca3af;
 
-    class Fase0,Fase1,Fase2,Fase3 completed;
-    class Fase4 current;
-    class Fase5,Fase6,Fase7,Fase8,Fase9 pending;
+    class Fase0,Fase1,Fase2,Fase3,Fase4 completed;
+    class Fase5 current;
+    class Fase6,Fase7,Fase8,Fase9 pending;
 ```
 
 ---
@@ -360,7 +360,34 @@ flowchart LR
 
 ---
 
-### ⏳ Fase 5: Estúdio de Templates Universais & IA Modular (Konva 9:16) [V2 — POSTERGADO]
+### 🎯 Fase 5: Painel de Configurações, Gestão de Provedores & Telemetria (`/settings`) [EM EXECUÇÃO]
+> **Especificação Completa:** [`docs/fase-5-settings-e-provedores.md`](fase-5-settings-e-provedores.md)  
+> **Vocabulário de Domínio:** [`CONTEXT.md`](../CONTEXT.md)  
+> **Padrão Visual:** Shadcn UI Settings (Sidebar de navegação vertical à esquerda + painel modular à direita)
+
+- [ ] **Backend: Extensão de Configurações e Telemetria:**
+  - [ ] Adicionar suporte a `PUBLISHING_PROVIDER` em `config_store.py` e resolução dinâmica em `social_publisher_port.py`.
+  - [ ] Implementar endpoint `GET /api/config/hardware` expondo métricas limpas de GPU (CUDA/ROCm/CPU), VRAM, RAM e modelo dinâmico do Whisper.
+  - [ ] Testes unitários para persistência atômica e leitura de hardware em `tests/test_settings_backend.py`.
+- [ ] **Frontend: Arquitetura da Feature (`features/settings/`):**
+  - [ ] Schemas Zod (`settings.schema.ts`) e tipos TypeScript (`settings.types.ts`).
+  - [ ] Serviços de API (`settings.api.ts`) e factory de query keys (`settings.keys.ts`).
+  - [ ] Hooks TanStack Query (`use-settings.ts`, `use-update-settings.ts`).
+  - [ ] Componente reutilizável de campo seguro `ApiKeyInput` com revelação de senha, badge "Configurado" e botão de exclusão.
+  - [ ] Componente de navegação vertical `<SettingsSidebarNav />` com ícones Lucide e indicador de aba ativa.
+  - [ ] Cards modulares de configuração:
+    - [ ] `PublishingProviderCard`: Seletor Zernio/Mock, chave Zernio, descoberta de contas e mapeamento de canais.
+    - [ ] `AiModelsCard`: Chave Gemini, seletor de modelo padrão, URLs de Ollama/LM Studio com status online em tempo real.
+    - [ ] `TranscriptionProviderCard`: Seletor Deepgram/ElevenLabs/Whisper, API keys e token HuggingFace.
+    - [ ] `CookiesManagerCard`: Upload Netscape por plataforma (YouTube, TikTok, Instagram) e status de validade.
+    - [ ] `HardwareStatusCard`: Cards informativos de GPU/CPU, VRAM, RAM, Whisper compute e botão de recarregar.
+    - [ ] `BrandAssetsCard`: Gerenciador de Logo PNG d'água e Fontes TTF/OTF customizadas.
+  - [ ] View principal `SettingsView` substituindo o placeholder pela composição Shadcn Settings.
+  - [ ] Testes unitários com Vitest e React Testing Library (`settings-components.test.tsx`, `settings-view.test.tsx`).
+
+---
+
+### ⏳ Fase 6: Estúdio de Templates Universais & IA Modular (Konva 9:16) [V2 — POSTERGADO]
 > **Especificação Completa:** [`docs/viral-studio-template-architecture.md`](viral-studio-template-architecture.md)  
 > **ADR de Referência:** [`docs/adr/0002-decoupled-templates-personas-konva.md`](adr/0002-decoupled-templates-personas-konva.md)  
 > **Protótipos Validados:** [`docs/prototypes/viral-studio-template-simulation.html`](prototypes/viral-studio-template-simulation.html) e [`docs/prototypes/dynamic-generation-tasks-simulation.html`](prototypes/dynamic-generation-tasks-simulation.html)

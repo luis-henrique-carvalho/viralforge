@@ -42,14 +42,22 @@ def test_get_next_available_slots_empty_store():
 def test_get_next_available_slots_with_occupied_dates():
     tz = ZoneInfo("America/Sao_Paulo")
     now = datetime.now(tz)
-    tomorrow = now.date() + timedelta(days=1)
-    day_after = now.date() + timedelta(days=2)
+    today = now.date()
+    tomorrow = today + timedelta(days=1)
+    day_after = today + timedelta(days=2)
 
-    # Seed a batch with scheduled items for account_id="acc_tiktok_01"
+    # Seed a batch with scheduled items for today, tomorrow, and day after for account_id="acc_tiktok_01"
     _ = viral_studio_store.create_batch(
         {
             "brand_id": "vale-o-clique",
             "items": [
+                {
+                    "item_id": "item-0",
+                    "source_url": "https://example.com/v0.mp4",
+                    "status": "SCHEDULED",
+                    "account_id": "acc_tiktok_01",
+                    "scheduled_for": f"{today.isoformat()}T18:00:00-03:00",
+                },
                 {
                     "item_id": "item-1",
                     "source_url": "https://example.com/v1.mp4",
@@ -68,7 +76,7 @@ def test_get_next_available_slots_with_occupied_dates():
         }
     )
 
-    # New projection for the same account should auto-chain starting on the 3rd day
+    # New projection for the same account should auto-chain starting on the 3rd day after today (day_after + 1)
     slots = viral_studio_store.get_next_available_slots(
         account_id="acc_tiktok_01",
         count=2,
@@ -149,3 +157,58 @@ def test_cancel_item_schedule_flow():
     # Cancelling non-existent item raises NotFoundError
     with pytest.raises(NotFoundError):
         viral_studio_store.cancel_item_schedule("non-existent-item")
+
+
+def test_gap_filling_when_intermediate_posts_cancelled():
+    """Validates the exact scenario where posts on intermediate days (e.g. Day 1 and Day 2)
+    are cancelled while posts further out (e.g. Day 3 to Day 8) remain scheduled.
+    The intelligent scheduler must fill the freed gaps first before appending past the end of the queue.
+    """
+    tz = ZoneInfo("America/Sao_Paulo")
+    now = datetime.now(tz)
+    today = now.date()
+
+    # Create scheduled items spanning from today (Day 0) to Day 7
+    days = [today + timedelta(days=i) for i in range(8)]
+    items_payload = [
+        {
+            "item_id": f"item-seq-{i}",
+            "source_url": f"https://example.com/v{i}.mp4",
+            "status": "SCHEDULED",
+            "account_id": "acc_gap_user_test",
+            "scheduled_for": f"{days[i].isoformat()}T18:00:00-03:00",
+        }
+        for i in range(8)
+    ]
+
+    _ = viral_studio_store.create_batch(
+        {
+            "brand_id": "vale-o-clique",
+            "items": items_payload,
+        }
+    )
+
+    # Cancel Day 1 and Day 2 (e.g. tomorrow and the day after)
+    viral_studio_store.cancel_item_schedule("item-seq-1")
+    viral_studio_store.cancel_item_schedule("item-seq-2")
+
+    # Request 4 slots:
+    # - Slot 0 should fill Day 1 (gap 1)
+    # - Slot 1 should fill Day 2 (gap 2)
+    # - Day 3, 4, 5, 6, 7 are occupied -> should be skipped!
+    # - Slot 2 should land on Day 8 (today + 8 days)
+    # - Slot 3 should land on Day 9 (today + 9 days)
+    slots = viral_studio_store.get_next_available_slots(
+        account_id="acc_gap_user_test",
+        count=4,
+        preferred_time="18:00",
+        timezone_str="America/Sao_Paulo",
+    )
+
+    assert len(slots) == 4
+    assert slots[0].date() == days[1], f"Expected slot 0 to fill gap on {days[1]}, got {slots[0].date()}"
+    assert slots[1].date() == days[2], f"Expected slot 1 to fill gap on {days[2]}, got {slots[1].date()}"
+    assert slots[2].date() == days[7] + timedelta(days=1), f"Expected slot 2 to append after end on {days[7] + timedelta(days=1)}, got {slots[2].date()}"
+    assert slots[3].date() == days[7] + timedelta(days=2), f"Expected slot 3 to append on {days[7] + timedelta(days=2)}, got {slots[3].date()}"
+
+
