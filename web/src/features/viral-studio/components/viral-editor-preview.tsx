@@ -1,6 +1,7 @@
 import { Loader2, RefreshCw, Sparkles, Video } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useRenderItem } from '../hooks/use-render-item'
+import { getViralVideoUrl } from '../services/viral-media.utils'
 import type { ViralItem } from '../data/batch.types'
 
 interface ViralEditorPreviewProps {
@@ -19,7 +20,7 @@ export function ViralEditorPreview({
   const renderMutation = useRenderItem(batchId)
   const isRendering = item.status === 'RENDERING' || renderMutation.isPending
 
-  const videoUrl = item.rendered_path ? `/api/viral-studio/media/${item.id}` : undefined
+  const videoUrl = getViralVideoUrl(item)
   const posterUrl = item.keyframe_urls?.[0] || undefined
 
   const handleReRender = async () => {

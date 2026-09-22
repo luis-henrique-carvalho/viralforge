@@ -81,7 +81,7 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
           <Skeleton className="h-10 w-48" />
           <Skeleton className="h-10 flex-1" />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 items-start">
           {[1, 2, 3, 4].map((n) => (
             <Skeleton
               key={n}
@@ -145,7 +145,7 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
       />
 
       {filteredItems.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 items-start">
           {filteredItems.map((item) => (
             <ItemCard
               key={item.id}

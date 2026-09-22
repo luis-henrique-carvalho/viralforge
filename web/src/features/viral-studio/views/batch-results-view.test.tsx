@@ -37,7 +37,7 @@ describe('BatchResultsView Integration', () => {
 
     // Wait for batch header and items to load from MSW
     await waitFor(() => {
-      expect(screen.getByText('batch-101')).toBeInTheDocument()
+      expect(screen.getByText(/batch-101/)).toBeInTheDocument()
       expect(screen.getByText('PROD-01')).toBeInTheDocument()
     })
 

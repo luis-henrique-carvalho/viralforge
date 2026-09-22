@@ -8,16 +8,17 @@ interface BatchStatusBadgeProps {
 }
 
 export function BatchStatusBadge({ status, className = '' }: BatchStatusBadgeProps) {
-  const baseClasses = 'shrink-0 whitespace-nowrap font-medium gap-1 text-[11px] px-2 py-0.5'
+  const baseClasses =
+    'shrink-0 whitespace-nowrap font-medium gap-1 text-[10px] px-2 py-0.5 rounded-md backdrop-blur-md transition-colors'
 
   switch (status) {
     case 'READY_FOR_REVIEW':
       return (
         <Badge
           variant="outline"
-          className={`border-amber-500/30 bg-amber-500/10 text-amber-500 dark:text-amber-400 ${baseClasses} ${className}`}
+          className={`border-amber-500/40 bg-amber-500/15 text-amber-300 dark:text-amber-300 shadow-xs ${baseClasses} ${className}`}
         >
-          <Sparkles className="size-3 shrink-0" />
+          <Sparkles className="size-2.5 shrink-0 text-amber-400" />
           Pronto para Revisão
         </Badge>
       )
@@ -27,9 +28,9 @@ export function BatchStatusBadge({ status, className = '' }: BatchStatusBadgePro
       return (
         <Badge
           variant="outline"
-          className={`border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ${baseClasses} ${className}`}
+          className={`border-emerald-500/40 bg-emerald-500/15 text-emerald-300 dark:text-emerald-300 shadow-xs ${baseClasses} ${className}`}
         >
-          <CheckCircle2 className="size-3 shrink-0" />
+          <CheckCircle2 className="size-2.5 shrink-0 text-emerald-400" />
           {status === 'APPROVED' ? 'Aprovado' : status === 'PUBLISHED' ? 'Publicado' : 'Concluído'}
         </Badge>
       )
@@ -37,9 +38,9 @@ export function BatchStatusBadge({ status, className = '' }: BatchStatusBadgePro
       return (
         <Badge
           variant="outline"
-          className={`border-blue-500/30 bg-blue-500/10 text-blue-500 ${baseClasses} ${className}`}
+          className={`border-sky-500/40 bg-sky-500/15 text-sky-300 shadow-xs ${baseClasses} ${className}`}
         >
-          <Clock className="size-3 shrink-0" />
+          <Clock className="size-2.5 shrink-0 text-sky-400" />
           Agendado
         </Badge>
       )
@@ -50,9 +51,9 @@ export function BatchStatusBadge({ status, className = '' }: BatchStatusBadgePro
       return (
         <Badge
           variant="outline"
-          className={`border-indigo-500/30 bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 animate-pulse ${baseClasses} ${className}`}
+          className={`border-indigo-500/40 bg-indigo-500/15 text-indigo-300 shadow-xs ${baseClasses} ${className}`}
         >
-          <Loader2 className="size-3 shrink-0 animate-spin" />
+          <Loader2 className="size-2.5 shrink-0 animate-spin text-indigo-400" />
           {status === 'DOWNLOADING'
             ? 'Baixando'
             : status === 'ANALYZING'
@@ -66,9 +67,9 @@ export function BatchStatusBadge({ status, className = '' }: BatchStatusBadgePro
       return (
         <Badge
           variant="outline"
-          className={`border-destructive/30 bg-destructive/10 text-destructive ${baseClasses} ${className}`}
+          className={`border-destructive/40 bg-destructive/15 text-rose-300 shadow-xs ${baseClasses} ${className}`}
         >
-          <XCircle className="size-3 shrink-0" />
+          <XCircle className="size-2.5 shrink-0 text-rose-400" />
           Falha
         </Badge>
       )
@@ -76,9 +77,9 @@ export function BatchStatusBadge({ status, className = '' }: BatchStatusBadgePro
       return (
         <Badge
           variant="outline"
-          className={`border-muted-foreground/30 bg-muted/40 text-muted-foreground ${baseClasses} ${className}`}
+          className={`border-zinc-700/50 bg-zinc-800/60 text-zinc-300 shadow-xs ${baseClasses} ${className}`}
         >
-          <AlertTriangle className="size-3 shrink-0" />
+          <AlertTriangle className="size-2.5 shrink-0 text-zinc-400" />
           Cancelado
         </Badge>
       )
@@ -86,9 +87,9 @@ export function BatchStatusBadge({ status, className = '' }: BatchStatusBadgePro
       return (
         <Badge
           variant="outline"
-          className={`border-muted-foreground/30 bg-muted/20 text-muted-foreground ${baseClasses} ${className}`}
+          className={`border-zinc-700/50 bg-zinc-800/60 text-zinc-300 shadow-xs ${baseClasses} ${className}`}
         >
-          <Clock className="size-3 shrink-0" />
+          <Clock className="size-2.5 shrink-0 text-zinc-400" />
           Na Fila
         </Badge>
       )

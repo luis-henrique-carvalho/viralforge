@@ -52,10 +52,10 @@ export function BatchResultsHeader({
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground flex items-center gap-2 min-w-0 truncate">
               <Layers className="size-5 text-primary shrink-0" />
               <span
-                className="font-mono text-primary truncate"
+                className="font-mono text-primary truncate max-w-[200px] sm:max-w-xs"
                 title={rawId}
               >
-                {batch.batch_id || batch.id}
+                Lote #{rawId.length > 12 ? `${rawId.slice(0, 8)}...` : rawId}
               </span>
             </h1>
             <BatchStatusBadge

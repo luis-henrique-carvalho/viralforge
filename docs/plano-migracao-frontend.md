@@ -292,24 +292,32 @@ flowchart LR
 
 ---
 
-### ✅ Fase 3: Viral Editor (Decomposição do Modal Monolítico) [CONCLUÍDO]
-- [x] **Decomposição do Modal Monolítico (`ViralEditModal.jsx` ~1.000 linhas) em componentes atômicos (<200 linhas):**
-  - [x] `viral-editor-dialog.tsx`: Shell do modal 2 colunas com suporte a dirty-tracking e confirmação de descarte.
-  - [x] `viral-editor-preview.tsx`: Player vertical 9:16 com overlay de renderização e botão de re-render.
-  - [x] `viral-editor-headlines-tab.tsx`: Seletor de ganchos magnéticos da IA com badges de contexto e headline manual.
-  - [x] `copy-regeneration-card.tsx`: Card de regeração de copy com seletor híbrido de LLMs (LM Studio/Ollama/Gemini) e instruções contextuais.
-  - [x] `viral-editor-caption-tab.tsx`: Edição de legenda comercial, CTA padrão da marca e cópia rápida.
-  - [x] `viral-editor-details-tab.tsx`: Edição de código de produto, link de afiliado e URL de origem.
-  - [x] `viral-editor-observability-tab.tsx`: Hub de observabilidade completo com 3 sub-seções:
-    - [x] `keyframes-gallery-section.tsx` + `keyframe-lightbox-dialog.tsx`: Galeria de frames por cena com zoom em alta resolução.
-    - [x] `signals-audio-section.tsx`: Transcrição com detecção de fala e cópia.
-    - [x] `signals-metadata-section.tsx`: Metadados do post original e métricas de engajamento (views, likes, comments, reposts).
-    - [x] `observability-telemetry-view.tsx`: 6 cards de métricas (Tokens, Custo USD, Latência), Prompt completo e JSON bruto.
-    - [x] `observability-timeline-view.tsx`: Linha do tempo cronológica de logs com tags coloridas de estágio e payloads formatados.
-- [x] **Camada de Estado & Serviços:**
-  - [x] Schema Zod `item-editor.schema.ts` e hook `use-item-editor.ts` com React Hook Form.
-  - [x] Hooks `use-render-item.ts`, `use-regenerate-copy.ts` e `use-local-ai-models.ts` com TanStack Query v5.
-  - [x] Mocks MSW e 43 arquivos de testes unitários/integração com 127 testes passando e >90% de cobertura.
+### ✅ Fase 3: Viral Editor (Página Dedicada Widescreen & Decomposição Atômica) [CONCLUÍDO]
+- [x] **Pivot Arquitetural de Modal para Página Dedicada:**
+  - [x] Rota desaninhada `_app/viral-studio/$id_.items.$itemId.tsx` (`/viral-studio/$id/items/$itemId`) no TanStack Router.
+  - [x] Layout widescreen de 2 colunas com container responsivo centralizado (`max-w-6xl mx-auto`).
+  - [x] TopBar completo (`viral-editor-topbar.tsx`): retorno rápido ao lote, breadcrumbs truncáveis, badges de Marca/Template/Código, e paginação sequencial (`Vídeo X de Y` + setas `←`/`→` com atalhos `Alt + Arrow`).
+  - [x] Barra inferior fixa (`viral-editor-bottom-bar.tsx`): dirty state badge, botão Descartar, Aprovar Vídeo e Salvar Alterações.
+  - [x] Diálogo de guarda contra perdas (`unsaved-changes-dialog.tsx`): intercepta navegações com alterações pendentes (*Salvar e Continuar*, *Descartar*, *Permanecer no Vídeo*).
+- [x] **Decomposição do Legado Monolítico (`ViralEditModal.jsx` ~1.000 linhas) em Componentes Atômicos (<200 linhas):**
+  - [x] `viral-editor-preview.tsx`: Player vertical 9:16 sticky com overlay de re-renderização em progresso e trigger `POST /api/viral-studio/items/{id}/render`.
+  - [x] `viral-editor-headlines-tab.tsx`: Seletor de ganchos magnéticos da IA com badges contextuais multimodais e input manual.
+  - [x] `copy-regeneration-card.tsx`: Card de regeração de copy com seletor de LLMs locais/cloud (`use-local-ai-models.ts`) e instruções contextuais.
+  - [x] `viral-editor-caption-tab.tsx`: Edição de legenda comercial, inserção rápida de CTA da marca e cópia.
+  - [x] `viral-editor-details-tab.tsx`: Edição de código de produto (SKU), link de afiliado e URL de origem.
+  - [x] `viral-editor-observability-tab.tsx`: Hub de observabilidade multimodal estruturado em 3 sub-seções responsivas:
+    - [x] `keyframes-gallery-section.tsx` + `keyframe-lightbox-dialog.tsx`: Galeria de frames por cena 9:16 com zoom Lightbox em alta resolução.
+    - [x] `signals-audio-section.tsx`: Transcrição de áudio com detecção de fala e `<ScrollArea>`.
+    - [x] `signals-metadata-section.tsx`: Metadados do post original e métricas de engajamento (views, likes, comments, reposts) com `<ScrollArea>`.
+    - [x] `observability-telemetry-view.tsx`: 6 cards de métricas (Tokens, Custo USD, Latência, TPS, Modelo), Prompt completo e JSON bruto com cópia rápida.
+    - [x] `observability-timeline-view.tsx`: Linha do tempo cronológica com Badges de status semânticos e `<ScrollArea>` oficial.
+- [x] **Rigor Shadcn-First & Endurecimento do Linter:**
+  - [x] `scripts/check_shadcn_usage.py` aprimorado com Camada 3 ativa para `<ScrollArea>`, eliminando scrollbars manuais e bypasses permissivos de terminal.
+  - [x] Todos os componentes refatorados para `<Card>`, `<CardContent>`, `<ScrollArea>` e `<Badge>` sem classes legadas `space-y-*`.
+- [x] **Camada de Estado, Serviços e Testes:**
+  - [x] Form management com React Hook Form + Zod (`use-item-editor.ts` + `item-editor.schema.ts`).
+  - [x] Mocks MSW v2, 46 arquivos de teste e **135 testes unitários/integração passando com cobertura global >90%**.
+  - [x] Build de produção Vite gerado com sucesso.
 
 ---
 

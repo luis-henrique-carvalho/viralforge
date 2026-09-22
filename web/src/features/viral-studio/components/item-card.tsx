@@ -1,7 +1,16 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { Check, CheckCircle2, Copy, ExternalLink, Info, Pencil, RefreshCw, Tag } from 'lucide-react'
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
+import {
+  Check,
+  CheckCircle2,
+  Clock,
+  Copy,
+  Info,
+  RefreshCw,
+  SlidersHorizontal,
+  Tag,
+} from 'lucide-react'
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -73,124 +82,162 @@ export function ItemCard({
 
   return (
     <Card
-      className={`relative flex flex-col justify-between border-border bg-card/70 backdrop-blur-xs transition-all hover:border-primary/50 hover:shadow-md ${
+      className={`group relative flex flex-col rounded-[18px] border border-border/70 bg-card/85 backdrop-blur-xs py-0 gap-0 shadow-sm transition-all duration-200 hover:border-primary/40 hover:shadow-xl hover:shadow-black/25 hover:-translate-y-0.5 w-full overflow-hidden ${
         isSelected ? 'ring-2 ring-primary border-primary' : ''
       }`}
     >
-      <CardHeader className="p-3 pb-2 space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 truncate">
-            {isSelectable && (
-              <Checkbox
-                checked={isSelected}
-                onCheckedChange={() => onToggleSelect?.(item.id)}
-                aria-label={`Selecionar vídeo ${item.id}`}
+      {/* 9:16 Video Media Hero with Floating Frosted Badges */}
+      <div className="p-2 pb-0">
+        <VideoPreviewCard item={item}>
+          {/* Top Overlays: Identifiers & Status Badge */}
+          <div
+            className="flex items-center justify-between gap-1.5 w-full pointer-events-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-1.5 min-w-0">
+              {isSelectable && (
+                <div className="bg-black/60 backdrop-blur-md rounded-md p-1 border border-white/20 flex items-center justify-center shadow-xs">
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={() => onToggleSelect?.(item.id)}
+                    aria-label={`Selecionar vídeo ${item.id}`}
+                    className="size-3.5 border-white/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                  />
+                </div>
+              )}
+              {item.product_code ? (
+                <Badge
+                  variant="secondary"
+                  className="gap-1 font-mono text-[10px] py-0.5 px-2 h-5 bg-black/65 backdrop-blur-md text-white border border-white/20 shadow-xs truncate"
+                >
+                  <Tag className="size-2.5 text-primary shrink-0" />
+                  <span className="truncate">{item.product_code}</span>
+                </Badge>
+              ) : (
+                <span
+                  className="font-mono text-[10px] text-zinc-300 bg-black/65 backdrop-blur-md border border-white/20 px-1.5 py-0.5 rounded-md truncate shadow-xs shrink-0"
+                  title={item.id}
+                >
+                  #{item.id.slice(0, 8)}
+                </span>
+              )}
+            </div>
+
+            <div className="pointer-events-auto shrink-0">
+              <BatchStatusBadge
+                status={item.status}
+                className="shadow-md"
               />
-            )}
-            {item.product_code ? (
-              <Badge
-                variant="secondary"
-                className="gap-1 font-mono text-[11px] truncate"
-              >
-                <Tag className="size-3 text-primary" />
-                {item.product_code}
-              </Badge>
-            ) : (
-              <span className="font-mono text-[11px] text-muted-foreground truncate max-w-[120px]">
-                {item.id}
-              </span>
-            )}
+            </div>
           </div>
-          <BatchStatusBadge status={item.status} />
-        </div>
-      </CardHeader>
+        </VideoPreviewCard>
+      </div>
 
-      <CardContent className="p-3 pt-0 space-y-3">
-        <VideoPreviewCard item={item} />
-        <div className="space-y-1">
-          {/* shadcn-ignore: headline com estilo customizado clicável */}
-          <button
-            type="button"
-            onClick={handleEdit}
-            className="text-left text-xs font-semibold leading-snug line-clamp-2 text-foreground hover:text-primary transition-colors cursor-pointer w-full focus:outline-none"
-            title={`${headline} (Clique para editar)`}
-          >
-            {headline}
-          </button>
-          <div className="flex items-center gap-2 pt-1">
-            <a
-              href={item.source_url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary truncate max-w-[180px]"
-              title="Abrir URL original"
+      {/* Card Footer: Revisar & Editar Button + Bottom Row (Title + Mini Icon Buttons) */}
+      <div className="p-3 flex flex-col gap-2.5 mt-auto">
+        {/* Full-width Revisar & Editar Button */}
+        <Button
+          variant="outline"
+          className="w-full h-9 text-xs font-semibold gap-2 bg-secondary/30 hover:bg-secondary/70 border-border/70 hover:border-border text-foreground transition-all rounded-lg"
+          onClick={handleEdit}
+          aria-label="Revisar & Editar"
+        >
+          <SlidersHorizontal className="size-3.5 text-foreground/80" />
+          <span>Revisar & Editar</span>
+          <span className="sr-only">Editar</span>
+        </Button>
+
+        {/* Title and Mini Icon Buttons */}
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <div className="min-w-0 flex-1">
+            <button
+              type="button"
+              onClick={handleEdit}
+              className="text-left text-xs sm:text-[13px] font-semibold tracking-tight text-foreground hover:text-primary transition-colors truncate block w-full focus:outline-none"
+              title={`${headline} (Clique para editar)`}
             >
-              <ExternalLink className="size-3 shrink-0" />
-              <span className="truncate">{item.source_url}</span>
-            </a>
+              {headline}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Copy Caption */}
+            <Button
+              variant="outline"
+              size="icon-xs"
+              className="size-8 rounded-lg p-0 flex items-center justify-center bg-muted/25 hover:bg-muted/60 border-border/60 hover:border-border text-muted-foreground hover:text-foreground transition-all"
+              onClick={handleCopyCaption}
+              title={copied ? 'Legenda copiada!' : 'Copiar Legenda'}
+              aria-label="Legenda"
+            >
+              {copied ? (
+                <Check className="size-3.5 text-emerald-500 animate-in zoom-in-50" />
+              ) : (
+                <Copy className="size-3.5" />
+              )}
+              <span className="sr-only">{copied ? 'Copiado' : 'Legenda'}</span>
+            </Button>
+
+            {/* Inspect Logs */}
+            <Button
+              variant="outline"
+              size="icon-xs"
+              className="size-8 rounded-lg p-0 flex items-center justify-center bg-muted/25 hover:bg-muted/60 border-border/60 hover:border-border text-muted-foreground hover:text-foreground transition-all"
+              onClick={() => onInspect?.(item)}
+              title="Inspecionar Logs"
+              aria-label="Logs"
+            >
+              <Info className="size-3.5" />
+              <span className="sr-only">Logs</span>
+            </Button>
+
+            {/* Quick Approve or Approved Status */}
+            {isReady ? (
+              <Button
+                variant="outline"
+                size="icon-xs"
+                className="size-8 rounded-lg p-0 flex items-center justify-center bg-emerald-500/10 hover:bg-emerald-500/25 border-emerald-500/40 text-emerald-500 hover:text-emerald-400 transition-all shadow-2xs"
+                onClick={() => onApprove?.(item.id)}
+                disabled={isApproving}
+                title="Aprovar Vídeo"
+                aria-label="Aprovar Vídeo"
+              >
+                <CheckCircle2 className="size-3.5" />
+                <span className="sr-only">Aprovar Vídeo</span>
+              </Button>
+            ) : item.status === 'APPROVED' ? (
+              <div
+                className="size-8 rounded-lg flex items-center justify-center bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 select-none shadow-2xs"
+                title="Vídeo Aprovado"
+              >
+                <CheckCircle2 className="size-3.5" />
+                <span className="sr-only">Vídeo Aprovado</span>
+              </div>
+            ) : isFailed ? (
+              <Button
+                variant="outline"
+                size="icon-xs"
+                className="size-8 rounded-lg p-0 flex items-center justify-center bg-destructive/10 hover:bg-destructive/20 border-destructive/30 text-destructive transition-all"
+                onClick={() => onRetry?.(item.id)}
+                disabled={isRetrying}
+                title="Tentar Novamente"
+                aria-label="Tentar Novamente"
+              >
+                <RefreshCw className={`size-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
+                <span className="sr-only">Tentar Novamente</span>
+              </Button>
+            ) : (
+              <div
+                className="size-8 rounded-lg flex items-center justify-center bg-muted/20 border border-border/40 text-muted-foreground"
+                title="Processando"
+              >
+                <Clock className="size-3.5 animate-pulse text-muted-foreground/80" />
+                <span className="sr-only">Processando</span>
+              </div>
+            )}
           </div>
         </div>
-      </CardContent>
-
-      <CardFooter className="p-3 pt-0 flex flex-col gap-2 border-t border-border/40">
-        <div className="grid grid-cols-3 w-full gap-1 pt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 px-2 text-xs gap-1"
-            onClick={handleEdit}
-            title="Editar Vídeo & Copy"
-          >
-            <Pencil className="size-3" />
-            <span>Editar</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 px-2 text-xs gap-1"
-            onClick={handleCopyCaption}
-            title="Copiar Legenda"
-          >
-            {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
-            <span>{copied ? 'Copiado' : 'Legenda'}</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 px-2 text-xs gap-1"
-            onClick={() => onInspect?.(item)}
-            title="Inspecionar Detalhes & Logs"
-          >
-            <Info className="size-3" />
-            <span>Logs</span>
-          </Button>
-        </div>
-
-        {isReady && (
-          <Button
-            size="sm"
-            className="w-full h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
-            onClick={() => onApprove?.(item.id)}
-            disabled={isApproving}
-          >
-            <CheckCircle2 className="size-3.5" />
-            {isApproving ? 'Aprovando...' : 'Aprovar Vídeo'}
-          </Button>
-        )}
-
-        {isFailed && (
-          <Button
-            variant="secondary"
-            size="sm"
-            className="w-full h-8 text-xs gap-1.5 text-destructive hover:bg-destructive/10"
-            onClick={() => onRetry?.(item.id)}
-            disabled={isRetrying}
-          >
-            <RefreshCw className={`size-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
-            {isRetrying ? 'Reenviando...' : 'Tentar Novamente'}
-          </Button>
-        )}
-      </CardFooter>
+      </div>
     </Card>
   )
 }
