@@ -17,6 +17,7 @@ __pycache__/
 node_modules/
 **/node_modules/
 dashboard/dist/
+web/dist/
 
 # graphify knowledge-graph output
 graphify-out/
