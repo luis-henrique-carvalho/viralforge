@@ -86,6 +86,9 @@ async def test_mock_publisher_list_accounts():
 def test_publisher_factory_resolution(monkeypatch):
     monkeypatch.delenv("ZERNIO_API_KEY", raising=False)
     monkeypatch.delenv("MOCK_PUBLISHER", raising=False)
+    monkeypatch.delenv("PUBLISHING_PROVIDER", raising=False)
+    monkeypatch.setattr("clippyme.storage.config_store.load_persistent_config", lambda: {})
+    monkeypatch.setattr("clippyme.storage.config_store.load_zernio_config", lambda: {})
 
     # Defaults to Mock when no key is set
     pub = get_social_publisher()
