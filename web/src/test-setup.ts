@@ -23,8 +23,8 @@ Object.defineProperty(window, 'matchMedia', {
 })
 
 // Mock ResizeObserver for JSDOM
-globalThis.ResizeObserver = vi.fn().mockImplementation(() => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn(),
-}))
+globalThis.ResizeObserver = class ResizeObserver {
+  observe = vi.fn()
+  unobserve = vi.fn()
+  disconnect = vi.fn()
+}

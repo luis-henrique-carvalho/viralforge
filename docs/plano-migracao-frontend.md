@@ -218,8 +218,8 @@ web/
 ```mermaid
 flowchart LR
     Fase0["✅ Fase 0: Setup & Theme"] --> Fase1["✅ Fase 1: Shell, Router & Testes"]
-    Fase1 --> Fase2["🎯 Fase 2: Viral Studio Core (ATUAL)"]
-    Fase2 --> Fase3["⏳ Fase 3: Viral Editor"]
+    Fase1 --> Fase2["✅ Fase 2: Viral Studio Core (CONCLUÍDO)"]
+    Fase2 --> Fase3["🎯 Fase 3: Viral Editor (PRÓXIMA)"]
     Fase3 --> Fase4["⏳ Fase 4: Discovery"]
     Fase4 --> Fase5["⏳ Fase 5: Clips & Settings"]
     Fase5 --> Fase6["⏳ Fase 6: Homologação & Docker"]
@@ -228,9 +228,9 @@ flowchart LR
     classDef current fill:#2563eb,stroke:#60a5fa,color:#ffffff,stroke-width:3px;
     classDef pending fill:#374151,stroke:#4b5563,color:#9ca3af;
 
-    class Fase0,Fase1 completed;
-    class Fase2 current;
-    class Fase3,Fase4,Fase5,Fase6 pending;
+    class Fase0,Fase1,Fase2 completed;
+    class Fase3 current;
+    class Fase4,Fase5,Fase6 pending;
 ```
 
 ---
@@ -258,30 +258,37 @@ flowchart LR
 
 ---
 
-### 🎯 Fase 2: Viral Studio Core (Lotes e Itens) [EM ANDAMENTO / PRÓXIMA]
-- [ ] **Camada de Dados & Serviços:**
-  - [ ] Criar schemas Zod em `features/viral-studio/data/batch.schema.ts` e tipos em `batch.types.ts`.
-  - [ ] Criar client de API em `features/viral-studio/services/viral-studio.api.ts` conectando aos endpoints `/api/viral-studio/batches`, `/api/viral-studio/batches/{id}`, `/items` e `/retry`.
-  - [ ] Declarar chaves de cache em `features/viral-studio/services/viral-studio.keys.ts`.
-- [ ] **Hooks TanStack Query:**
-  - [ ] Criar `use-batches.ts` (listagem de lotes com polling e cache).
-  - [ ] Criar `use-batch-detail.ts` (detalhes do lote com auto-refetch de jobs em andamento).
-  - [ ] Criar `use-create-batch.ts` (mutação com invalidação de cache).
-  - [ ] Criar `use-retry-item.ts` (mutação para reprocessamento de itens com falha).
-- [ ] **Componentes Shadcn da Feature:**
-  - [ ] `batch-card.tsx`: Card de apresentação de cada lote com progresso e status.
-  - [ ] `batch-status-badge.tsx`: Badge semântico de status (`completed`, `processing`, `failed`, `idle`).
-  - [ ] `create-batch-dialog.tsx`: Modal Shadcn para criação de lote (input de URLs e upload de cookies).
-  - [ ] `item-card.tsx`: Card de vídeo com preview, ganchos identificados e status.
-  - [ ] `item-telemetry-badge.tsx`: Indicadores de modelo de IA, tokens e duração.
-  - [ ] `retry-item-dialog.tsx`: Diálogo para reprocessar item com novo modelo/prompt.
-- [ ] **Views & Rotas:**
-  - [ ] Implementar `features/viral-studio/views/viral-studio-view.tsx` (Dashboard de lotes).
-  - [ ] Implementar `features/viral-studio/views/batch-detail-view.tsx` (Grid de itens do lote `/viral-studio/$batchId`).
-  - [ ] Conectar as rotas `src/routes/_app/viral-studio/index.tsx` e `src/routes/_app/viral-studio/$batchId.tsx`.
-- [ ] **Testes de Integração & Mocks:**
-  - [ ] Criar handlers MSW em `features/viral-studio/mocks/handlers.ts`.
-  - [ ] Implementar testes de componentes e views com `renderWithProviders`.
+### ✅ Fase 2: Viral Studio Core (Lotes, Itens, Resultados e Marcas) [CONCLUÍDO]
+- [x] **Camada de Dados & Serviços:**
+  - [x] Criar schemas Zod em `features/viral-studio/data/batch.schema.ts`, `brand.schema.ts` e tipos em `batch.types.ts`.
+  - [x] Criar client de API em `features/viral-studio/services/viral-studio.api.ts` conectando aos endpoints `/api/viral-studio/batches`, `/api/viral-studio/batches/{id}`, `/items`, `/retry`, `/approve`, `/brands` e `/templates`.
+  - [x] Declarar chaves de cache em `features/viral-studio/services/viral-studio.keys.ts`.
+- [x] **Hooks TanStack Query:**
+  - [x] Criar `use-batches.ts` (listagem de lotes com polling e KPIs derivados).
+  - [x] Criar `use-batch-detail.ts` (detalhes do lote com auto-refetch dinâmico de 2s durante jobs ativos).
+  - [x] Criar `use-create-batch.ts` (mutação com invalidação de cache e redirecionamento).
+  - [x] Criar `use-item-actions.ts` (mutações individuais e concorrentes em massa para aprovar/reprocessar).
+  - [x] Criar `use-brands.ts` (listagem e criação de perfis de marca).
+- [x] **Componentes Shadcn da Feature:**
+  - [x] `batch-kpis-grid.tsx`: Cards de métricas agregadas da esteira de produção.
+  - [x] `batch-card.tsx`: Card de apresentação de cada lote com progresso e status.
+  - [x] `batch-status-badge.tsx`: Badge semântico de status (`completed`, `processing`, `failed`, `idle`).
+  - [x] `video-preview-card.tsx`: Player 9:16 com LazyVideo, play/pause e overlay dinâmico de etapa de IA.
+  - [x] `item-card.tsx`: Card de vídeo 9:16 com preview, copy, badges e ações rápidas.
+  - [x] `item-detail-sheet.tsx`: Drawer lateral para inspeção de telemetria, logs e ganchos de IA.
+  - [x] `batch-results-header.tsx`: Header com barra de progresso e alternador de seleção múltipla.
+  - [x] `bulk-actions-bar.tsx`: Barra flutuante de ações em lote (aprovar, reprocessar, baixar).
+  - [x] `url-parser-input.tsx`: Entrada multi-URLs com validação instantânea e extração de códigos.
+  - [x] `brand-card.tsx` e `brand-form-dialog.tsx`: Cards e modal de cadastro de marcas.
+- [x] **Views & Rotas:**
+  - [x] Implementar `features/viral-studio/views/viral-studio-view.tsx` (Dashboard de lotes em `/viral-studio`).
+  - [x] Implementar `features/viral-studio/views/create-batch-view.tsx` (Ingestão dedicada em `/viral-studio/new`).
+  - [x] Implementar `features/viral-studio/views/brands-view.tsx` (Gestão de marcas em `/viral-studio/brands`).
+  - [x] Implementar `features/viral-studio/views/batch-results-view.tsx` (Página de Resultados em `/viral-studio/$id`).
+  - [x] Conectar as rotas em `src/routes/_app/viral-studio/`.
+- [x] **Testes de Integração & Mocks:**
+  - [x] Criar handlers MSW em `features/viral-studio/mocks/handlers.ts`.
+  - [x] Implementar testes com 26 arquivos de teste passando e >90% de cobertura de linhas.
 
 ---
 

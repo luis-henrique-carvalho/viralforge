@@ -133,16 +133,21 @@ docker compose -f docker-compose.yml -f docker-compose.amd.yml up --build  # AMD
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build  # NVIDIA CUDA GPU
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build  # prod frontend (nginx)
 
+# Full quality & test suite (Backend Python + Web Frontend: lint, typecheck, coverage, build)
+./scripts/verify.sh                  # All checks
+./scripts/verify.sh --backend        # Backend only (Ruff + Pytest)
+./scripts/verify.sh --web            # Web only (Typecheck + ESLint + Vitest coverage + Vite build)
+./scripts/verify.sh --e2e            # Include Playwright E2E tests
+
 # Backend host tests (fast, no CV stack) + lint
-pip install -e ".[host-tests]" && pip install pytest ruff
-pytest -m "not integration" -q
-ruff check src/clippyme tests --select E9,F63,F7,F82
+uv run --extra host-tests --with ruff ruff check src/clippyme tests --select E9,F63,F7,F82
+uv run --extra host-tests --with pytest --with pytest-mock python -m pytest -m "not integration" -q
 
 # Heavy CV/ML integration tests (Docker only)
 docker compose run --rm -u root backend sh -lc "pip install -q pytest && pytest -m integration"
 
-# Frontend (Vitest + jsdom + testing-library)
-cd dashboard && npm ci && npm test && npm run lint && npm run build
+# Web Frontend (Typecheck + ESLint + Vitest + Build)
+pnpm --dir web typecheck && pnpm --dir web lint && pnpm --dir web test:coverage && pnpm --dir web build
 ```
 
 CI (`.github/workflows/ci.yml`): backend host suite (with report-only
@@ -270,6 +275,8 @@ through verbatim (the frontend parses per-platform 429 daily limits).
   moving code.
 - **Atomic writes** for anything on disk that a crash could corrupt
   (`job_artifacts.save_job_metadata` pattern: tmp + `os.replace`, 0o600).
+- **Quality and Config Immutability**: NEVER modify, loosen, or bypass linter rules, TypeScript/tsconfig options, Vitest coverage thresholds, or test configs (e.g. `eslint.config.*`, `tsconfig*.json`, `vitest.config.*`, `scripts/verify.sh`) to silence errors. Fix the source code or test implementation instead.
+- **Graphify-First Exploration**: ALWAYS use `graphify query "<question>"`, `graphify explain "<concept>"`, or `graphify path "<A>" "<B>"` as the primary search and navigation mechanism for codebase architecture and relationships before falling back to raw grep searches. Run `graphify update .` after code modifications.
 - **Frontend**: `RedesignApp.jsx` owns only top-level state wiring; side
   effects go in `hooks/`, pure logic in `lib/`, visuals in `redesign/`
   components. UI primitives are hand-rolled in `primitives.jsx` (no shadcn

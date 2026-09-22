@@ -3,6 +3,8 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended'
 import reactPlugin from 'eslint-plugin-react'
+import reactHooksPlugin from 'eslint-plugin-react-hooks'
+import pluginQuery from '@tanstack/eslint-plugin-query'
 
 export default tseslint.config(
   {
@@ -19,6 +21,7 @@ export default tseslint.config(
   eslint.configs.recommended,
   eslintPluginPrettierRecommended,
   ...tseslint.configs.recommended,
+  ...pluginQuery.configs['flat/recommended'],
   {
     files: ['**/*.{ts,tsx,js,mjs}'],
     languageOptions: {
@@ -29,6 +32,19 @@ export default tseslint.config(
     },
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/consistent-type-imports': [
+        'error',
+        { prefer: 'type-imports', fixStyle: 'separate-type-imports' },
+      ],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
     },
   },
   {
@@ -49,6 +65,7 @@ export default tseslint.config(
     files: ['**/*.{tsx,jsx}'],
     plugins: {
       react: reactPlugin,
+      'react-hooks': reactHooksPlugin,
     },
     settings: {
       react: {
@@ -63,7 +80,13 @@ export default tseslint.config(
       },
     },
     rules: {
-      'react/no-multi-comp': ['error', { ignoreStateless: true }],
+      'react/no-multi-comp': ['error', { ignoreStateless: false }],
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'error',
+      'react/self-closing-comp': 'error',
+      'react/jsx-no-useless-fragment': 'error',
+      'react/jsx-curly-brace-presence': ['error', { props: 'never', children: 'never' }],
+      'react/no-array-index-key': 'warn',
       'max-lines-per-function': [
         'error',
         {
