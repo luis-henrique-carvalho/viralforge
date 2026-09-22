@@ -10,14 +10,20 @@ export function ViralStudioView() {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Viral Content Studio</h1>
-            <Badge variant="secondary" className="gap-1 text-xs">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Viral Content Studio
+            </h1>
+            <Badge
+              variant="secondary"
+              className="gap-1 text-xs"
+            >
               <Sparkles className="h-3 w-3 text-primary" />
               Core Engine
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">
-            Ingestão em lote, detecção multissinal de hooks, transcrição local e renderização dinâmica 9:16.
+            Ingestão em lote, detecção multissinal de hooks, transcrição local e renderização
+            dinâmica 9:16.
           </p>
         </div>
 
@@ -77,10 +83,14 @@ export function ViralStudioView() {
         </div>
         <h2 className="mt-4 text-lg font-semibold text-foreground">Nenhum lote criado ainda</h2>
         <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
-          O shell da aplicação e a base arquitetural estão operacionais. A Fase 2 conectará este painel aos endpoints de lotes do backend.
+          O shell da aplicação e a base arquitetural estão operacionais. A Fase 2 conectará este
+          painel aos endpoints de lotes do backend.
         </p>
         <div className="mt-6">
-          <Button variant="outline" className="gap-2">
+          <Button
+            variant="outline"
+            className="gap-2"
+          >
             <Plus className="h-4 w-4" />
             Criar Primeiro Lote
           </Button>

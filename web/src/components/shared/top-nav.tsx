@@ -63,7 +63,10 @@ export function TopNav() {
           </span>
         </div>
 
-        <Badge variant="outline" className="border-border/60 bg-muted/30 text-xs font-mono">
+        <Badge
+          variant="outline"
+          className="border-border/60 bg-muted/30 text-xs font-mono"
+        >
           v0.1.0 Beta
         </Badge>
 
@@ -78,7 +81,10 @@ export function TopNav() {
               VF
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 border-border bg-card">
+          <DropdownMenuContent
+            align="end"
+            className="w-56 border-border bg-card"
+          >
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-semibold text-foreground">ViralForge Local</p>

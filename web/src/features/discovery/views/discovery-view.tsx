@@ -6,11 +6,19 @@ export function DiscoveryView() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Descoberta Multiplataforma</h1>
-        <Badge variant="outline" className="text-xs">TikTok · Instagram · YouTube</Badge>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          Descoberta Multiplataforma
+        </h1>
+        <Badge
+          variant="outline"
+          className="text-xs"
+        >
+          TikTok · Instagram · YouTube
+        </Badge>
       </div>
       <p className="text-sm text-muted-foreground">
-        Minerador de tendências por palavras-chave, hashtags e criadores com algoritmo de viral scoring.
+        Minerador de tendências por palavras-chave, hashtags e criadores com algoritmo de viral
+        scoring.
       </p>
 
       <Card className="border-dashed border-border/80 bg-card/30 p-12 text-center">

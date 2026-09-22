@@ -6,11 +6,19 @@ export function SettingsView() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Configurações & Provedores</h1>
-        <Badge variant="outline" className="text-xs">Sistema</Badge>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          Configurações & Provedores
+        </h1>
+        <Badge
+          variant="outline"
+          className="text-xs"
+        >
+          Sistema
+        </Badge>
       </div>
       <p className="text-sm text-muted-foreground">
-        Gerenciamento de credenciais (Gemini, Deepgram, ElevenLabs), modelo local Ollama e cookies de sessão.
+        Gerenciamento de credenciais (Gemini, Deepgram, ElevenLabs), modelo local Ollama e cookies
+        de sessão.
       </p>
 
       <Card className="border-dashed border-border/80 bg-card/30 p-12 text-center">

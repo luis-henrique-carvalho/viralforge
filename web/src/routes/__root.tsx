@@ -15,7 +15,10 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Outlet />
-        <Toaster position="top-right" richColors />
+        <Toaster
+          position="top-right"
+          richColors
+        />
         {import.meta.env.DEV && (
           <>
             <ReactQueryDevtools buttonPosition="bottom-left" />
