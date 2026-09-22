@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router'
-import { TopNav } from '@/components/shared/top-nav'
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/shared/app-sidebar'
+import { TopNav } from '@/components/shared/top-nav'
 
 export const Route = createFileRoute('/_app')({
   component: AppLayout,
@@ -8,16 +9,16 @@ export const Route = createFileRoute('/_app')({
 
 function AppLayout() {
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
-      <TopNav />
-      <div className="flex flex-1 overflow-hidden">
-        <AppSidebar />
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset className="flex flex-col bg-background">
+        <TopNav />
         <main className="flex-1 overflow-y-auto p-6 md:p-8">
           <div className="mx-auto max-w-7xl">
             <Outlet />
           </div>
         </main>
-      </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }

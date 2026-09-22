@@ -1,7 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
-import { Activity, Sparkles } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import { useRouterState } from '@tanstack/react-router'
+import { Activity } from 'lucide-react'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+} from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,9 +17,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Separator } from '@/components/ui/separator'
+import { SidebarTrigger } from '@/components/ui/sidebar'
 import { apiClient } from '@/api/client'
 
+const ROUTE_TITLES: Record<string, string> = {
+  '/viral-studio': 'Viral Content Studio',
+  '/discovery': 'Descoberta Multiplataforma',
+  '/clips': 'Cortes 9:16 (Pipeline Tradicional)',
+  '/settings': 'Configurações do Sistema',
+}
+
 export function TopNav() {
+  const router = useRouterState()
+  const currentPath = router.location.pathname
+  const pageTitle = ROUTE_TITLES[currentPath] || 'Viral Content Studio'
+
   const { data: health, isError } = useQuery({
     queryKey: ['backend-health'],
     queryFn: async () => {
@@ -26,20 +46,21 @@ export function TopNav() {
   const isOnline = !isError && health?.status === 'ok'
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-border bg-card/75 px-6 backdrop-blur-md">
-      {/* Brand */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20">
-          <Sparkles className="h-5 w-5" />
-        </div>
-        <div className="flex flex-col">
-          <span className="text-base font-bold tracking-tight text-foreground">
-            Viral<span className="text-primary font-black">Forge</span>
-          </span>
-          <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-mono">
-            AI Video Studio
-          </span>
-        </div>
+    <header className="sticky top-0 z-40 flex h-16 w-full shrink-0 items-center justify-between border-b border-border bg-card/75 px-4 backdrop-blur-md md:px-6">
+      {/* Left section: Sidebar trigger + Breadcrumb */}
+      <div className="flex items-center gap-2">
+        <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground" />
+        <Separator
+          orientation="vertical"
+          className="mr-2 h-4 bg-border/80"
+        />
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbPage className="font-semibold text-foreground">{pageTitle}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
       </div>
 
       {/* Right Controls */}
@@ -65,7 +86,7 @@ export function TopNav() {
 
         <Badge
           variant="outline"
-          className="border-border/60 bg-muted/30 text-xs font-mono"
+          className="border-border/60 bg-muted/30 font-mono text-xs text-muted-foreground"
         >
           v0.1.0 Beta
         </Badge>
