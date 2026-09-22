@@ -55,15 +55,15 @@ export function AppSidebar() {
       collapsible="icon"
       className="border-r border-border bg-sidebar/95 backdrop-blur-md"
     >
-      {/* Brand Header */}
-      <SidebarHeader className="border-b border-border/50 p-2 group-data-[collapsible=icon]:p-1.5">
-        <SidebarMenu>
-          <SidebarMenuItem>
+      {/* Brand Header — Alinhado com a altura da TopNav (h-16) */}
+      <SidebarHeader className="flex h-16 items-center justify-center border-b border-border/50 p-2 group-data-[collapsible=icon]:p-0">
+        <SidebarMenu className="w-full">
+          <SidebarMenuItem className="flex justify-center">
             <SidebarMenuButton
               size="lg"
-              className="h-12 rounded-xl transition-all hover:bg-transparent group-data-[collapsible=icon]:!h-10 group-data-[collapsible=icon]:!w-10 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center"
+              className="h-12 w-full rounded-xl transition-all hover:bg-transparent group-data-[collapsible=icon]:!size-10 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center"
             >
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/25">
                 <Sparkles className="size-5" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
@@ -80,13 +80,13 @@ export function AppSidebar() {
       </SidebarHeader>
 
       {/* Main Navigation */}
-      <SidebarContent className="px-2 py-4 group-data-[collapsible=icon]:px-1.5">
-        <SidebarGroup>
+      <SidebarContent className="px-3 py-4 group-data-[collapsible=icon]:px-2">
+        <SidebarGroup className="p-0">
           <SidebarGroupLabel className="px-3 text-[11px] font-semibold tracking-wider text-muted-foreground/70 uppercase group-data-[collapsible=icon]:hidden">
             Estúdio & Criação
           </SidebarGroupLabel>
-          <SidebarGroupContent className="mt-2 group-data-[collapsible=icon]:mt-0">
-            <SidebarMenu className="space-y-1.5">
+          <SidebarGroupContent className="mt-2 group-data-[collapsible=icon]:mt-1">
+            <SidebarMenu className="space-y-2">
               {NAV_ITEMS.map((item) => {
                 const Icon = item.icon
                 const isActive =
@@ -101,9 +101,9 @@ export function AppSidebar() {
                       asChild
                       isActive={isActive}
                       tooltip={item.label}
-                      className={`h-11 rounded-2xl px-3.5 text-sm font-medium transition-all group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:!rounded-xl group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center ${
+                      className={`h-11 rounded-2xl px-3.5 text-sm font-medium transition-all group-data-[collapsible=icon]:!size-10 group-data-[collapsible=icon]:!rounded-xl group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center ${
                         isActive
-                          ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/30 hover:bg-primary/95 hover:text-primary-foreground data-[active=true]:bg-primary data-[active=true]:text-primary-foreground'
+                          ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25 hover:bg-primary/95 hover:text-primary-foreground data-[active=true]:bg-primary data-[active=true]:text-primary-foreground'
                           : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground'
                       }`}
                     >
@@ -112,7 +112,7 @@ export function AppSidebar() {
                         className="flex w-full items-center gap-3 group-data-[collapsible=icon]:justify-center"
                       >
                         <Icon
-                          className={`size-4 shrink-0 transition-transform ${
+                          className={`size-5 shrink-0 transition-transform ${
                             isActive ? 'text-primary-foreground' : 'text-muted-foreground'
                           }`}
                         />
