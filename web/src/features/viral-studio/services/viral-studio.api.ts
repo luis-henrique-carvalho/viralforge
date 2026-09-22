@@ -51,6 +51,25 @@ export const viralStudioApi = {
     return response.data
   },
 
+  async renderItem(
+    id: string,
+    payload: { headline?: string; template_id?: string; watermark?: boolean },
+  ): Promise<ViralItem> {
+    const response = await apiClient.post<ViralItem>(`/viral-studio/items/${id}/render`, payload)
+    return response.data
+  },
+
+  async regenerateItemCopy(
+    id: string,
+    payload?: { model?: string; manual_instructions?: string },
+  ): Promise<ViralItem> {
+    const response = await apiClient.post<ViralItem>(
+      `/viral-studio/items/${id}/regenerate-copy`,
+      payload || {},
+    )
+    return response.data
+  },
+
   // Brands
   async fetchBrands(): Promise<BrandListResponse> {
     const response = await apiClient.get<BrandListResponse>('/viral-studio/brands')

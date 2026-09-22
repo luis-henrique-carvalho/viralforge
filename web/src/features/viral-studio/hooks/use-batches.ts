@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { viralStudioApi } from '../services/viral-studio.api'
 import { viralStudioKeys } from '../services/viral-studio.keys'
-import type { BatchKpis, BatchResponse } from '../data/batch.types'
+import type { BatchKpis, BatchListResponse, BatchResponse } from '../data/batch.types'
 
 export function computeBatchKpis(batches: BatchResponse[] = []): BatchKpis {
   let totalVideos = 0
@@ -51,7 +51,8 @@ export function computeBatchKpis(batches: BatchResponse[] = []): BatchKpis {
 }
 
 export function useBatches(options?: {
-  refetchInterval?: number | false | ((query: any) => number | false)
+  refetchInterval?:
+    number | false | ((query: { state: { data?: BatchListResponse } }) => number | false)
 }) {
   return useQuery({
     queryKey: viralStudioKeys.batches(),

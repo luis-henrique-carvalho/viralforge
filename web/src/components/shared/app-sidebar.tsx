@@ -14,6 +14,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from '@/components/ui/sidebar'
+import { Card, CardContent } from '@/components/ui/card'
 
 interface NavItem {
   to: string
@@ -143,15 +144,17 @@ export function AppSidebar() {
 
       {/* Footer Info */}
       <SidebarFooter className="p-3 group-data-[collapsible=icon]:hidden">
-        <div className="rounded-xl border border-border/60 bg-card/60 p-3 shadow-xs">
-          <div className="flex items-center gap-2">
-            <Film className="h-4 w-4 text-primary" />
-            <p className="text-xs font-medium text-foreground">Motor de Renderização</p>
-          </div>
-          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-            FFmpeg · Whisper Local · Ollama / Gemini Multi-signal
-          </p>
-        </div>
+        <Card className="rounded-xl border-border/60 bg-card/60 shadow-xs">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2">
+              <Film className="h-4 w-4 text-primary" />
+              <p className="text-xs font-medium text-foreground">Motor de Renderização</p>
+            </div>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+              FFmpeg · Whisper Local · Ollama / Gemini Multi-signal
+            </p>
+          </CardContent>
+        </Card>
       </SidebarFooter>
 
       <SidebarRail />

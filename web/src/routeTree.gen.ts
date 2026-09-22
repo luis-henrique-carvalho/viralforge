@@ -18,6 +18,7 @@ import { Route as AppViralStudioIndexRouteImport } from './routes/_app/viral-stu
 import { Route as AppViralStudioIdRouteImport } from './routes/_app/viral-studio/$id'
 import { Route as AppViralStudioBrandsRouteImport } from './routes/_app/viral-studio/brands'
 import { Route as AppViralStudioNewRouteImport } from './routes/_app/viral-studio/new'
+import { Route as AppViralStudioIdItemsItemIdRouteImport } from './routes/_app/viral-studio/$id_.items.$itemId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -63,6 +64,12 @@ const AppViralStudioNewRoute = AppViralStudioNewRouteImport.update({
   path: '/viral-studio/new',
   getParentRoute: () => AppRoute,
 } as any)
+const AppViralStudioIdItemsItemIdRoute =
+  AppViralStudioIdItemsItemIdRouteImport.update({
+    id: '/viral-studio/$id_/items/$itemId',
+    path: '/viral-studio/$id/items/$itemId',
+    getParentRoute: () => AppRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/viral-studio/brands': typeof AppViralStudioBrandsRoute
   '/viral-studio/new': typeof AppViralStudioNewRoute
   '/viral-studio/': typeof AppViralStudioIndexRoute
+  '/viral-studio/$id/items/$itemId': typeof AppViralStudioIdItemsItemIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -83,6 +91,7 @@ export interface FileRoutesByTo {
   '/viral-studio/brands': typeof AppViralStudioBrandsRoute
   '/viral-studio/new': typeof AppViralStudioNewRoute
   '/viral-studio': typeof AppViralStudioIndexRoute
+  '/viral-studio/$id/items/$itemId': typeof AppViralStudioIdItemsItemIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -95,6 +104,7 @@ export interface FileRoutesById {
   '/_app/viral-studio/brands': typeof AppViralStudioBrandsRoute
   '/_app/viral-studio/new': typeof AppViralStudioNewRoute
   '/_app/viral-studio/': typeof AppViralStudioIndexRoute
+  '/_app/viral-studio/$id_/items/$itemId': typeof AppViralStudioIdItemsItemIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/viral-studio/brands'
     | '/viral-studio/new'
     | '/viral-studio/'
+    | '/viral-studio/$id/items/$itemId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/viral-studio/brands'
     | '/viral-studio/new'
     | '/viral-studio'
+    | '/viral-studio/$id/items/$itemId'
   id:
     | '__root__'
     | '/'
@@ -128,6 +140,7 @@ export interface FileRouteTypes {
     | '/_app/viral-studio/brands'
     | '/_app/viral-studio/new'
     | '/_app/viral-studio/'
+    | '/_app/viral-studio/$id_/items/$itemId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -200,6 +213,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppViralStudioNewRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/viral-studio/$id_/items/$itemId': {
+      id: '/_app/viral-studio/$id_/items/$itemId'
+      path: '/viral-studio/$id/items/$itemId'
+      fullPath: '/viral-studio/$id/items/$itemId'
+      preLoaderRoute: typeof AppViralStudioIdItemsItemIdRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -211,6 +231,7 @@ interface AppRouteChildren {
   AppViralStudioBrandsRoute: typeof AppViralStudioBrandsRoute
   AppViralStudioNewRoute: typeof AppViralStudioNewRoute
   AppViralStudioIndexRoute: typeof AppViralStudioIndexRoute
+  AppViralStudioIdItemsItemIdRoute: typeof AppViralStudioIdItemsItemIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -221,6 +242,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppViralStudioBrandsRoute: AppViralStudioBrandsRoute,
   AppViralStudioNewRoute: AppViralStudioNewRoute,
   AppViralStudioIndexRoute: AppViralStudioIndexRoute,
+  AppViralStudioIdItemsItemIdRoute: AppViralStudioIdItemsItemIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

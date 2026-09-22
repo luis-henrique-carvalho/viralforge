@@ -218,9 +218,9 @@ web/
 ```mermaid
 flowchart LR
     Fase0["✅ Fase 0: Setup & Theme"] --> Fase1["✅ Fase 1: Shell, Router & Testes"]
-    Fase1 --> Fase2["✅ Fase 2: Viral Studio Core (CONCLUÍDO)"]
-    Fase2 --> Fase3["🎯 Fase 3: Viral Editor (PRÓXIMA)"]
-    Fase3 --> Fase4["⏳ Fase 4: Discovery"]
+    Fase1 --> Fase2["✅ Fase 2: Viral Studio Core"]
+    Fase2 --> Fase3["✅ Fase 3: Viral Editor (CONCLUÍDO)"]
+    Fase3 --> Fase4["🎯 Fase 4: Discovery (PRÓXIMA)"]
     Fase4 --> Fase5["⏳ Fase 5: Clips & Settings"]
     Fase5 --> Fase6["⏳ Fase 6: Homologação & Docker"]
 
@@ -228,9 +228,9 @@ flowchart LR
     classDef current fill:#2563eb,stroke:#60a5fa,color:#ffffff,stroke-width:3px;
     classDef pending fill:#374151,stroke:#4b5563,color:#9ca3af;
 
-    class Fase0,Fase1,Fase2 completed;
-    class Fase3 current;
-    class Fase4,Fase5,Fase6 pending;
+    class Fase0,Fase1,Fase2,Fase3 completed;
+    class Fase4 current;
+    class Fase5,Fase6 pending;
 ```
 
 ---
@@ -292,15 +292,24 @@ flowchart LR
 
 ---
 
-### ⏳ Fase 3: Viral Editor (Decomposição do Modal Monolítico) [PENDENTE]
-- [ ] Decompor o arquivo legado de 1.000 linhas (`ViralEditModal.jsx`) em componentes atômicos:
-  - [ ] `video-preview.tsx` (player vertical 9:16 com controles Shadcn).
-  - [ ] `hook-selector.tsx` (cards de seleção de ganchos virais detectados pela IA).
-  - [ ] `copy-editor-form.tsx` (edição de legenda, hashtags, CTA e link de afiliado).
-  - [ ] `subtitle-styler.tsx` (seletor de tipografia, cores e animação de legendas).
-  - [ ] `audio-mixer.tsx` (slider de mixagem de volume original vs música de fundo).
-- [ ] Implementar `use-item-editor.ts` com React Hook Form + Zod.
-- [ ] Conectar mutation de renderização com feedback em tempo real via Sonner.
+### ✅ Fase 3: Viral Editor (Decomposição do Modal Monolítico) [CONCLUÍDO]
+- [x] **Decomposição do Modal Monolítico (`ViralEditModal.jsx` ~1.000 linhas) em componentes atômicos (<200 linhas):**
+  - [x] `viral-editor-dialog.tsx`: Shell do modal 2 colunas com suporte a dirty-tracking e confirmação de descarte.
+  - [x] `viral-editor-preview.tsx`: Player vertical 9:16 com overlay de renderização e botão de re-render.
+  - [x] `viral-editor-headlines-tab.tsx`: Seletor de ganchos magnéticos da IA com badges de contexto e headline manual.
+  - [x] `copy-regeneration-card.tsx`: Card de regeração de copy com seletor híbrido de LLMs (LM Studio/Ollama/Gemini) e instruções contextuais.
+  - [x] `viral-editor-caption-tab.tsx`: Edição de legenda comercial, CTA padrão da marca e cópia rápida.
+  - [x] `viral-editor-details-tab.tsx`: Edição de código de produto, link de afiliado e URL de origem.
+  - [x] `viral-editor-observability-tab.tsx`: Hub de observabilidade completo com 3 sub-seções:
+    - [x] `keyframes-gallery-section.tsx` + `keyframe-lightbox-dialog.tsx`: Galeria de frames por cena com zoom em alta resolução.
+    - [x] `signals-audio-section.tsx`: Transcrição com detecção de fala e cópia.
+    - [x] `signals-metadata-section.tsx`: Metadados do post original e métricas de engajamento (views, likes, comments, reposts).
+    - [x] `observability-telemetry-view.tsx`: 6 cards de métricas (Tokens, Custo USD, Latência), Prompt completo e JSON bruto.
+    - [x] `observability-timeline-view.tsx`: Linha do tempo cronológica de logs com tags coloridas de estágio e payloads formatados.
+- [x] **Camada de Estado & Serviços:**
+  - [x] Schema Zod `item-editor.schema.ts` e hook `use-item-editor.ts` com React Hook Form.
+  - [x] Hooks `use-render-item.ts`, `use-regenerate-copy.ts` e `use-local-ai-models.ts` com TanStack Query v5.
+  - [x] Mocks MSW e 43 arquivos de testes unitários/integração com 127 testes passando e >90% de cobertura.
 
 ---
 

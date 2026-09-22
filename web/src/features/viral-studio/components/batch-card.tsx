@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { ArrowRight, Film, Layers, Sparkles } from 'lucide-react'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 import { BatchStatusBadge } from './batch-status-badge'
@@ -73,27 +74,41 @@ export function BatchCard({ batch }: BatchCardProps) {
           />
         </div>
 
-        <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2 text-xs">
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Film className="size-3.5" />
-            <span>
-              {total} {total === 1 ? 'vídeo' : 'vídeos'}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 font-medium">
+        <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2">
+          <Badge
+            variant="secondary"
+            className="gap-1.5 font-medium"
+          >
+            <Film className="size-3" />
+            {total} {total === 1 ? 'vídeo' : 'vídeos'}
+          </Badge>
+          <div className="flex items-center gap-1.5">
             {readyCount > 0 && (
-              <span className="text-emerald-600 dark:text-emerald-400">{readyCount} prontos</span>
+              <Badge
+                variant="outline"
+                className="gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
+              >
+                {readyCount} prontos
+              </Badge>
             )}
             {processingCount > 0 && (
-              <span className="text-indigo-500 animate-pulse">{processingCount} processando</span>
+              <Badge
+                variant="outline"
+                className="gap-1 text-indigo-500 border-indigo-500/30 bg-indigo-500/10 animate-pulse"
+              >
+                {processingCount} processando
+              </Badge>
             )}
             {failedCount > 0 && (
-              <span className="text-destructive">
+              <Badge
+                variant="destructive"
+                className="gap-1"
+              >
                 {failedCount} {failedCount === 1 ? 'falha' : 'falhas'}
-              </span>
+              </Badge>
             )}
             {readyCount === 0 && processingCount === 0 && failedCount === 0 && (
-              <span className="text-muted-foreground">Em espera</span>
+              <Badge variant="secondary">{'\u2014'} Em espera</Badge>
             )}
           </div>
         </div>

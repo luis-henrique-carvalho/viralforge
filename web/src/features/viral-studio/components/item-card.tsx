@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Check, CheckCircle2, Copy, ExternalLink, Info, RefreshCw, Tag } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
+import { Check, CheckCircle2, Copy, ExternalLink, Info, Pencil, RefreshCw, Tag } from 'lucide-react'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -11,10 +12,12 @@ import type { ViralItem } from '../data/batch.types'
 
 interface ItemCardProps {
   item: ViralItem
+  batchId?: string
   isSelected?: boolean
   isSelectable?: boolean
   onToggleSelect?: (itemId: string) => void
   onInspect?: (item: ViralItem) => void
+  onEdit?: (item: ViralItem) => void
   onApprove?: (itemId: string) => void
   onRetry?: (itemId: string) => void
   isApproving?: boolean
@@ -23,19 +26,35 @@ interface ItemCardProps {
 
 export function ItemCard({
   item,
+  batchId,
   isSelected = false,
   isSelectable = false,
   onToggleSelect,
   onInspect,
+  onEdit,
   onApprove,
   onRetry,
   isApproving = false,
   isRetrying = false,
 }: ItemCardProps) {
+  const navigate = useNavigate()
   const [copied, setCopied] = useState(false)
+  const effectiveBatchId = batchId || item.batch_id
+
+  const handleEdit = () => {
+    if (onEdit) {
+      onEdit(item)
+    } else if (effectiveBatchId) {
+      navigate({
+        to: '/viral-studio/$id/items/$itemId',
+        params: { id: effectiveBatchId, itemId: item.id },
+      })
+    }
+  }
 
   const handleCopyCaption = () => {
-    const textToCopy = item.caption || item.selected_headline || item.source_url
+    const textToCopy =
+      item.caption || item.ai_copy?.caption || item.selected_headline || item.source_url
     navigator.clipboard.writeText(textToCopy)
     setCopied(true)
     toast.success('Legenda copiada para a área de transferência!')
@@ -87,18 +106,17 @@ export function ItemCard({
       </CardHeader>
 
       <CardContent className="p-3 pt-0 space-y-3">
-        {/* 9:16 Video Preview */}
         <VideoPreviewCard item={item} />
-
-        {/* Headline & Product Meta */}
         <div className="space-y-1">
-          <p
-            className="text-xs font-semibold leading-snug line-clamp-2 text-foreground"
-            title={headline}
+          {/* shadcn-ignore: headline com estilo customizado clicável */}
+          <button
+            type="button"
+            onClick={handleEdit}
+            className="text-left text-xs font-semibold leading-snug line-clamp-2 text-foreground hover:text-primary transition-colors cursor-pointer w-full focus:outline-none"
+            title={`${headline} (Clique para editar)`}
           >
             {headline}
-          </p>
-
+          </button>
           <div className="flex items-center gap-2 pt-1">
             <a
               href={item.source_url}
@@ -115,37 +133,39 @@ export function ItemCard({
       </CardContent>
 
       <CardFooter className="p-3 pt-0 flex flex-col gap-2 border-t border-border/40">
-        <div className="flex w-full items-center justify-between gap-1 pt-2">
-          {/* Copy button */}
+        <div className="grid grid-cols-3 w-full gap-1 pt-2">
           <Button
             variant="outline"
             size="sm"
-            className="h-8 px-2.5 text-xs gap-1 flex-1"
+            className="h-8 px-2 text-xs gap-1"
+            onClick={handleEdit}
+            title="Editar Vídeo & Copy"
+          >
+            <Pencil className="size-3" />
+            <span>Editar</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-2 text-xs gap-1"
             onClick={handleCopyCaption}
             title="Copiar Legenda"
           >
-            {copied ? (
-              <Check className="size-3.5 text-emerald-500" />
-            ) : (
-              <Copy className="size-3.5" />
-            )}
+            {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
             <span>{copied ? 'Copiado' : 'Legenda'}</span>
           </Button>
-
-          {/* Inspect / Logs button */}
           <Button
             variant="outline"
             size="sm"
-            className="h-8 px-2.5 text-xs gap-1"
+            className="h-8 px-2 text-xs gap-1"
             onClick={() => onInspect?.(item)}
             title="Inspecionar Detalhes & Logs"
           >
-            <Info className="size-3.5" />
+            <Info className="size-3" />
             <span>Logs</span>
           </Button>
         </div>
 
-        {/* Action button based on state */}
         {isReady && (
           <Button
             size="sm"

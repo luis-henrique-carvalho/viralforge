@@ -11,7 +11,6 @@ import { BatchFilterToolbar } from '../components/batch-filter-toolbar'
 import { ItemCard } from '../components/item-card'
 import { ItemDetailSheet } from '../components/item-detail-sheet'
 import { BulkActionsBar } from '../components/bulk-actions-bar'
-import type { ViralItem } from '../data/batch.types'
 
 interface BatchResultsViewProps {
   batchId: string
@@ -19,19 +18,25 @@ interface BatchResultsViewProps {
 
 export function BatchResultsView({ batchId }: BatchResultsViewProps) {
   const { data: batch, isLoading, error } = useBatchDetail(batchId)
+
   const approveMutation = useApproveItem(batchId)
   const retryMutation = useRetryItem(batchId)
   const { bulkApprove, bulkRetry, isProcessing: isBulkProcessing } = useBulkItemActions(batchId)
 
   const [activeTab, setActiveTab] = useState<'all' | 'ready' | 'processing' | 'failed'>('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [inspectedItem, setInspectedItem] = useState<ViralItem | null>(null)
+  const [inspectedItemId, setInspectedItemId] = useState<string | null>(null)
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const items = batch?.items || []
+
+  const items = useMemo(() => batch?.items || [], [batch?.items])
+  const inspectedItem = useMemo(
+    () => items.find((i) => i.id === inspectedItemId) || null,
+    [items, inspectedItemId],
+  )
 
   const filteredItems = useMemo(() => {
-    return (batch?.items || []).filter((item) => {
+    return items.filter((item) => {
       if (
         activeTab === 'ready' &&
         !['READY_FOR_REVIEW', 'APPROVED', 'SCHEDULED', 'PUBLISHED'].includes(item.status)
@@ -45,29 +50,19 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
       if (activeTab === 'failed' && !['FAILED', 'CANCELLED'].includes(item.status)) return false
 
       if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase().trim()
-        const matchCode = item.product_code?.toLowerCase().includes(query)
-        const matchHeadline = (item.selected_headline || item.manual_headline || '')
-          .toLowerCase()
-          .includes(query)
-        const matchAiHeadline = item.ai_copy?.selected_headline?.toLowerCase().includes(query)
-        const matchAiProduct = item.ai_copy?.product?.toLowerCase().includes(query)
-        const matchCaption = item.caption?.toLowerCase().includes(query)
-        const matchUrl = item.source_url.toLowerCase().includes(query)
-        const matchId = item.id.toLowerCase().includes(query)
+        const q = searchQuery.toLowerCase().trim()
         return Boolean(
-          matchCode ||
-          matchHeadline ||
-          matchAiHeadline ||
-          matchAiProduct ||
-          matchCaption ||
-          matchUrl ||
-          matchId,
+          item.product_code?.toLowerCase().includes(q) ||
+          (item.selected_headline || item.manual_headline || '').toLowerCase().includes(q) ||
+          item.ai_copy?.selected_headline?.toLowerCase().includes(q) ||
+          item.caption?.toLowerCase().includes(q) ||
+          item.source_url.toLowerCase().includes(q) ||
+          item.id.toLowerCase().includes(q),
         )
       }
       return true
     })
-  }, [batch?.items, activeTab, searchQuery])
+  }, [items, activeTab, searchQuery])
 
   const handleToggleSelect = (itemId: string) => {
     setSelectedIds((prev) => {
@@ -155,10 +150,11 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
             <ItemCard
               key={item.id}
               item={item}
+              batchId={batchId}
               isSelected={selectedIds.has(item.id)}
               isSelectable={isSelectionMode}
               onToggleSelect={handleToggleSelect}
-              onInspect={(i) => setInspectedItem(i)}
+              onInspect={(i) => setInspectedItemId(i.id)}
               onApprove={(id) => approveMutation.mutate(id)}
               onRetry={(id) => retryMutation.mutate(id)}
               isApproving={approveMutation.isPending}
@@ -178,10 +174,11 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
         </Card>
       )}
 
+      {/* Quick Inspection Sheet for Logs */}
       <ItemDetailSheet
         item={inspectedItem}
-        isOpen={Boolean(inspectedItem)}
-        onClose={() => setInspectedItem(null)}
+        isOpen={Boolean(inspectedItemId)}
+        onClose={() => setInspectedItemId(null)}
         onApprove={(id) => approveMutation.mutate(id)}
         onRetry={(id) => retryMutation.mutate(id)}
         isApproving={approveMutation.isPending}

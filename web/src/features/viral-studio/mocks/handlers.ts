@@ -190,6 +190,28 @@ export const mockBatches: BatchResponse[] = [
   },
 ]
 
+export function resetMockViralStudioData() {
+  mockItems[0] = {
+    ...mockItems[0],
+    status: 'READY_FOR_REVIEW',
+    selected_headline: 'Este suporte magnético vai mudar sua mesa de trabalho!',
+    caption: 'Suporte ultra resistente em liga de alumínio com rotação 360. #achadinhos #setup',
+    error_message: null,
+  }
+  mockItems[1] = {
+    ...mockItems[1],
+    status: 'ANALYZING',
+    error_message: null,
+  }
+  mockItems[2] = {
+    ...mockItems[2],
+    status: 'FAILED',
+    error_message: 'Erro ao baixar vídeo: URL inacessível ou privada.',
+  }
+  mockBatches[0].status = 'PROCESSING'
+  mockBatches[0].items = mockItems
+}
+
 export const viralStudioHandlers = [
   // Batches
   http.get('/api/viral-studio/batches', () => {
@@ -314,6 +336,90 @@ export const viralStudioHandlers = [
     item.error_message = null
     item.updated_at = new Date().toISOString()
     return HttpResponse.json(item)
+  }),
+
+  http.post('/api/viral-studio/items/:id/render', async ({ params, request }) => {
+    const { id } = params
+    const body = (await request.json()) as {
+      headline?: string
+      template_id?: string
+      watermark?: boolean
+    }
+    const item = mockItems.find((i) => i.id === id)
+    if (!item) {
+      return new HttpResponse(JSON.stringify({ detail: 'Item not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    if (body.headline) {
+      item.selected_headline = body.headline
+    }
+    item.status = 'RENDERING'
+    item.updated_at = new Date().toISOString()
+    return HttpResponse.json(item, { status: 202 })
+  }),
+
+  http.post('/api/viral-studio/items/:id/regenerate-copy', async ({ params, request }) => {
+    const { id } = params
+    const body = (await request.json()) as { model?: string; manual_instructions?: string }
+    const item = mockItems.find((i) => i.id === id)
+    if (!item) {
+      return new HttpResponse(JSON.stringify({ detail: 'Item not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    const newHeadline = `[IA: ${body.model || 'Gemini'}] Gancho Regerado ${Date.now().toString().slice(-4)}`
+    item.selected_headline = newHeadline
+    item.caption = `Nova legenda comercial regerada. ${body.manual_instructions || ''}`
+    item.ai_copy = {
+      product: item.ai_copy?.product || 'Produto em Destaque',
+      product_description: item.ai_copy?.product_description || '',
+      headlines: [
+        newHeadline,
+        'Outra opção magnética regerada pela IA!',
+        'Terceira headline altamente persuasiva!',
+      ],
+      selected_headline: newHeadline,
+      caption: item.caption,
+      hashtags: ['#achadinhos', '#viral'],
+    }
+    item.updated_at = new Date().toISOString()
+    return HttpResponse.json(item)
+  }),
+
+  // Local AI Models Discovery
+  http.get('/api/config/local-models', () => {
+    return HttpResponse.json({
+      lm_studio: {
+        online: true,
+        base_url: 'http://localhost:1234',
+        models: [{ id: 'qwen2.5-coder-7b-instruct', name: 'Qwen 2.5 Coder 7B Instruct' }],
+      },
+      ollama: {
+        online: true,
+        base_url: 'http://localhost:11434',
+        models: [
+          { id: 'llama3.2:3b', name: 'llama3.2:3b' },
+          { id: 'qwen2.5:7b', name: 'qwen2.5:7b' },
+        ],
+      },
+      models: [
+        {
+          id: 'lmstudio:qwen2.5-coder-7b-instruct',
+          name: 'Qwen 2.5 Coder 7B Instruct',
+          provider: 'lm_studio',
+          group: 'LM Studio',
+        },
+        {
+          id: 'ollama:llama3.2:3b',
+          name: 'llama3.2:3b',
+          provider: 'ollama',
+          group: 'Ollama',
+        },
+      ],
+    })
   }),
 
   // Brands

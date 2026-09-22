@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { AlertCircle, CheckCircle2, Film, Link2, Plus, Trash2, FileText } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { VideoTagItem } from './video-tag-item'
 import { BulkPasteCard } from './bulk-paste-card'
 import type { ViralItemInput } from '../data/batch.types'
@@ -175,28 +176,38 @@ export function UrlParserInput({ value, onChange, error }: UrlParserInputProps) 
         />
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/40 px-3 py-2 text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/40 px-3 py-2">
         <div className="flex items-center gap-2">
-          <Film className="size-4 text-primary shrink-0" />
-          <span className="font-semibold text-foreground">
+          <Badge
+            variant="secondary"
+            className="gap-1.5 font-medium"
+          >
+            <Film className="size-3" />
             {items.length} {items.length === 1 ? 'vídeo na lista' : 'vídeos na lista'}
-          </span>
+          </Badge>
           {items.length > 0 && (
-            <span className="hidden sm:inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium text-[11px] ml-1">
+            <Badge
+              variant="outline"
+              className="hidden sm:inline-flex gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
+            >
               <CheckCircle2 className="size-3" />
               Pronto para envio
-            </span>
+            </Badge>
           )}
         </div>
 
         <div className="flex items-center gap-2">
           {invalidLines.length > 0 && (
-            <span className="flex items-center gap-1 text-destructive font-medium text-[11px]">
+            <Badge
+              variant="destructive"
+              className="gap-1"
+            >
               <AlertCircle className="size-3 shrink-0" />
               {invalidLines.length}{' '}
               {invalidLines.length === 1 ? 'linha inválida' : 'linhas inválidas'}
-            </span>
+            </Badge>
           )}
+
           {items.length > 0 && (
             <Button
               type="button"

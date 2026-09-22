@@ -1,11 +1,21 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '@/test-utils/render'
 import { BatchResultsView } from './batch-results-view'
 
+const mockNavigate = vi.fn()
+
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, to, className }: any) => (
+  Link: ({
+    children,
+    to,
+    className,
+  }: {
+    children: React.ReactNode
+    to: string
+    className?: string
+  }) => (
     <a
       href={to}
       className={className}
@@ -13,10 +23,14 @@ vi.mock('@tanstack/react-router', () => ({
       {children}
     </a>
   ),
-  useNavigate: () => vi.fn(),
+  useNavigate: () => mockNavigate,
 }))
 
 describe('BatchResultsView Integration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('loads batch details, displays video cards, and supports search filtering', async () => {
     const user = userEvent.setup()
     renderWithProviders(<BatchResultsView batchId="batch-101" />)
@@ -60,6 +74,23 @@ describe('BatchResultsView Integration', () => {
     await waitFor(() => {
       expect(screen.getByText('Copy & Ganchos')).toBeInTheDocument()
       expect(screen.getByText('Telemetria IA')).toBeInTheDocument()
+    })
+  })
+
+  it('navigates to dedicated item editor page on clicking Editar button or headline', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<BatchResultsView batchId="batch-101" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('PROD-01')).toBeInTheDocument()
+    })
+
+    const editButtons = screen.getAllByText('Editar')
+    await user.click(editButtons[0])
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: '/viral-studio/$id/items/$itemId',
+      params: { id: 'batch-101', itemId: 'item-1' },
     })
   })
 

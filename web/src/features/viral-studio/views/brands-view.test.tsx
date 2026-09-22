@@ -4,7 +4,15 @@ import { renderWithProviders } from '@/test-utils/render'
 import { BrandsView } from './brands-view'
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, to, className }: any) => (
+  Link: ({
+    children,
+    to,
+    className,
+  }: {
+    children: React.ReactNode
+    to: string
+    className?: string
+  }) => (
     <a
       href={to}
       className={className}

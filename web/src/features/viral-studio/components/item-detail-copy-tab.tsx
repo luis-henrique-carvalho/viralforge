@@ -1,5 +1,6 @@
 import { Copy } from 'lucide-react'
 import { TabsContent } from '@/components/ui/tabs'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import type { AICopyData, ViralItem } from '../data/batch.types'
@@ -36,9 +37,11 @@ export function ItemDetailCopyTab({ item, aiCopy }: ItemDetailCopyTabProps) {
             <Copy className="size-3 mr-1" /> Copiar
           </Button>
         </div>
-        <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm font-medium">
-          {item.selected_headline || aiCopy?.selected_headline || 'Nenhum gancho gerado ainda.'}
-        </div>
+        <Card className="border-border bg-muted/40 shadow-none">
+          <CardContent className="p-3 text-sm font-medium">
+            {item.selected_headline || aiCopy?.selected_headline || 'Nenhum gancho gerado ainda.'}
+          </CardContent>
+        </Card>
       </div>
 
       {aiCopy?.headlines && aiCopy.headlines.length > 0 && (

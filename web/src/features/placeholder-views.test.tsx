@@ -7,7 +7,15 @@ import { ClipsView } from '@/features/pipeline-clips/views/clips-view'
 import { SettingsView } from '@/features/settings/views/settings-view'
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, to, className }: any) => (
+  Link: ({
+    children,
+    to,
+    className,
+  }: {
+    children: React.ReactNode
+    to: string
+    className?: string
+  }) => (
     <a
       href={to}
       className={className}

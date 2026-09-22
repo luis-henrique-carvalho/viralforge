@@ -27,7 +27,7 @@ export function BatchFilterToolbar({
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between w-full min-w-0">
       <Tabs
         value={activeTab}
-        onValueChange={(v) => setActiveTab(v as any)}
+        onValueChange={(v) => setActiveTab(v as 'all' | 'ready' | 'processing' | 'failed')}
         className="w-full sm:w-auto"
       >
         <TabsList className="grid grid-cols-2 sm:flex sm:flex-row w-full sm:w-auto h-auto p-1 gap-1">

@@ -7,7 +7,15 @@ import { CreateBatchView } from './create-batch-view'
 const mockNavigate = vi.fn()
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, to, className }: any) => (
+  Link: ({
+    children,
+    to,
+    className,
+  }: {
+    children: React.ReactNode
+    to: string
+    className?: string
+  }) => (
     <a
       href={to}
       className={className}
