@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Typography } from '@/components/ui/typography'
 import { toast } from 'sonner'
 import type { ViralItem } from '../data/batch.types'
 
@@ -23,88 +24,86 @@ export function ObservabilityTimelineView({ item }: TimelineViewProps) {
           ? new Date(String(log.timestamp)).toLocaleTimeString()
           : '--:--:--'
         const stage = String(log.stage || 'INFO').toUpperCase()
-        const msg = String(log.message || '')
-        const details =
-          log.details && typeof log.details === 'object' && Object.keys(log.details).length > 0
-            ? `\n${JSON.stringify(log.details, null, 2)}`
-            : ''
-        return `[${time}] [${stage}] ${msg}${details}`
+        return `[${time}] [${stage}] ${String(log.message || '')}`
       })
       .join('\n')
 
     navigator.clipboard.writeText(textToCopy)
     setCopied(true)
-    toast.success('Logs copiados para a área de transferência')
+    toast.success('Logs copiados para a área de transferência!')
     setTimeout(() => setCopied(false), 2000)
   }
 
   return (
-    <Card className="border-border/80 bg-card/60">
-      <CardHeader className="p-3 pb-2 flex-row items-center justify-between space-y-0 gap-2">
+    <Card className="border-border/60 bg-black/40">
+      <CardHeader className="p-3 pb-2 flex-row items-center justify-between space-y-0 border-b border-border/40">
         <div className="flex items-center gap-2">
           <Terminal className="size-4 text-primary" />
-          <CardTitle className="text-xs font-semibold text-foreground">
-            Linha do Tempo e Eventos
+          <CardTitle className="text-xs font-mono uppercase tracking-wider">
+            Linha do Tempo de Observabilidade & Auditoria
           </CardTitle>
+          <Badge
+            variant="outline"
+            className="text-[10px] font-mono h-4 px-1.5 py-0"
+          >
+            {logs.length} eventos
+          </Badge>
         </div>
 
         {logs.length > 0 && (
-          <div className="flex items-center gap-1.5">
-            <Badge
-              variant="secondary"
-              className="font-mono text-[10px] px-1.5 py-0"
-            >
-              {logs.length} eventos
-            </Badge>
-            <Button
-              variant="ghost"
-              size="xs"
-              onClick={handleCopyLogs}
-              className="h-6 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
-              title="Copiar logs completos"
-            >
-              {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
-              <span>{copied ? 'Copiado' : 'Copiar Logs'}</span>
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-[11px] font-mono gap-1 text-muted-foreground hover:text-foreground"
+            onClick={handleCopyLogs}
+            title="Copiar logs em texto simples"
+          >
+            {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
+            <span>{copied ? 'Copiado' : 'Copiar Logs'}</span>
+          </Button>
         )}
       </CardHeader>
 
-      <CardContent className="p-3 pt-0">
+      <CardContent className="p-3">
         {logs.length > 0 ? (
-          <ScrollArea className="max-h-[500px] rounded-md border border-border/80 bg-black/90 p-3 overscroll-contain">
-            <div className="flex flex-col gap-2.5 font-mono text-xs">
-              {logs.map((log, idx) => {
-                const stageUpper = String(log.stage || '').toUpperCase()
+          <ScrollArea className="max-h-72 rounded bg-black/60 p-2 border border-white/5 font-mono text-[11px]">
+            <div className="space-y-2">
+              {logs.map((log, index) => {
                 const isError =
-                  log.level === 'error' ||
-                  stageUpper === 'ERROR' ||
-                  stageUpper === 'PUBLISH_ERROR' ||
-                  stageUpper === 'FAILED'
+                  String(log.level || '').toLowerCase() === 'error' ||
+                  Boolean(log.error) ||
+                  String(log.stage || '')
+                    .toLowerCase()
+                    .includes('fail')
                 const isSuccess =
-                  stageUpper === 'COMPLETE' ||
-                  stageUpper === 'PUBLISHED' ||
-                  stageUpper === 'APPROVE' ||
-                  stageUpper === 'APPROVED' ||
-                  stageUpper === 'RENDER_COMPLETE'
+                  String(log.stage || '')
+                    .toLowerCase()
+                    .includes('success') ||
+                  String(log.stage || '')
+                    .toLowerCase()
+                    .includes('ready') ||
+                  String(log.stage || '')
+                    .toLowerCase()
+                    .includes('complete')
 
                 const timeStr = log.timestamp
                   ? new Date(String(log.timestamp)).toLocaleTimeString()
                   : '--:--:--'
-
-                const hasDetails =
-                  Boolean(log.details) &&
+                const stageUpper = String(log.stage || '').toUpperCase()
+                const hasDetails = Boolean(
+                  log.details &&
                   typeof log.details === 'object' &&
-                  Object.keys(log.details as object).length > 0
+                  Object.keys(log.details as object).length > 0,
+                )
 
                 const uniqueKey = log.timestamp
-                  ? `${String(log.timestamp)}-${idx}`
-                  : `${String(log.stage || 'stage')}-${String(log.message || 'msg')}-${idx}`
+                  ? `${String(log.timestamp)}-${index}`
+                  : `${String(log.stage || 'stage')}-${String(log.message || 'msg')}-${index}`
 
                 return (
                   <div
                     key={uniqueKey}
-                    className="flex flex-col gap-1.5 border-b border-border/20 pb-3 last:border-0 last:pb-0"
+                    className="flex flex-col gap-1 rounded p-1.5 transition-colors hover:bg-white/5 border border-transparent hover:border-white/5"
                   >
                     <div className="flex items-center gap-2">
                       <span className="text-muted-foreground/70 text-[11px] font-mono shrink-0">
@@ -120,13 +119,12 @@ export function ObservabilityTimelineView({ item }: TimelineViewProps) {
                       </Badge>
                     </div>
 
-                    <p
-                      className={`text-[11px] leading-relaxed break-words font-mono ${
-                        isError ? 'text-destructive font-medium' : 'text-foreground/90'
-                      }`}
+                    <Typography
+                      variant={isError ? 'destructive' : 'muted'}
+                      className="font-mono text-[11px] break-words"
                     >
                       {String(log.message || '')}
-                    </p>
+                    </Typography>
 
                     {hasDetails && (
                       <Card className="rounded bg-white/5 p-2 text-[10px] text-muted-foreground border border-white/5 shadow-none">
@@ -145,7 +143,7 @@ export function ObservabilityTimelineView({ item }: TimelineViewProps) {
         ) : (
           <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground gap-2">
             <FileText className="size-6 opacity-40" />
-            <p className="text-xs">Nenhum log registrado para este item.</p>
+            <Typography variant="muted">Nenhum log registrado para este item.</Typography>
           </div>
         )}
       </CardContent>

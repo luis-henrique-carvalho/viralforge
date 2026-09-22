@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Typography } from '@/components/ui/typography'
 import { toast } from 'sonner'
 
 interface SignalsAudioSectionProps {
@@ -71,10 +72,13 @@ export function SignalsAudioSection({ transcript, transcriptWords }: SignalsAudi
             {transcript}
           </ScrollArea>
         ) : (
-          <p className="text-xs text-muted-foreground italic">
+          <Typography
+            variant="muted"
+            className="italic"
+          >
             Nenhuma faixa de voz identificada no áudio (conteúdo com trilha sonora ou ruído
             ambiente).
-          </p>
+          </Typography>
         )}
       </CardContent>
     </Card>

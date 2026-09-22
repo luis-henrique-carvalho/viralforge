@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { ArrowLeft, XCircle } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Typography } from '@/components/ui/typography'
 
 export interface BatchResultsNotFoundProps {
   batchId: string
@@ -13,10 +14,13 @@ export function BatchResultsNotFound({ batchId, errorMessage }: BatchResultsNotF
     <Card className="p-12 text-center border-destructive/30 bg-destructive/5 space-y-4">
       <XCircle className="size-10 text-destructive mx-auto" />
       <div>
-        <h2 className="text-lg font-bold text-foreground">Lote não encontrado</h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <Typography variant="h3">Lote não encontrado</Typography>
+        <Typography
+          variant="muted"
+          className="mt-1"
+        >
           {errorMessage || `Não foi possível carregar os detalhes do lote #${batchId}.`}
-        </p>
+        </Typography>
       </div>
       <Button
         asChild

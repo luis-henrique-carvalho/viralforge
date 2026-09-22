@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Typography } from '@/components/ui/typography'
 import { useSettings } from '../hooks/use-settings'
 
 export function HardwareStatusCard() {
@@ -87,9 +88,9 @@ export function HardwareStatusCard() {
               >
                 {hardware?.device_name || 'CPU Host'}
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <Typography variant="muted">
                 {isGpuActive ? `${hardware?.vram_gb} GB VRAM Dedicada` : 'Sem GPU dedicada'}
-              </p>
+              </Typography>
             </div>
           </Card>
 
@@ -103,7 +104,7 @@ export function HardwareStatusCard() {
               <div className="text-lg font-bold tracking-tight text-foreground">
                 {hardware?.total_ram_gb || 0} GB
               </div>
-              <p className="text-[11px] text-muted-foreground">RAM Física Instalada</p>
+              <Typography variant="muted">RAM Física Instalada</Typography>
             </div>
           </Card>
 
@@ -135,15 +136,15 @@ export function HardwareStatusCard() {
           <AlertTitle className="text-sm font-semibold">
             Política de Dimensionamento Dinâmico
           </AlertTitle>
-          <AlertDescription className="text-xs text-muted-foreground mt-1 leading-relaxed space-y-1">
-            <p>
+          <AlertDescription className="mt-1 space-y-1">
+            <Typography variant="muted">
               • <b>Com APIs de Nuvem (Gemini):</b> O Whisper roda na GPU escalando pelo tamanho da
               VRAM (≥12GB: large-v3, ≥6GB: medium, &lt;6GB: small).
-            </p>
-            <p>
+            </Typography>
+            <Typography variant="muted">
               • <b>Com LLMs Locais (LM Studio / Ollama):</b> O Whisper é alocado automaticamente na
               CPU para evitar contenção de VRAM e esgotamento de memória gráfica.
-            </p>
+            </Typography>
           </AlertDescription>
         </Alert>
       </CardContent>

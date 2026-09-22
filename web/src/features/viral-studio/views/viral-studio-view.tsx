@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Typography } from '@/components/ui/typography'
 import { computeBatchKpis, useBatches } from '../hooks/use-batches'
 import { BatchKpisGrid } from '../components/batch-kpis-grid'
 import { BatchCard } from '../components/batch-card'
@@ -20,9 +21,7 @@ export function ViralStudioView() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Viral Content Studio
-            </h1>
+            <Typography variant="h2">Viral Content Studio</Typography>
             <Badge
               variant="secondary"
               className="gap-1 text-xs"
@@ -31,10 +30,10 @@ export function ViralStudioView() {
               Core Engine
             </Badge>
           </div>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <Typography variant="muted">
             Ingestão em lote de URLs, transcrição local, IA multissinal e renderização vertical
             9:16.
-          </p>
+          </Typography>
         </div>
 
         <div className="flex items-center gap-2">
@@ -67,10 +66,10 @@ export function ViralStudioView() {
       {/* Main Content Area */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold tracking-tight text-foreground">Lotes Recentes</h2>
-          <span className="text-xs text-muted-foreground font-mono">
+          <Typography variant="h3">Lotes Recentes</Typography>
+          <Typography variant="small">
             {batches.length} {batches.length === 1 ? 'lote registrado' : 'lotes registrados'}
-          </span>
+          </Typography>
         </div>
 
         {/* Loading Skeletons */}
@@ -93,8 +92,8 @@ export function ViralStudioView() {
         {/* Error State */}
         {error && (
           <Card className="p-6 text-center text-destructive border-destructive/30 bg-destructive/5">
-            <p className="font-semibold text-sm">Falha ao carregar lotes do servidor</p>
-            <p className="text-xs text-muted-foreground mt-1">{error.message}</p>
+            <Typography variant="small">Falha ao carregar lotes do servidor</Typography>
+            <Typography variant="muted">{error.message}</Typography>
           </Card>
         )}
 
@@ -116,11 +115,11 @@ export function ViralStudioView() {
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
               <Layers className="h-7 w-7" />
             </div>
-            <h2 className="mt-4 text-lg font-semibold text-foreground">Nenhum lote criado ainda</h2>
-            <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
+            <Typography variant="h3">Nenhum lote criado ainda</Typography>
+            <Typography variant="muted">
               Inicie a ingestão colando URLs de produtos e vídeos para gerar copies persuasivas e
               renderizar versões verticais 9:16 prontas para publicação.
-            </p>
+            </Typography>
             <div className="mt-6">
               <Button
                 asChild

@@ -4,6 +4,7 @@ import { ArrowLeft, Bookmark, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Typography } from '@/components/ui/typography'
 import { useBrands } from '../hooks/use-brands'
 import { BrandCard } from '../components/brand-card'
 import { BrandFormDialog } from '../components/brand-form-dialog'
@@ -42,14 +43,19 @@ export function BrandsView() {
             </Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <Bookmark className="size-6 text-primary" />
-              Perfis de Marca
-            </h1>
-            <p className="text-sm text-muted-foreground">
+              <Typography
+                variant="h2"
+                as="h1"
+              >
+                Perfis de Marca
+              </Typography>
+            </div>
+            <Typography variant="muted">
               Configure handles sociais, links de afiliados e CTAs padrão para composição nos
               vídeos.
-            </p>
+            </Typography>
           </div>
         </div>
 
@@ -87,8 +93,18 @@ export function BrandsView() {
       {/* Error State */}
       {error && (
         <Card className="p-6 text-center text-destructive border-destructive/30 bg-destructive/5">
-          <p className="font-semibold text-sm">Falha ao carregar perfis de marca</p>
-          <p className="text-xs text-muted-foreground mt-1">{error.message}</p>
+          <Typography
+            variant="small"
+            className="text-destructive"
+          >
+            Falha ao carregar perfis de marca
+          </Typography>
+          <Typography
+            variant="muted"
+            className="mt-1"
+          >
+            {error.message}
+          </Typography>
         </Card>
       )}
 
@@ -111,11 +127,14 @@ export function BrandsView() {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <Bookmark className="h-7 w-7" />
           </div>
-          <h2 className="mt-4 text-lg font-semibold text-foreground">Nenhuma marca cadastrada</h2>
-          <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
+          <Typography variant="h3">Nenhuma marca cadastrada</Typography>
+          <Typography
+            variant="muted"
+            className="mt-1 max-w-md mx-auto"
+          >
             Cadastre o perfil da sua primeira marca para personalizar legendas, templates e CTAs de
             afiliado.
-          </p>
+          </Typography>
           <div className="mt-6">
             <Button
               onClick={handleOpenCreate}

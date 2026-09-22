@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Typography } from '@/components/ui/typography'
 import { ZernioSettingsSection } from './zernio-settings-section'
 import { useSettings } from '../hooks/use-settings'
 import { useUpdateSettings } from '../hooks/use-update-settings'
@@ -149,9 +150,9 @@ export function PublishingProviderCard() {
                 <SelectItem value="mock">Mock Offline (Desenvolvimento & Testes)</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
+            <Typography variant="muted">
               O orquestrador utilizará este adaptador para envio imediato e agendamento contínuo.
-            </p>
+            </Typography>
           </div>
 
           {provider === 'mock' ? (

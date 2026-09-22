@@ -4,6 +4,7 @@ import { ArrowLeft, XCircle } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Typography } from '@/components/ui/typography'
 import { useBatchDetail } from '../hooks/use-batch-detail'
 import { useBrand, useTemplate } from '../hooks/use-brands'
 import { useApproveItem } from '../hooks/use-item-actions'
@@ -87,10 +88,10 @@ export function ViralEditorView({ batchId, itemId }: ViralEditorViewProps) {
     return (
       <Card className="m-6 p-12 text-center border-destructive/30 bg-destructive/5 space-y-4">
         <XCircle className="size-10 text-destructive mx-auto" />
-        <h2 className="text-lg font-bold text-foreground">Vídeo não encontrado</h2>
-        <p className="text-sm text-muted-foreground">
+        <Typography variant="h3">Vídeo não encontrado</Typography>
+        <Typography variant="muted">
           {error?.message || `Não foi possível carregar o vídeo #${itemId} do lote #${batchId}.`}
-        </p>
+        </Typography>
         <Button
           asChild
           variant="outline"

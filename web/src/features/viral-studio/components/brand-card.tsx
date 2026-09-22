@@ -3,6 +3,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Typography } from '@/components/ui/typography'
 import type { Brand } from '../data/batch.types'
 
 interface BrandCardProps {
@@ -34,7 +35,12 @@ export function BrandCard({ brand, onEdit }: BrandCardProps) {
             <CardTitle className="text-base font-semibold truncate text-foreground">
               {brand.name}
             </CardTitle>
-            <p className="font-mono text-xs text-primary font-medium">{brand.handle}</p>
+            <Typography
+              variant="small"
+              className="font-mono text-primary font-medium"
+            >
+              {brand.handle}
+            </Typography>
           </div>
         </div>
       </CardHeader>
@@ -45,9 +51,12 @@ export function BrandCard({ brand, onEdit }: BrandCardProps) {
             <MessageSquareQuote className="size-3.5 text-muted-foreground" />
             CTA Padrão:
           </span>
-          <p className="line-clamp-2 rounded-md bg-muted/40 p-2 text-foreground font-normal">
+          <Typography
+            variant="muted"
+            className="line-clamp-2 rounded-md bg-muted/40 p-2 text-foreground font-normal"
+          >
             {brand.default_cta || 'Nenhum CTA padrão configurado.'}
-          </p>
+          </Typography>
         </div>
 
         <div className="flex items-center justify-between pt-1">

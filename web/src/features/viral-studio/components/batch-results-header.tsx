@@ -3,6 +3,7 @@ import { ArrowLeft, CheckSquare, Cpu, Layers, LayoutTemplate, Sparkles, Tag } fr
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { Typography } from '@/components/ui/typography'
 import { BatchStatusBadge } from './batch-status-badge'
 import type { BatchResponse } from '../data/batch.types'
 
@@ -49,15 +50,16 @@ export function BatchResultsHeader({
                 <ArrowLeft className="size-4" />
               </Link>
             </Button>
-            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground flex items-center gap-2 min-w-0 truncate">
+            <div className="flex items-center gap-2 min-w-0 truncate">
               <Layers className="size-5 text-primary shrink-0" />
-              <span
-                className="font-mono text-primary truncate max-w-[200px] sm:max-w-xs"
-                title={rawId}
+              <Typography
+                variant="h3"
+                as="h1"
+                className="min-w-0 truncate"
               >
                 Lote #{rawId.length > 12 ? `${rawId.slice(0, 8)}...` : rawId}
-              </span>
-            </h1>
+              </Typography>
+            </div>
             <BatchStatusBadge
               status={isAllFailed ? 'FAILED' : isCompleted ? 'COMPLETED' : batch.status}
             />

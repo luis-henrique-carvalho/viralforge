@@ -3,6 +3,7 @@ import type { UseFormReturn } from 'react-hook-form'
 import { Check, Copy } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
+import { Typography } from '@/components/ui/typography'
 import { toast } from 'sonner'
 import type { ItemEditorFormData } from '../data/item-editor.schema'
 import type { Brand } from '../data/batch.types'
@@ -27,9 +28,9 @@ export function ViralEditorCaptionTab({ form, brand }: CaptionTabProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
+        <Typography variant="muted">
           Legenda comercial completa sugerida pela IA para engajar e converter em vendas:
-        </p>
+        </Typography>
         {currentCaption && (
           <Button
             type="button"
@@ -51,7 +52,7 @@ export function ViralEditorCaptionTab({ form, brand }: CaptionTabProps) {
         className="text-xs leading-relaxed resize-y min-h-[160px]"
       />
       {form.formState.errors.caption && (
-        <p className="text-[11px] text-destructive">{form.formState.errors.caption.message}</p>
+        <Typography variant="destructive">{form.formState.errors.caption.message}</Typography>
       )}
 
       {brand?.default_cta && (

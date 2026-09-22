@@ -1,6 +1,7 @@
 import { useId } from 'react'
 import { Clock } from 'lucide-react'
 import { Label } from '@/components/ui/label'
+import { Typography } from '@/components/ui/typography'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import type { PublishMode } from '../data/publishing.types'
 
@@ -44,10 +45,13 @@ export function PublishModeSelector({ mode, onChangeMode }: PublishModeSelectorP
             >
               Fila Inteligente Contínua
             </Label>
-            <p className="text-xs text-muted-foreground leading-relaxed">
+            <Typography
+              variant="muted"
+              className="leading-relaxed"
+            >
               1 vídeo por dia às 18:00, continuando automaticamente a partir do próximo slot livre
               sem sobreposição.
-            </p>
+            </Typography>
           </div>
         </div>
 
@@ -71,9 +75,12 @@ export function PublishModeSelector({ mode, onChangeMode }: PublishModeSelectorP
             >
               Publicar Agora
             </Label>
-            <p className="text-xs text-muted-foreground leading-relaxed">
+            <Typography
+              variant="muted"
+              className="leading-relaxed"
+            >
               Disparo imediato na rede social selecionada para todos os vídeos aprovados.
-            </p>
+            </Typography>
           </div>
         </div>
       </RadioGroup>

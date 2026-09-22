@@ -4,6 +4,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
+import { Typography } from '@/components/ui/typography'
 import { BatchStatusBadge } from './batch-status-badge'
 import type { BatchResponse } from '../data/batch.types'
 
@@ -42,8 +43,9 @@ export function BatchCard({ batch }: BatchCardProps) {
                 {rawId}
               </CardTitle>
             </div>
-            <p
-              className="text-xs text-muted-foreground truncate"
+            <Typography
+              variant="muted"
+              className="truncate"
               title={`${batch.brand_id} ${batch.model ? `· ${batch.model}` : ''}`}
             >
               Marca: <span className="font-medium text-foreground">{batch.brand_id}</span>
@@ -54,7 +56,7 @@ export function BatchCard({ batch }: BatchCardProps) {
                   <span className="font-mono text-[11px] text-muted-foreground">{batch.model}</span>
                 </>
               )}
-            </p>
+            </Typography>
           </div>
           <BatchStatusBadge
             status={isAllFailed ? 'FAILED' : isCompleted ? 'COMPLETED' : batch.status}

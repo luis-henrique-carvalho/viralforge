@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
+import { Typography } from '@/components/ui/typography'
 import { apiClient } from '@/api/client'
 
 const ROUTE_TITLES: Record<string, string> = {
@@ -81,9 +82,12 @@ export function TopNav() {
               }`}
             />
           </span>
-          <span className="text-xs font-medium text-muted-foreground hidden sm:inline">
+          <Typography
+            variant="small"
+            className="hidden sm:inline"
+          >
             {isOnline ? 'API Conectada' : 'API Desconectada'}
-          </span>
+          </Typography>
         </div>
 
         <Badge
@@ -110,8 +114,8 @@ export function TopNav() {
           >
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-semibold text-foreground">ViralForge Local</p>
-                <p className="text-xs text-muted-foreground">Workspace Autônomo</p>
+                <Typography variant="small">ViralForge Local</Typography>
+                <Typography variant="muted">Workspace Autônomo</Typography>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-border/60" />

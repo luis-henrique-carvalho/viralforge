@@ -3,6 +3,7 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { ArrowLeft, Layers, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Typography } from '@/components/ui/typography'
 import { UrlParserInput } from '../components/url-parser-input'
 import { BatchConfigSidebar } from '../components/batch-config-sidebar'
 import { useBrands, useTemplates } from '../hooks/use-brands'
@@ -66,13 +67,18 @@ export function CreateBatchView() {
             </Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <Sparkles className="size-6 text-primary" />
-              Novo Lote de Criação
-            </h1>
-            <p className="text-sm text-muted-foreground">
+              <Typography
+                variant="h2"
+                as="h1"
+              >
+                Novo Lote de Criação
+              </Typography>
+            </div>
+            <Typography variant="muted">
               Configure os parâmetros de IA e composição visual para processar os vídeos.
-            </p>
+            </Typography>
           </div>
         </div>
       </div>

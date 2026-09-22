@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Typography } from '@/components/ui/typography'
 import { usePublishingAccounts, usePreviewSlots, usePublishItems } from '../hooks/use-publishing'
 import { PublishAccountPicker } from './publish-account-picker'
 import { PublishModeSelector } from './publish-mode-selector'
@@ -142,12 +143,15 @@ export function ViralPublishDialog({
           <div className="py-8 flex flex-col items-center justify-center space-y-4 text-center">
             <Loader2 className="size-10 animate-spin text-primary" />
             <div className="space-y-1">
-              <h3 className="font-semibold text-base">
+              <Typography variant="h4">
                 {mode === 'now' ? 'Publicando vídeos...' : 'Agendando fila contínua...'}
-              </h3>
-              <p className="text-xs text-muted-foreground max-w-sm">
+              </Typography>
+              <Typography
+                variant="muted"
+                className="max-w-sm"
+              >
                 Realizando upload seguro dos vídeos e registrando metadados nas redes sociais.
-              </p>
+              </Typography>
             </div>
             <Progress
               value={66}

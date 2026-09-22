@@ -1,5 +1,6 @@
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Typography } from '@/components/ui/typography'
 import { X } from 'lucide-react'
 
 interface KeyframeLightboxDialogProps {
@@ -47,11 +48,14 @@ export function KeyframeLightboxDialog({
             className="max-h-[80vh] w-auto max-w-full rounded-lg object-contain shadow-2xl border border-border/30"
           />
 
-          <p className="mt-2 text-xs text-muted-foreground">
+          <Typography
+            variant="muted"
+            className="mt-2"
+          >
             {sceneIndex != null
               ? `Cena ${sceneIndex + 1} — Frame extraído para análise visual`
               : 'Frame extraído do vídeo original'}
-          </p>
+          </Typography>
         </div>
       </DialogContent>
     </Dialog>

@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Typography } from '@/components/ui/typography'
 import { useSettings } from '../hooks/use-settings'
 import { useUpdateSettings } from '../hooks/use-update-settings'
 
@@ -82,10 +83,10 @@ export function BrandAssetsCard() {
         {/* Brand Logo Section */}
         <Card className="space-y-4 border-border/60 bg-card/40 p-4 shadow-none">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <ImageIcon className="h-4 w-4 text-primary" />
-              Marca d’Água / Logotipo PNG
-            </h3>
+              <Typography variant="h4">Marca d’Água / Logotipo PNG</Typography>
+            </div>
             {logoConfigured ? (
               <Badge
                 variant="outline"
@@ -105,10 +106,10 @@ export function BrandAssetsCard() {
             )}
           </div>
 
-          <p className="text-xs text-muted-foreground leading-relaxed">
+          <Typography variant="muted">
             Imagem PNG transparente com canal alfa para sobreposição visual em renderizações do
             pipeline e Studio.
-          </p>
+          </Typography>
 
           <div className="flex items-center gap-3">
             <Button
@@ -142,10 +143,10 @@ export function BrandAssetsCard() {
         {/* Custom Subtitle Fonts Section */}
         <Card className="space-y-4 border-border/60 bg-card/40 p-4 shadow-none">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <Type className="h-4 w-4 text-primary" />
-              Fontes Tipográficas Customizadas
-            </h3>
+              <Typography variant="h4">Fontes Tipográficas Customizadas</Typography>
+            </div>
             <Button
               type="button"
               variant="outline"
@@ -159,10 +160,10 @@ export function BrandAssetsCard() {
             </Button>
           </div>
 
-          <p className="text-xs text-muted-foreground leading-relaxed">
+          <Typography variant="muted">
             Fontes adicionadas ficam disponíveis no seletor de legendas do pipeline e no editor
             Konva de templates.
-          </p>
+          </Typography>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 pt-1">
             {fonts && fonts.length > 0 ? (
@@ -192,9 +193,12 @@ export function BrandAssetsCard() {
                 </div>
               ))
             ) : (
-              <p className="text-xs text-muted-foreground col-span-full">
+              <Typography
+                variant="muted"
+                className="col-span-full"
+              >
                 Nenhuma fonte personalizada enviada.
-              </p>
+              </Typography>
             )}
           </div>
         </Card>

@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Typography } from '@/components/ui/typography'
 import { ApiKeyInput } from './api-key-input'
 import { useSettings } from '../hooks/use-settings'
 import { useUpdateSettings } from '../hooks/use-update-settings'
@@ -130,10 +131,10 @@ export function TranscriptionProviderCard() {
           </Alert>
 
           <Card className="space-y-5 border-border/60 bg-card/40 p-4 shadow-none">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <AudioWaveform className="h-4 w-4 text-primary" />
-              Credenciais dos Provedores
-            </h3>
+              <Typography variant="h4">Credenciais dos Provedores</Typography>
+            </div>
 
             <div className="space-y-4">
               <ApiKeyInput

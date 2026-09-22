@@ -4,6 +4,7 @@ import { Check } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Typography } from '@/components/ui/typography'
 import { CopyRegenerationCard } from './copy-regeneration-card'
 import type { ItemEditorFormData } from '../data/item-editor.schema'
 import type { ViralItem } from '../data/batch.types'
@@ -84,9 +85,9 @@ export function ViralEditorHeadlinesTab({
 
       {/* Suggested Headlines */}
       <div className="space-y-2">
-        <p className="text-xs text-muted-foreground">
+        <Typography variant="muted">
           Escolha uma das opções magnéticas geradas pela IA ou personalize abaixo:
-        </p>
+        </Typography>
 
         {headlinesList.length > 0 ? (
           <div className="space-y-1.5">
@@ -132,14 +133,14 @@ export function ViralEditorHeadlinesTab({
           className="text-xs h-9"
         />
         {form.formState.errors.selected_headline && (
-          <p className="text-[11px] text-destructive">
+          <Typography variant="destructive">
             {form.formState.errors.selected_headline.message}
-          </p>
+          </Typography>
         )}
-        <p className="text-[11px] text-muted-foreground">
+        <Typography variant="muted">
           Ao alterar a headline, clique em <strong>Re-renderizar vídeo</strong> para gerar o novo
           MP4 com o template visual.
-        </p>
+        </Typography>
       </div>
 
       {/* AI Copy Regeneration Card */}

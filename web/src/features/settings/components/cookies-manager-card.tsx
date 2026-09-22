@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Typography } from '@/components/ui/typography'
 import { useSettings } from '../hooks/use-settings'
 import { useUpdateSettings } from '../hooks/use-update-settings'
 
@@ -121,7 +122,7 @@ export function CookiesManagerCard() {
                   </div>
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <h4 className="text-sm font-semibold text-foreground">{platform.name}</h4>
+                      <Typography variant="h4">{platform.name}</Typography>
                       {isConfigured ? (
                         <Badge
                           variant="outline"
@@ -140,9 +141,12 @@ export function CookiesManagerCard() {
                         </Badge>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground max-w-lg leading-relaxed">
+                    <Typography
+                      variant="muted"
+                      className="max-w-lg"
+                    >
                       {platform.description}
-                    </p>
+                    </Typography>
                   </div>
                 </div>
 

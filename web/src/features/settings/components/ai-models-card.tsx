@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { Typography } from '@/components/ui/typography'
 import { ApiKeyInput } from './api-key-input'
 import { LocalModelsSection } from './local-models-section'
 import { useSettings } from '../hooks/use-settings'
@@ -104,10 +105,10 @@ export function AiModelsCard() {
         <CardContent className="space-y-6">
           <Card className="space-y-4 border-border/60 bg-card/40 p-4 shadow-none">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-primary" />
-                Google Gemini Cloud
-              </h3>
+                <Typography variant="h4">Google Gemini Cloud</Typography>
+              </div>
               <Badge
                 variant="secondary"
                 className="text-xs"
@@ -219,9 +220,9 @@ export function AiModelsCard() {
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
+            <Typography variant="muted">
               Define o modelo pré-selecionado na criação de novos lotes e na regeneração de cópias.
-            </p>
+            </Typography>
           </div>
         </CardContent>
 

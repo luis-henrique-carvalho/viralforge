@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { AlertCircle, Film, Loader2, Pause, Play, Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/card'
+import { Typography } from '@/components/ui/typography'
 import { getViralPosterUrl, getViralVideoUrl } from '../services/viral-media.utils'
 import type { ViralItem } from '../data/batch.types'
 
@@ -108,7 +109,10 @@ export function VideoPreviewCard({ item, className = '', children }: VideoPrevie
             <Sparkles className="absolute size-2.5 text-primary -top-0.5 -right-0.5" />
           </div>
           <div className="flex flex-col gap-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
+            <Typography
+              variant="small"
+              className="font-semibold uppercase tracking-wider text-foreground"
+            >
               {item.status === 'DOWNLOADING'
                 ? 'Baixando Fonte'
                 : item.status === 'ANALYZING'
@@ -116,10 +120,13 @@ export function VideoPreviewCard({ item, className = '', children }: VideoPrevie
                   : item.status === 'RENDERING'
                     ? 'Renderizando 9:16'
                     : 'Aguardando Fila'}
-            </p>
-            <p className="text-[11px] text-muted-foreground line-clamp-2 px-2">
+            </Typography>
+            <Typography
+              variant="muted"
+              className="line-clamp-2 px-2"
+            >
               {item.model ? `Modelo: ${item.model}` : 'Processamento multissinal ativo...'}
-            </p>
+            </Typography>
           </div>
         </div>
       ) : isFailed ? (
@@ -129,17 +136,25 @@ export function VideoPreviewCard({ item, className = '', children }: VideoPrevie
             <AlertCircle className="size-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold">Falha no Processamento</p>
-            <p className="text-[11px] text-muted-foreground line-clamp-3 mt-1 px-1">
+            <Typography
+              variant="small"
+              className="font-semibold text-destructive"
+            >
+              Falha no Processamento
+            </Typography>
+            <Typography
+              variant="muted"
+              className="line-clamp-3 mt-1 px-1"
+            >
               {item.error_message || 'Erro desconhecido durante o pipeline de renderização.'}
-            </p>
+            </Typography>
           </div>
         </div>
       ) : (
         /* Fallback placeholder */
         <div className="flex flex-col items-center justify-center p-4 text-center text-muted-foreground gap-2">
           <Film className="size-8 opacity-40" />
-          <p className="text-xs">Preview Indisponível</p>
+          <Typography variant="muted">Preview Indisponível</Typography>
         </div>
       )}
 

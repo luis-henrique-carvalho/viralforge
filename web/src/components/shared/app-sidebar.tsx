@@ -15,6 +15,7 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar'
 import { Card, CardContent } from '@/components/ui/card'
+import { Typography } from '@/components/ui/typography'
 
 interface NavItem {
   to: string
@@ -148,11 +149,11 @@ export function AppSidebar() {
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
               <Film className="h-4 w-4 text-primary" />
-              <p className="text-xs font-medium text-foreground">Motor de Renderização</p>
+              <Typography variant="small">Motor de Renderização</Typography>
             </div>
-            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            <Typography variant="muted">
               FFmpeg · Whisper Local · Ollama / Gemini Multi-signal
-            </p>
+            </Typography>
           </CardContent>
         </Card>
       </SidebarFooter>

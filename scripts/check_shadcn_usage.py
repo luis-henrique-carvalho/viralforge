@@ -2,11 +2,15 @@
 """
 check_shadcn_usage.py — Validador de Uso Predominante de Componentes Shadcn UI
 
-Três camadas de detecção:
+Camadas de detecção:
 
-  Camada 1 — Tags HTML nativas substituíveis
-    <button>, <input>, <textarea>, <select>, <dialog>, <table>, <progress>
-    ➔ Button, Input, Textarea, Select, Dialog, Table, Progress
+  Camada 1 — Tags HTML nativas substituíveis:
+    <button>, <input>, <textarea>, <select>, <dialog>, <table>, <progress>, <hr>
+    ➔ Button, Input, Textarea, Select, Dialog, Table, Progress, Separator
+    
+    Tipografia Nativa e Headers:
+    <h1>, <h2>, <h3>, <h4>, <h5>, <h6>, <p>, <blockquote>
+    ➔ Typography (import: '@/components/ui/typography')
 
   Camada 2 — Padrões semânticos: spans/divs coloridos que deveriam ser Badge
     <span className="text-{emerald|green|red|yellow|indigo|orange|destructive}...">
@@ -14,6 +18,9 @@ Três camadas de detecção:
 
   Camada 3 — Contêineres manuais com bg-muted/rounded que deveriam ser Card/Alert
     <div className="...rounded...border...bg-...p-..."> com conteúdo semântico
+
+  Camada 4 — Auditoria de Arquivos sem imports Shadcn UI
+    Arquivos com estrutura JSX substancial (>50 linhas) sem compor o catálogo Shadcn.
 
 Bypass explícito por linha:
     {/* shadcn-ignore: <motivo> */}
@@ -25,18 +32,29 @@ import sys
 from pathlib import Path
 
 # ──────────────────────────────────────────────────────────────────────────────
-# CAMADA 1 — Tags HTML nativas e substituições diretas (Regras /shadcn)
+# CAMADA 1 — Tags HTML nativas e substituições diretas (Regras /shadcn + Typography)
 # ──────────────────────────────────────────────────────────────────────────────
 
 NATIVE_TAG_MAP = {
-    "button":   {"component": "Button",    "import": "@/components/ui/button"},
-    "input":    {"component": "Input",     "import": "@/components/ui/input"},
-    "textarea": {"component": "Textarea",  "import": "@/components/ui/textarea"},
-    "select":   {"component": "Select",    "import": "@/components/ui/select"},
-    "dialog":   {"component": "Dialog",    "import": "@/components/ui/dialog"},
-    "table":    {"component": "Table",     "import": "@/components/ui/table"},
-    "progress": {"component": "Progress",  "import": "@/components/ui/progress"},
-    "hr":       {"component": "Separator", "import": "@/components/ui/separator"},
+    # Componentes de Ação / Formulário / Estrutura
+    "button":     {"component": "Button",     "import": "@/components/ui/button"},
+    "input":      {"component": "Input",      "import": "@/components/ui/input"},
+    "textarea":   {"component": "Textarea",   "import": "@/components/ui/textarea"},
+    "select":     {"component": "Select",     "import": "@/components/ui/select"},
+    "dialog":     {"component": "Dialog",     "import": "@/components/ui/dialog"},
+    "table":      {"component": "Table",      "import": "@/components/ui/table"},
+    "progress":   {"component": "Progress",   "import": "@/components/ui/progress"},
+    "hr":         {"component": "Separator",  "import": "@/components/ui/separator"},
+
+    # Tipografia Padronizada Obrigatória
+    "h1":         {"component": "Typography variant='h1'",         "import": "@/components/ui/typography"},
+    "h2":         {"component": "Typography variant='h2'",         "import": "@/components/ui/typography"},
+    "h3":         {"component": "Typography variant='h3'",         "import": "@/components/ui/typography"},
+    "h4":         {"component": "Typography variant='h4'",         "import": "@/components/ui/typography"},
+    "h5":         {"component": "Typography variant='h4'",         "import": "@/components/ui/typography"},
+    "h6":         {"component": "Typography variant='h4'",         "import": "@/components/ui/typography"},
+    "p":          {"component": "Typography variant='p'/'muted'",  "import": "@/components/ui/typography"},
+    "blockquote": {"component": "Typography variant='blockquote'", "import": "@/components/ui/typography"},
 }
 
 _NATIVE_TAGS_RE = re.compile(
@@ -74,8 +92,8 @@ _STATUS_COLOR_RE = re.compile(
 
 # Contextos que INDICAM que a cor é legítima (não devem ser Badge):
 _BADGE_FALSE_POSITIVE_PATTERNS = [
-    # Dentro de <p>, <h1-h6>, <li>, <td>: cor inline em fluxo de texto
-    re.compile(r"^\s*<(p|h[1-6]|li|td|th)\b"),
+    # Dentro de Typography, <li>, <td>: cor inline em fluxo de texto
+    re.compile(r"^\s*<(Typography|li|td|th)\b"),
     # Já é um ícone lucide embutido (só className sem conteúdo textual)
     re.compile(r"className.*size-\d"),
     # Elemento com animate-spin → ícone de loading, não badge
@@ -147,7 +165,7 @@ def _is_card_false_positive(line: str) -> bool:
 # ──────────────────────────────────────────────────────────────────────────────
 
 EXCLUDED_DIRS = [
-    "components/ui",   # catálogo Shadcn — as fontes originais
+    "components/ui",   # catálogo Shadcn — as fontes originais dos componentes
     "test-utils",
     "tests",
 ]
@@ -305,7 +323,7 @@ def main() -> None:
                     "message": (
                         "COMPONENTE SEM USO DE SHADCN UI. "
                         "Este arquivo possui estrutura de interface considerável mas não compõe nenhum componente "
-                        "do catálogo Shadcn (ex: Card, Badge, Button, AspectRatio, Skeleton, Alert, Separator, etc.). "
+                        "do catálogo Shadcn (ex: Card, Badge, Button, AspectRatio, Skeleton, Alert, Separator, Typography, etc.). "
                         "Refatore para compor o catálogo Shadcn ou adicione '// shadcn-ignore: <motivo>' se for um componente puramente customizado."
                     ),
                 })
@@ -321,13 +339,13 @@ def main() -> None:
     warnings = [v for v in all_violations if v["severity"] == "warning"]
 
     if not all_violations:
-        print("\033[1;32m✓ Shadcn UI Linter: Todos os componentes utilizam o catálogo Shadcn corretamente.\033[0m")
+        print("\033[1;32m✓ Shadcn UI Linter: Todos os componentes utilizam o catálogo Shadcn e Typography corretamente.\033[0m")
         sys.exit(0)
 
     # ── Erros ─────────────────────────────────────────────────────────────────
     if errors:
         print("\033[1;31m=====================================================\033[0m")
-        print("\033[1;31m  ✗ VIOLAÇÕES DA REGRA SHADCN UI (erros)             \033[0m")
+        print("\033[1;31m  ✗ VIOLAÇÕES DA REGRA SHADCN UI / TYPOGRAPHY (erros)\033[0m")
         print("\033[1;31m=====================================================\033[0m\n")
         for v in errors:
             layer_tag = f"[Camada {v['layer']}]"

@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Typography } from '@/components/ui/typography'
 
 interface ApiKeyInputProps {
   label: string
@@ -59,9 +60,7 @@ export function ApiKeyInput({
         )}
       </div>
 
-      {description && (
-        <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
-      )}
+      {description && <Typography variant="muted">{description}</Typography>}
 
       <div className="relative flex items-center gap-2">
         <div className="relative flex-1">
@@ -107,7 +106,14 @@ export function ApiKeyInput({
         )}
       </div>
 
-      {error && <p className="text-xs text-destructive font-medium">{error}</p>}
+      {error && (
+        <Typography
+          variant="small"
+          className="text-destructive"
+        >
+          {error}
+        </Typography>
+      )}
     </div>
   )
 }

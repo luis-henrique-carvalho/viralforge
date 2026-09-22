@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { Typography } from '@/components/ui/typography'
 import { SettingsSidebarNav } from '../components/settings-sidebar-nav'
 import { PublishingProviderCard } from '../components/publishing-provider-card'
 import { AiModelsCard } from '../components/ai-models-card'
@@ -21,9 +22,7 @@ export function SettingsView() {
       {/* Page Header */}
       <div className="space-y-1.5">
         <div className="flex items-center gap-2.5">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Configurações & Provedores
-          </h1>
+          <Typography variant="h2">Configurações & Provedores</Typography>
           <Badge
             variant="outline"
             className="text-xs"
@@ -31,10 +30,10 @@ export function SettingsView() {
             Infraestrutura
           </Badge>
         </div>
-        <p className="text-sm text-muted-foreground">
+        <Typography variant="muted">
           Gerencie as credenciais de IA, provedores de publicação, cookies de extração e recursos de
           aceleração.
-        </p>
+        </Typography>
       </div>
 
       <Separator className="my-6" />

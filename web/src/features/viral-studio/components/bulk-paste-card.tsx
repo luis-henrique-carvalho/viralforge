@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { Typography } from '@/components/ui/typography'
 import { FileText, Plus, X } from 'lucide-react'
 
 interface BulkPasteCardProps {
@@ -13,10 +14,15 @@ export function BulkPasteCard({ value, onChange, onApply, onCancel }: BulkPasteC
   return (
     <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3 sm:p-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5">
           <FileText className="size-3.5 text-primary" />
-          Colagem em Massa (uma URL por linha)
-        </p>
+          <Typography
+            variant="small"
+            className="font-semibold text-foreground"
+          >
+            Colagem em Massa (uma URL por linha)
+          </Typography>
+        </div>
         <Button
           type="button"
           variant="ghost"

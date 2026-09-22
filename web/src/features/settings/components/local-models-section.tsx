@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { Typography } from '@/components/ui/typography'
 import type { LocalModelsResponse } from '../data/settings.types'
 
 export interface LocalModelsSectionProps {
@@ -34,10 +35,10 @@ export function LocalModelsSection({
   return (
     <Card className="space-y-4 border-border/60 bg-card/40 p-4 shadow-none">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <Server className="h-4 w-4 text-primary" />
-          LLMs Locais (Inference Endpoints)
-        </h3>
+          <Typography variant="h4">LLMs Locais (Inference Endpoints)</Typography>
+        </div>
         <Badge
           variant="outline"
           className="text-xs"
@@ -153,10 +154,10 @@ export function LocalModelsSection({
             )}
           </SelectContent>
         </Select>
-        <p className="text-[11px] text-muted-foreground">
+        <Typography variant="muted">
           Utilizado automaticamente na criação de novos lotes e pipelines quando não sobrescrito por
           template.
-        </p>
+        </Typography>
       </div>
     </Card>
   )

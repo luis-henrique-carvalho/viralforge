@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Typography } from '@/components/ui/typography'
 import { VideoTagItem } from './video-tag-item'
 import { BulkPasteCard } from './bulk-paste-card'
 import type { ViralItemInput } from '../data/batch.types'
@@ -165,7 +166,7 @@ export function UrlParserInput({ value, onChange, error }: UrlParserInputProps) 
           </Button>
         </div>
 
-        {error && <p className="text-xs font-medium text-destructive">{error}</p>}
+        {error && <Typography variant="destructive">{error}</Typography>}
       </div>
 
       {showBulkPaste && (
@@ -245,13 +246,19 @@ export function UrlParserInput({ value, onChange, error }: UrlParserInputProps) 
           <div className="rounded-full bg-primary/10 p-3 text-primary">
             <Film className="size-5" />
           </div>
-          <p className="text-xs sm:text-sm font-medium text-foreground">
+          <Typography
+            variant="small"
+            className="font-medium"
+          >
             Nenhum vídeo adicionado ao lote
-          </p>
-          <p className="text-[11px] sm:text-xs text-muted-foreground max-w-sm">
+          </Typography>
+          <Typography
+            variant="muted"
+            className="max-w-sm"
+          >
             Cole uma URL de Reels, TikTok ou Shorts no campo acima e dê Enter, ou clique em
             &quot;Colar em Massa&quot; para adicionar várias URLs de uma vez.
-          </p>
+          </Typography>
         </div>
       )}
     </div>

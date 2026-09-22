@@ -1,5 +1,6 @@
 import { Loader2, RefreshCw, Sparkles, Video } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Typography } from '@/components/ui/typography'
 import { useRenderItem } from '../hooks/use-render-item'
 import { getViralPosterUrl, getViralVideoUrl } from '../services/viral-media.utils'
 import type { ViralItem } from '../data/batch.types'
@@ -68,8 +69,13 @@ export function ViralEditorPreview({
               <Loader2 className="size-6 animate-spin" />
               <Sparkles className="absolute size-3 text-primary top-1 right-1" />
             </div>
-            <p className="text-xs font-semibold text-white">Re-renderizando Vídeo…</p>
-            <p className="text-[10px] text-muted-foreground">Aplicando novo template e headline</p>
+            <Typography
+              variant="small"
+              className="font-semibold text-white"
+            >
+              Re-renderizando Vídeo…
+            </Typography>
+            <Typography variant="muted">Aplicando novo template e headline</Typography>
           </div>
         )}
       </div>

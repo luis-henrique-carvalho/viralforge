@@ -2,6 +2,7 @@ import type { UseFormReturn } from 'react-hook-form'
 import { ExternalLink } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Typography } from '@/components/ui/typography'
 import type { ItemEditorFormData } from '../data/item-editor.schema'
 import type { Brand, ViralItem } from '../data/batch.types'
 
@@ -29,13 +30,13 @@ export function ViralEditorDetailsTab({ item, form, brand }: DetailsTabProps) {
           className="h-9 text-xs"
         />
         {form.formState.errors.product_code && (
-          <p className="text-[11px] text-destructive">
+          <Typography variant="destructive">
             {form.formState.errors.product_code.message}
-          </p>
+          </Typography>
         )}
-        <p className="text-[11px] text-muted-foreground">
+        <Typography variant="muted">
           Identificador informado aos seguidores para encontrar o item na sua bio ou catálogo.
-        </p>
+        </Typography>
       </div>
 
       {/* Affiliate Link */}
@@ -54,14 +55,12 @@ export function ViralEditorDetailsTab({ item, form, brand }: DetailsTabProps) {
           className="h-9 text-xs"
         />
         {form.formState.errors.product_url && (
-          <p className="text-[11px] text-destructive">
-            {form.formState.errors.product_url.message}
-          </p>
+          <Typography variant="destructive">{form.formState.errors.product_url.message}</Typography>
         )}
-        <p className="text-[11px] text-muted-foreground">
+        <Typography variant="muted">
           Se vazio, utiliza o link padrão configurado na marca (
           {brand?.default_affiliate_url || 'link da bio'}).
-        </p>
+        </Typography>
       </div>
 
       {/* Source URL */}

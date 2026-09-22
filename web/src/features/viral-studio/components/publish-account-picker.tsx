@@ -1,6 +1,7 @@
 import { CheckCircle2, Layers, Loader2 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { Typography } from '@/components/ui/typography'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import type { SocialAccount } from '../data/publishing.types'
 
@@ -24,8 +25,9 @@ export function PublishAccountPicker({
         Conta / Canal de Destino
       </Label>
       {isLoading ? (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-          <Loader2 className="size-4 animate-spin" /> Carregando contas conectadas...
+        <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground">
+          <Loader2 className="size-4 animate-spin text-primary" />
+          <span>Carregando canais conectados...</span>
         </div>
       ) : accounts.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -47,8 +49,18 @@ export function PublishAccountPicker({
                   {acc.platform.slice(0, 2)}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold truncate">{acc.name}</p>
-                  <p className="text-[11px] text-muted-foreground capitalize">{acc.platform}</p>
+                  <Typography
+                    variant="small"
+                    className="font-semibold truncate"
+                  >
+                    {acc.name}
+                  </Typography>
+                  <Typography
+                    variant="muted"
+                    className="capitalize"
+                  >
+                    {acc.platform}
+                  </Typography>
                 </div>
                 {isSelected && <CheckCircle2 className="size-4 text-primary shrink-0" />}
               </Button>
