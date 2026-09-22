@@ -45,4 +45,27 @@ describe('BulkActionsBar', () => {
     fireEvent.click(screen.getByText('Reprocessar'))
     expect(onBulkRetry).toHaveBeenCalledTimes(1)
   })
+
+  it('renders publish button and triggers callback when approvedCount > 0', () => {
+    const onBulkPublish = vi.fn()
+
+    render(
+      <BulkActionsBar
+        selectedCount={3}
+        totalCount={5}
+        approvedCount={2}
+        onSelectAll={vi.fn()}
+        onClearSelection={vi.fn()}
+        onBulkApprove={vi.fn()}
+        onBulkRetry={vi.fn()}
+        onBulkPublish={onBulkPublish}
+      />,
+    )
+
+    const publishBtn = screen.getByText('Publicar (2)')
+    expect(publishBtn).toBeInTheDocument()
+
+    fireEvent.click(publishBtn)
+    expect(onBulkPublish).toHaveBeenCalledTimes(1)
+  })
 })

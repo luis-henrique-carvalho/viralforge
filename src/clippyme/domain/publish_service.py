@@ -147,3 +147,6 @@ async def publish_clip_flow(*, job_id: str, clip_index: int,
         logger.warning("publish: failed to persist publish record for %s/%d: %s", job_id, clip_index, e)
 
     return {"success": True, **result}
+
+
+ORIGINAL_PUBLISH_CLIP_FLOW = publish_clip_flow

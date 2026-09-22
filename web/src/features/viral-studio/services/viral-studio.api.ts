@@ -12,6 +12,12 @@ import type {
   ViralItemUpdate,
   VisualTemplate,
 } from '../data/batch.types'
+import type {
+  PreviewSlotsResponse,
+  SocialAccount,
+  ViralPublishRequest,
+  ViralPublishResponse,
+} from '../data/publishing.types'
 
 export const viralStudioApi = {
   // Batches
@@ -99,6 +105,40 @@ export const viralStudioApi = {
 
   async fetchTemplate(id: string): Promise<VisualTemplate> {
     const response = await apiClient.get<VisualTemplate>(`/viral-studio/templates/${id}`)
+    return response.data
+  },
+
+  // Publishing
+  async fetchPublishingAccounts(): Promise<SocialAccount[]> {
+    const response = await apiClient.get<SocialAccount[]>('/viral-studio/publishing/accounts')
+    return response.data
+  },
+
+  async previewPublishSlots(
+    accountId: string,
+    count: number,
+    startDate?: string,
+    preferredTime?: string,
+  ): Promise<PreviewSlotsResponse> {
+    const params = new URLSearchParams()
+    params.set('account_id', accountId)
+    params.set('count', String(count))
+    if (startDate) params.set('start_date', startDate)
+    if (preferredTime) params.set('preferred_time', preferredTime)
+
+    const response = await apiClient.get<PreviewSlotsResponse>(
+      `/viral-studio/publishing/preview-slots?${params.toString()}`,
+    )
+    return response.data
+  },
+
+  async publishItems(request: ViralPublishRequest): Promise<ViralPublishResponse> {
+    const response = await apiClient.post<ViralPublishResponse>('/viral-studio/publish', request)
+    return response.data
+  },
+
+  async cancelItemSchedule(itemId: string): Promise<ViralItem> {
+    const response = await apiClient.post<ViralItem>(`/viral-studio/publishing/${itemId}/cancel`)
     return response.data
   },
 }

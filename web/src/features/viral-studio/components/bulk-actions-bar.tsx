@@ -1,24 +1,28 @@
-import { CheckCircle2, RefreshCw, X } from 'lucide-react'
+import { CheckCircle2, RefreshCw, Send, X } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
 interface BulkActionsBarProps {
   selectedCount: number
   totalCount: number
+  approvedCount?: number
   onSelectAll: () => void
   onClearSelection: () => void
   onBulkApprove: () => void
   onBulkRetry: () => void
+  onBulkPublish?: () => void
   isProcessing?: boolean
 }
 
 export function BulkActionsBar({
   selectedCount,
   totalCount,
+  approvedCount = 0,
   onSelectAll,
   onClearSelection,
   onBulkApprove,
   onBulkRetry,
+  onBulkPublish,
   isProcessing = false,
 }: BulkActionsBarProps) {
   if (selectedCount === 0) return null
@@ -52,6 +56,18 @@ export function BulkActionsBar({
         </div>
 
         <div className="flex items-center gap-2">
+          {onBulkPublish && approvedCount > 0 && (
+            <Button
+              size="sm"
+              className="h-8 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={onBulkPublish}
+              disabled={isProcessing}
+            >
+              <Send className="size-3.5" />
+              <span>Publicar ({approvedCount})</span>
+            </Button>
+          )}
+
           <Button
             size="sm"
             className="h-8 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"

@@ -137,4 +137,60 @@ describe('ItemCard', () => {
     fireEvent.click(headlineBtn)
     expect(mockNavigate).toHaveBeenCalledTimes(2)
   })
+
+  it('renders publish button for APPROVED item and triggers onPublish', () => {
+    const onPublish = vi.fn()
+    const approvedItem: ViralItem = {
+      ...item,
+      status: 'APPROVED',
+    }
+
+    render(
+      <ItemCard
+        item={approvedItem}
+        onPublish={onPublish}
+      />,
+    )
+
+    const publishBtn = screen.getByTitle('Publicar Vídeo')
+    expect(publishBtn).toBeInTheDocument()
+    fireEvent.click(publishBtn)
+    expect(onPublish).toHaveBeenCalledWith(approvedItem)
+  })
+
+  it('renders scheduled badge and triggers onCancelSchedule when SCHEDULED', () => {
+    const onCancelSchedule = vi.fn()
+    const scheduledItem: ViralItem = {
+      ...item,
+      status: 'SCHEDULED',
+      scheduled_for: '2026-10-15T18:00:00Z',
+    }
+
+    render(
+      <ItemCard
+        item={scheduledItem}
+        onCancelSchedule={onCancelSchedule}
+      />,
+    )
+
+    expect(screen.getByTitle('Cancelar Agendamento')).toBeInTheDocument()
+    fireEvent.click(screen.getByTitle('Cancelar Agendamento'))
+    expect(onCancelSchedule).toHaveBeenCalledWith('item-10')
+  })
+
+  it('renders published badge and link to post when PUBLISHED', () => {
+    const publishedItem: ViralItem = {
+      ...item,
+      status: 'PUBLISHED',
+      post_url: 'https://tiktok.com/@brand/video/999',
+    }
+
+    render(<ItemCard item={publishedItem} />)
+
+    expect(screen.getAllByText('Publicado').length).toBeGreaterThan(0)
+    expect(screen.getByTitle('Ver Post')).toHaveAttribute(
+      'href',
+      'https://tiktok.com/@brand/video/999',
+    )
+  })
 })

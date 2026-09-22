@@ -7,12 +7,14 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useBatchDetail } from '../hooks/use-batch-detail'
 import { useBrand, useTemplate } from '../hooks/use-brands'
 import { useApproveItem } from '../hooks/use-item-actions'
+import { useCancelSchedule } from '../hooks/use-publishing'
 import { useItemEditor } from '../hooks/use-item-editor'
 import { useEditorNavigation } from '../hooks/use-editor-navigation'
 import { ViralEditorTopbar } from '../components/viral-editor-topbar'
 import { ViralEditorBottomBar } from '../components/viral-editor-bottom-bar'
 import { ViralEditorPreview } from '../components/viral-editor-preview'
 import { ViralEditorTabsSection } from '../components/viral-editor-tabs-section'
+import { ViralPublishDialog } from '../components/viral-publish-dialog'
 import { UnsavedChangesDialog } from '../components/unsaved-changes-dialog'
 import type { ViralItem } from '../data/batch.types'
 
@@ -37,11 +39,13 @@ export function ViralEditorView({ batchId, itemId }: ViralEditorViewProps) {
   const { data: brand } = useBrand(batch?.brand_id || '')
   const { data: template } = useTemplate(batch?.template_id || '')
   const approveMutation = useApproveItem(batchId)
+  const cancelScheduleMutation = useCancelSchedule(batchId)
 
   const items = useMemo(() => batch?.items || [], [batch?.items])
   const item = useMemo(() => items.find((i) => i.id === itemId) || null, [items, itemId])
 
   const [activeTab, setActiveTab] = useState<string>('headlines')
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
   const prevItemIdRef = useRef(itemId)
 
   // Ao trocar de item/vídeo, reseta para headlines (ou observability se o item estiver com erro)
@@ -150,7 +154,17 @@ export function ViralEditorView({ batchId, itemId }: ViralEditorViewProps) {
         onDiscard={() => form.reset()}
         onSave={() => handleSave()}
         onApprove={(id) => approveMutation.mutate(id)}
+        onPublish={() => setIsPublishDialogOpen(true)}
+        onCancelSchedule={(id) => cancelScheduleMutation.mutate(id)}
         isApproving={approveMutation.isPending}
+        isCancelling={cancelScheduleMutation.isPending}
+      />
+
+      <ViralPublishDialog
+        isOpen={isPublishDialogOpen}
+        onClose={() => setIsPublishDialogOpen(false)}
+        items={item ? [item] : []}
+        batchId={batchId}
       />
 
       <UnsavedChangesDialog

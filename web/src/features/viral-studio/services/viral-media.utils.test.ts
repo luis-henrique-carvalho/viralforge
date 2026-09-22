@@ -33,9 +33,7 @@ describe('viral-media.utils', () => {
 
   it('returns rendered thumbnail URL when rendered_path is present', () => {
     const posterUrl = getViralPosterUrl(baseItem)
-    expect(posterUrl).toContain(
-      '/videos/viral_studio/batch-123/item-abc/rendered_thumbnail.jpg?v=',
-    )
+    expect(posterUrl).toContain('/videos/viral_studio/batch-123/item-abc/rendered_thumbnail.jpg?v=')
   })
 
   it('falls back to keyframe when rendered_path is null', () => {

@@ -1,4 +1,4 @@
-import { AlertCircle, Check, CheckCircle2, RotateCcw, Save } from 'lucide-react'
+import { AlertCircle, Check, CheckCircle2, Clock, RotateCcw, Save, Send, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import type { ViralItem } from '../data/batch.types'
@@ -10,7 +10,10 @@ interface ViralEditorBottomBarProps {
   onDiscard: () => void
   onSave: () => void
   onApprove?: (itemId: string) => void
+  onPublish?: (item: ViralItem) => void
+  onCancelSchedule?: (itemId: string) => void
   isApproving?: boolean
+  isCancelling?: boolean
 }
 
 export function ViralEditorBottomBar({
@@ -20,7 +23,10 @@ export function ViralEditorBottomBar({
   onDiscard,
   onSave,
   onApprove,
+  onPublish,
+  onCancelSchedule,
   isApproving = false,
+  isCancelling = false,
 }: ViralEditorBottomBarProps) {
   const isReady = item.status === 'READY_FOR_REVIEW'
 
@@ -69,6 +75,47 @@ export function ViralEditorBottomBar({
             <CheckCircle2 className="size-3.5" />
             <span>{isApproving ? 'Aprovando…' : 'Aprovar Vídeo'}</span>
           </Button>
+        )}
+
+        {item.status === 'APPROVED' && onPublish && (
+          <Button
+            type="button"
+            size="sm"
+            className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs"
+            onClick={() => onPublish(item)}
+          >
+            <Send className="size-3.5" />
+            <span>Publicar Vídeo</span>
+          </Button>
+        )}
+
+        {item.status === 'SCHEDULED' && (
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-500/10 border border-blue-500/25 text-blue-500 text-xs font-medium">
+            <Clock className="size-3.5" />
+            <span>
+              {item.scheduled_for
+                ? `Agendado para ${new Date(item.scheduled_for).toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}`
+                : 'Agendado'}
+            </span>
+            {onCancelSchedule && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                className="size-5 ml-1 p-0 hover:bg-destructive/20 text-muted-foreground hover:text-destructive rounded"
+                onClick={() => onCancelSchedule(item.id)}
+                disabled={isCancelling}
+                title="Cancelar Agendamento"
+              >
+                <X className="size-3" />
+              </Button>
+            )}
+          </div>
         )}
 
         <Button

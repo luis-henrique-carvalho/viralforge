@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { createTestQueryClient } from '@/test-utils/render'
+import { brandSchema, templateSchema } from '../data/brand.schema'
 import { BatchConfigSidebar } from './batch-config-sidebar'
 
 describe('BatchConfigSidebar', () => {
@@ -14,8 +15,8 @@ describe('BatchConfigSidebar', () => {
     render(
       <QueryClientProvider client={qc}>
         <BatchConfigSidebar
-          brands={[{ id: 'brand-1', name: 'Marca Demo', handle: '@demo' }]}
-          templates={[{ id: 'template-1', name: 'Classic Affiliate' }]}
+          brands={[brandSchema.parse({ id: 'brand-1', name: 'Marca Demo', handle: '@demo' })]}
+          templates={[templateSchema.parse({ id: 'template-1', name: 'Classic Affiliate' })]}
           isLoadingBrands={false}
           isLoadingTemplates={false}
           selectedBrandId="brand-1"

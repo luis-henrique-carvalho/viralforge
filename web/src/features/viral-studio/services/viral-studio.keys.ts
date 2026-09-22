@@ -7,4 +7,15 @@ export const viralStudioKeys = {
   brand: (id: string) => [...viralStudioKeys.all, 'brand', id] as const,
   templates: () => [...viralStudioKeys.all, 'templates'] as const,
   template: (id: string) => [...viralStudioKeys.all, 'template', id] as const,
+  publishingAccounts: () => [...viralStudioKeys.all, 'publishing', 'accounts'] as const,
+  previewSlots: (accountId: string, count: number, startDate?: string, preferredTime?: string) =>
+    [
+      ...viralStudioKeys.all,
+      'publishing',
+      'preview-slots',
+      accountId,
+      count,
+      startDate,
+      preferredTime,
+    ] as const,
 }

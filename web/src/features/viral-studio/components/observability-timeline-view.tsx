@@ -59,11 +59,7 @@ export function ObservabilityTimelineView({ item }: TimelineViewProps) {
               onClick={handleCopyLogs}
               title="Copiar logs completos"
             >
-              {copied ? (
-                <Check className="size-3 text-emerald-500" />
-              ) : (
-                <Copy className="size-3" />
-              )}
+              {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
               <span>{copied ? 'Copiado' : 'Copiar Logs'}</span>
             </Button>
           </div>

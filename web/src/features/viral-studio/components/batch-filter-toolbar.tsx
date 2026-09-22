@@ -1,14 +1,15 @@
-import { CheckCircle2, Layers, Loader2, Search, XCircle } from 'lucide-react'
+import { CheckCircle2, Clock, Layers, Loader2, Search, XCircle } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export interface BatchFilterToolbarProps {
-  activeTab: 'all' | 'ready' | 'processing' | 'failed'
-  setActiveTab: (val: 'all' | 'ready' | 'processing' | 'failed') => void
+  activeTab: 'all' | 'ready' | 'processing' | 'failed' | 'scheduled'
+  setActiveTab: (val: 'all' | 'ready' | 'processing' | 'failed' | 'scheduled') => void
   totalCount: number
   readyCount: number
   processingCount: number
   failedCount: number
+  scheduledCount?: number
   searchQuery: string
   setSearchQuery: (val: string) => void
 }
@@ -20,6 +21,7 @@ export function BatchFilterToolbar({
   readyCount,
   processingCount,
   failedCount,
+  scheduledCount = 0,
   searchQuery,
   setSearchQuery,
 }: BatchFilterToolbarProps) {
@@ -27,7 +29,9 @@ export function BatchFilterToolbar({
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between w-full min-w-0">
       <Tabs
         value={activeTab}
-        onValueChange={(v) => setActiveTab(v as 'all' | 'ready' | 'processing' | 'failed')}
+        onValueChange={(v) =>
+          setActiveTab(v as 'all' | 'ready' | 'processing' | 'failed' | 'scheduled')
+        }
         className="w-full sm:w-auto"
       >
         <TabsList className="grid grid-cols-2 sm:flex sm:flex-row w-full sm:w-auto h-auto p-1 gap-1">
@@ -44,6 +48,13 @@ export function BatchFilterToolbar({
           >
             <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
             <span>Prontos ({readyCount})</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="scheduled"
+            className="gap-1.5 text-xs py-1.5"
+          >
+            <Clock className="size-3.5 text-blue-500 shrink-0" />
+            <span>Agendados ({scheduledCount})</span>
           </TabsTrigger>
           <TabsTrigger
             value="processing"

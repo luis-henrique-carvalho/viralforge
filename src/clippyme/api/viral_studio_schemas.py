@@ -537,6 +537,11 @@ class ViralItem(BaseModel):
     keyframe_urls: List[str] = Field(default_factory=list)
     logs: List[Dict[str, Any]] = Field(default_factory=list)
     publication_records: List[Dict[str, Any]] = Field(default_factory=list)
+    scheduled_for: Optional[str] = None
+    account_id: Optional[str] = None
+    platform: Optional[str] = None
+    post_id: Optional[str] = None
+    post_url: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
@@ -637,12 +642,36 @@ class ViralPublishRequest(BaseModel):
     start_date: Optional[str] = Field(None, max_length=64)
 
 
+class SlotProjection(BaseModel):
+    index: int
+    datetime: str
+    formatted: str
+
+
+class PreviewSlotsResponse(BaseModel):
+    account_id: str
+    account_name: Optional[str] = None
+    count: int
+    last_scheduled_slot: Optional[str] = None
+    projected_slots: List[SlotProjection] = Field(default_factory=list)
+
+
+class SocialAccountResponse(BaseModel):
+    id: str
+    name: str
+    platform: str
+    avatar_url: Optional[str] = None
+    connected: bool = True
+
+
 class ViralPublishResult(BaseModel):
     item_id: str
     status: str
     post_id: Optional[str] = None
     platform_post_id: Optional[str] = None
     published_at: Optional[str] = None
+    scheduled_for: Optional[str] = None
+    post_url: Optional[str] = None
     error: Optional[str] = None
 
 

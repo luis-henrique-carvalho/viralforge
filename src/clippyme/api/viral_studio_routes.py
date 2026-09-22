@@ -7,6 +7,7 @@ clippyme.domain.viral_studio_store and validation to viral_studio_schemas.
 from __future__ import annotations
 
 import asyncio
+from typing import List, Optional
 
 from fastapi import APIRouter, Request, Response, status
 
@@ -20,6 +21,9 @@ from clippyme.api.viral_studio_schemas import (
     BrandUpdate,
     ItemRenderRequest,
     ItemRegenerateCopyRequest,
+    PreviewSlotsResponse,
+    SlotProjection,
+    SocialAccountResponse,
     TemplateCreate,
     TemplateListResponse,
     TemplateResponse,
@@ -214,6 +218,60 @@ async def retry_item(id: str):
     return await asyncio.to_thread(viral_studio_store.get_item_or_raise, id)
 
 
+@router.get("/publishing/preview-slots", response_model=PreviewSlotsResponse)
+async def preview_publish_slots(
+    account_id: Optional[str] = None,
+    channel_id: Optional[str] = None,
+    count: int = 1,
+    start_date: Optional[str] = None,
+    preferred_time: str = "18:00",
+    timezone: str = "America/Sao_Paulo",
+):
+    """Calculate and project collision-free schedule slots for an account."""
+    effective_acc_id = account_id or channel_id or "default"
+    slots = await asyncio.to_thread(
+        viral_studio_store.get_next_available_slots,
+        account_id=effective_acc_id,
+        count=count,
+        preferred_time=preferred_time,
+        start_date=start_date,
+        timezone_str=timezone,
+    )
+    projections = [
+        SlotProjection(
+            index=idx + 1,
+            datetime=slot.isoformat(),
+            formatted=slot.strftime("%d/%m às %H:%M"),
+        )
+        for idx, slot in enumerate(slots)
+    ]
+    return PreviewSlotsResponse(
+        account_id=effective_acc_id,
+        count=len(projections),
+        last_scheduled_slot=projections[-1].datetime if projections else None,
+        projected_slots=projections,
+    )
+
+
+@router.get("/publishing/accounts", response_model=List[SocialAccountResponse])
+async def list_publishing_accounts():
+    """List authenticated social channels available for publishing."""
+    from clippyme.domain.social_publisher_port import get_social_publisher
+
+    publisher = get_social_publisher()
+    accounts = await publisher.list_accounts()
+    return [
+        SocialAccountResponse(
+            id=acc.id,
+            name=acc.name,
+            platform=acc.platform,
+            avatar_url=acc.avatar_url,
+            connected=acc.connected,
+        )
+        for acc in accounts
+    ]
+
+
 @router.post("/publish", response_model=ViralPublishResponse)
 async def publish_items(payload: ViralPublishRequest):
     """Publish one or more approved items via Zernio integration."""
@@ -226,3 +284,10 @@ async def publish_items(payload: ViralPublishRequest):
         start_date=payload.start_date,
     )
     return res
+
+
+@router.post("/publishing/{item_id}/cancel", response_model=ViralItem)
+async def cancel_item_publishing(item_id: str):
+    """Cancel a scheduled publication and safely revert item to APPROVED."""
+    return await viral_studio_orchestrator.cancel_item_schedule(item_id)
+

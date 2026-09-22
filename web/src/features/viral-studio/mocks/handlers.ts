@@ -496,4 +496,82 @@ export const viralStudioHandlers = [
     }
     return HttpResponse.json(template)
   }),
+
+  // Publishing
+  http.get('/api/viral-studio/publishing/accounts', () => {
+    return HttpResponse.json([
+      {
+        id: 'mock_tiktok_01',
+        platform: 'tiktok',
+        name: '@achadinhos_virais',
+        connected: true,
+      },
+      {
+        id: 'mock_instagram_01',
+        platform: 'instagram',
+        name: '@valeoclique.promos',
+        connected: true,
+      },
+      {
+        id: 'mock_youtube_01',
+        platform: 'youtube',
+        name: 'Achados em 1 Minuto',
+        connected: true,
+      },
+    ])
+  }),
+
+  http.get('/api/viral-studio/publishing/preview-slots', ({ request }) => {
+    const url = new URL(request.url)
+    const count = parseInt(url.searchParams.get('count') || '1', 10)
+    const accountId = url.searchParams.get('account_id') || 'default'
+
+    const slots = Array.from({ length: count }, (_, idx) => {
+      const d = new Date()
+      d.setDate(d.getDate() + idx + 1)
+      d.setHours(18, 0, 0, 0)
+      return {
+        index: idx + 1,
+        datetime: d.toISOString(),
+        formatted: `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} às 18:00`,
+      }
+    })
+
+    return HttpResponse.json({
+      account_id: accountId,
+      count: slots.length,
+      last_scheduled_slot: slots[slots.length - 1]?.datetime,
+      projected_slots: slots,
+    })
+  }),
+
+  http.post('/api/viral-studio/publish', async ({ request }) => {
+    const body = (await request.json()) as { item_ids: string[]; schedule_mode: string }
+    const results = (body.item_ids || []).map((id, idx) => ({
+      item_id: id,
+      status: body.schedule_mode === 'now' ? 'published' : 'scheduled',
+      post_id: `post_${idx + 1}`,
+      platform_post_id: `ext_post_${idx + 1}`,
+      published_at: body.schedule_mode === 'now' ? new Date().toISOString() : null,
+      scheduled_for: body.schedule_mode !== 'now' ? new Date().toISOString() : null,
+      post_url: 'https://tiktok.com/@achadinhos/video/123456',
+    }))
+
+    return HttpResponse.json({
+      results,
+      total: results.length,
+      successful: results.length,
+      failed: 0,
+    })
+  }),
+
+  http.post('/api/viral-studio/publishing/:id/cancel', ({ params }) => {
+    const { id } = params
+    const item = mockItems.find((i) => i.id === id)
+    if (item) {
+      item.status = 'APPROVED'
+      item.scheduled_for = null
+    }
+    return HttpResponse.json(item || { id, status: 'APPROVED' })
+  }),
 ]

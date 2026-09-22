@@ -1,16 +1,18 @@
+// shadcn-ignore: view orchestrator delegating to subcomponents
 import { useState, useMemo } from 'react'
-import { Link } from '@tanstack/react-router'
-import { ArrowLeft, Film, XCircle } from 'lucide-react'
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { useBatchDetail } from '../hooks/use-batch-detail'
 import { useApproveItem, useBulkItemActions, useRetryItem } from '../hooks/use-item-actions'
+import { useCancelSchedule } from '../hooks/use-publishing'
 import { BatchResultsHeader } from '../components/batch-results-header'
 import { BatchFilterToolbar } from '../components/batch-filter-toolbar'
 import { ItemCard } from '../components/item-card'
 import { ItemDetailSheet } from '../components/item-detail-sheet'
 import { BulkActionsBar } from '../components/bulk-actions-bar'
+import { ViralPublishDialog } from '../components/viral-publish-dialog'
+import { BatchResultsSkeleton } from '../components/batch-results-skeleton'
+import { BatchResultsNotFound } from '../components/batch-results-not-found'
+import { BatchResultsEmpty } from '../components/batch-results-empty'
+import type { ViralItem } from '../data/batch.types'
 
 interface BatchResultsViewProps {
   batchId: string
@@ -21,13 +23,18 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
 
   const approveMutation = useApproveItem(batchId)
   const retryMutation = useRetryItem(batchId)
+  const cancelScheduleMutation = useCancelSchedule(batchId)
   const { bulkApprove, bulkRetry, isProcessing: isBulkProcessing } = useBulkItemActions(batchId)
 
-  const [activeTab, setActiveTab] = useState<'all' | 'ready' | 'processing' | 'failed'>('all')
+  const [activeTab, setActiveTab] = useState<
+    'all' | 'ready' | 'processing' | 'failed' | 'scheduled'
+  >('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [inspectedItemId, setInspectedItemId] = useState<string | null>(null)
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [publishingItems, setPublishingItems] = useState<ViralItem[]>([])
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
 
   const items = useMemo(() => batch?.items || [], [batch?.items])
   const inspectedItem = useMemo(
@@ -46,6 +53,8 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
         activeTab === 'processing' &&
         !['PENDING', 'DOWNLOADING', 'ANALYZING', 'RENDERING'].includes(item.status)
       )
+        return false
+      if (activeTab === 'scheduled' && !['SCHEDULED', 'PUBLISHED'].includes(item.status))
         return false
       if (activeTab === 'failed' && !['FAILED', 'CANCELLED'].includes(item.status)) return false
 
@@ -73,52 +82,37 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
     })
   }
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-32 w-full rounded-xl" />
-        <div className="flex gap-4">
-          <Skeleton className="h-10 w-48" />
-          <Skeleton className="h-10 flex-1" />
-        </div>
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 items-start">
-          {[1, 2, 3, 4].map((n) => (
-            <Skeleton
-              key={n}
-              className="h-96 rounded-xl"
-            />
-          ))}
-        </div>
-      </div>
-    )
+  const handlePublishSingle = (item: ViralItem) => {
+    setPublishingItems([item])
+    setIsPublishDialogOpen(true)
   }
 
+  const approvedSelectedItems = useMemo(
+    () => items.filter((i) => selectedIds.has(i.id) && i.status === 'APPROVED'),
+    [items, selectedIds],
+  )
+
+  const handleBulkPublish = () => {
+    if (approvedSelectedItems.length > 0) {
+      setPublishingItems(approvedSelectedItems)
+      setIsPublishDialogOpen(true)
+    }
+  }
+
+  if (isLoading) return <BatchResultsSkeleton />
   if (error || !batch) {
     return (
-      <Card className="p-12 text-center border-destructive/30 bg-destructive/5 space-y-4">
-        <XCircle className="size-10 text-destructive mx-auto" />
-        <div>
-          <h2 className="text-lg font-bold text-foreground">Lote não encontrado</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            {error?.message || `Não foi possível carregar os detalhes do lote #${batchId}.`}
-          </p>
-        </div>
-        <Button
-          asChild
-          variant="outline"
-        >
-          <Link to="/viral-studio">
-            <ArrowLeft className="size-4 mr-2" />
-            Voltar aos Lotes
-          </Link>
-        </Button>
-      </Card>
+      <BatchResultsNotFound
+        batchId={batchId}
+        errorMessage={error?.message}
+      />
     )
   }
 
   const readyTotal = items.filter((i) =>
     ['READY_FOR_REVIEW', 'APPROVED', 'SCHEDULED', 'PUBLISHED'].includes(i.status),
   ).length
+  const scheduledTotal = items.filter((i) => ['SCHEDULED', 'PUBLISHED'].includes(i.status)).length
   const processingTotal = items.filter((i) =>
     ['PENDING', 'DOWNLOADING', 'ANALYZING', 'RENDERING'].includes(i.status),
   ).length
@@ -138,6 +132,7 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
         setActiveTab={setActiveTab}
         totalCount={items.length}
         readyCount={readyTotal}
+        scheduledCount={scheduledTotal}
         processingCount={processingTotal}
         failedCount={failedTotal}
         searchQuery={searchQuery}
@@ -157,24 +152,18 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
               onInspect={(i) => setInspectedItemId(i.id)}
               onApprove={(id) => approveMutation.mutate(id)}
               onRetry={(id) => retryMutation.mutate(id)}
+              onPublish={handlePublishSingle}
+              onCancelSchedule={(id) => cancelScheduleMutation.mutate(id)}
               isApproving={approveMutation.isPending}
               isRetrying={retryMutation.isPending}
+              isCancelling={cancelScheduleMutation.isPending}
             />
           ))}
         </div>
       ) : (
-        <Card className="border-dashed border-border/80 bg-card/30 p-12 text-center space-y-2">
-          <Film className="size-8 text-muted-foreground mx-auto opacity-50" />
-          <h3 className="text-sm font-semibold text-foreground">Nenhum vídeo encontrado</h3>
-          <p className="text-xs text-muted-foreground">
-            {searchQuery
-              ? 'Nenhum vídeo corresponde à busca informada.'
-              : 'Nenhum item com este filtro de status.'}
-          </p>
-        </Card>
+        <BatchResultsEmpty searchQuery={searchQuery} />
       )}
 
-      {/* Quick Inspection Sheet for Logs */}
       <ItemDetailSheet
         item={inspectedItem}
         isOpen={Boolean(inspectedItemId)}
@@ -188,11 +177,23 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
       <BulkActionsBar
         selectedCount={selectedIds.size}
         totalCount={filteredItems.length}
+        approvedCount={approvedSelectedItems.length}
         onSelectAll={() => setSelectedIds(new Set(filteredItems.map((i) => i.id)))}
         onClearSelection={() => setSelectedIds(new Set())}
         onBulkApprove={() => bulkApprove(Array.from(selectedIds))}
         onBulkRetry={() => bulkRetry(Array.from(selectedIds))}
+        onBulkPublish={approvedSelectedItems.length > 0 ? handleBulkPublish : undefined}
         isProcessing={isBulkProcessing}
+      />
+
+      <ViralPublishDialog
+        isOpen={isPublishDialogOpen}
+        onClose={() => setIsPublishDialogOpen(false)}
+        items={publishingItems}
+        batchId={batchId}
+        onPublished={() => {
+          setSelectedIds(new Set())
+        }}
       />
     </div>
   )

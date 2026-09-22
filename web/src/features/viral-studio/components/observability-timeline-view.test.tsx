@@ -86,4 +86,3 @@ describe('ObservabilityTimelineView', () => {
     expect(screen.getByText('Copiado')).toBeInTheDocument()
   })
 })
-
