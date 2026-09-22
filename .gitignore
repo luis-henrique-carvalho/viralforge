@@ -18,6 +18,8 @@ node_modules/
 **/node_modules/
 dashboard/dist/
 web/dist/
+coverage/
+**/coverage/
 
 # graphify knowledge-graph output
 graphify-out/
