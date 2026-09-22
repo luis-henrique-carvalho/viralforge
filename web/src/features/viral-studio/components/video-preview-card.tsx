@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { AlertCircle, Film, Loader2, Pause, Play, Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/card'
-import { getViralVideoUrl } from '../services/viral-media.utils'
+import { getViralPosterUrl, getViralVideoUrl } from '../services/viral-media.utils'
 import type { ViralItem } from '../data/batch.types'
 
 interface VideoPreviewCardProps {
@@ -37,7 +37,7 @@ export function VideoPreviewCard({ item, className = '', children }: VideoPrevie
     }
   }
 
-  const posterUrl = item.keyframe_urls?.[0] || undefined
+  const posterUrl = getViralPosterUrl(item)
   const videoUrl = getViralVideoUrl(item)
 
   return (
@@ -60,6 +60,7 @@ export function VideoPreviewCard({ item, className = '', children }: VideoPrevie
             ref={videoRef}
             src={videoUrl}
             poster={posterUrl}
+            preload="metadata"
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
             playsInline
             loop

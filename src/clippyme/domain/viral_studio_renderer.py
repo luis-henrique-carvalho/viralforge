@@ -768,6 +768,19 @@ def render_viral_video(
         if not os.path.isfile(output_path) or os.path.getsize(output_path) == 0:
             raise ComposeError(f"Render output file was not created or is empty: {output_path}")
 
+        # Generate rendered thumbnail alongside rendered video (rendered_thumbnail.jpg)
+        rendered_thumb_path = os.path.join(os.path.dirname(os.path.abspath(output_path)), "rendered_thumbnail.jpg")
+        with contextlib.suppress(Exception):
+            thumb_cmd = [
+                "ffmpeg", "-y",
+                "-ss", "00:00:00.100",
+                "-i", output_path,
+                "-vframes", "1",
+                "-q:v", "2",
+                rendered_thumb_path,
+            ]
+            subprocess.run(thumb_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+
         logger.info("✅ Viral video rendered successfully: %s", output_path)
         return output_path
 

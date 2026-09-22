@@ -375,7 +375,7 @@ def test_render_viral_video_retry_aac_on_copy_error(tmp_path, test_brand, test_t
             output_path=str(out),
         )
         assert res == str(out)
-        assert len(calls) == 2
+        assert len(calls) >= 2
         # First call has copy
         assert "copy" in calls[0]
         # Second call has aac

@@ -106,7 +106,7 @@ export function ViralEditorView({ batchId, itemId }: ViralEditorViewProps) {
   const currentHeadline = form.watch('selected_headline')
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-4rem)]">
+    <div className="space-y-6">
       <ViralEditorTopbar
         item={item}
         batchId={batchId}
@@ -121,29 +121,27 @@ export function ViralEditorView({ batchId, itemId }: ViralEditorViewProps) {
         hasNext={nav.hasNext}
       />
 
-      <main className="flex-1 p-4 md:p-6 max-w-7xl w-full mx-auto">
-        <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[340px_1fr]">
-          <div className="w-full max-w-[340px] mx-auto lg:mx-0 lg:sticky lg:top-24 space-y-4">
-            <ViralEditorPreview
-              item={item}
-              currentHeadline={currentHeadline}
-              batchId={batchId}
-              templateId={template?.id}
-            />
-          </div>
-
-          <ViralEditorTabsSection
+      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[340px_1fr]">
+        <div className="w-full max-w-[340px] mx-auto lg:mx-0 lg:sticky lg:top-6 space-y-4">
+          <ViralEditorPreview
             item={item}
-            activeTab={activeTab}
-            onActiveTabChange={setActiveTab}
-            form={form}
+            currentHeadline={currentHeadline}
             batchId={batchId}
-            brand={brand}
-            applyHeadline={applyHeadline}
-            applyRegeneratedData={applyRegeneratedData}
+            templateId={template?.id}
           />
         </div>
-      </main>
+
+        <ViralEditorTabsSection
+          item={item}
+          activeTab={activeTab}
+          onActiveTabChange={setActiveTab}
+          form={form}
+          batchId={batchId}
+          brand={brand}
+          applyHeadline={applyHeadline}
+          applyRegeneratedData={applyRegeneratedData}
+        />
+      </div>
 
       <ViralEditorBottomBar
         item={item}

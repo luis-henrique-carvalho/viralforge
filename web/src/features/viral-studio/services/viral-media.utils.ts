@@ -15,3 +15,21 @@ export function getViralVideoUrl(item: ViralItem): string | undefined {
   const cacheBuster = item.updated_at ? new Date(item.updated_at).getTime() : Date.now()
   return `${basePath}?v=${cacheBuster}`
 }
+
+/**
+ * Returns the URL for the video thumbnail / poster image.
+ * When the video has been rendered, it prefers the rendered thumbnail (which includes
+ * the header, avatar, brand and headline). Falls back to the first keyframe during analysis.
+ */
+export function getViralPosterUrl(item: ViralItem): string | undefined {
+  if (!item.id) return undefined
+
+  const batchSegment = item.batch_id ? `${item.batch_id}/` : ''
+  const cacheBuster = item.updated_at ? new Date(item.updated_at).getTime() : Date.now()
+
+  if (item.rendered_path) {
+    return `/videos/viral_studio/${batchSegment}${item.id}/rendered_thumbnail.jpg?v=${cacheBuster}`
+  }
+
+  return item.keyframe_urls?.[0] || undefined
+}

@@ -25,7 +25,7 @@ export function ViralEditorBottomBar({
   const isReady = item.status === 'READY_FOR_REVIEW'
 
   return (
-    <div className="sticky bottom-0 z-40 flex flex-wrap items-center justify-between gap-3 border-t border-border/80 bg-background/95 p-4 backdrop-blur shadow-lg">
+    <div className="sticky bottom-4 z-40 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/80 bg-background/95 p-3.5 backdrop-blur shadow-lg">
       {/* Left side: Dirty state indicator */}
       <div className="flex items-center gap-2">
         {isDirty ? (

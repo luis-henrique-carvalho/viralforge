@@ -1,15 +1,18 @@
+import { useMemo } from 'react'
 import { Cpu, LayoutTemplate, Plus, Tag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import { AI_MODELS } from '../data/models.constants'
+import { useLocalAIModels } from '../hooks/use-local-ai-models'
 import type { Brand, VisualTemplate } from '../data/batch.types'
 
 export interface BatchConfigSidebarProps {
@@ -41,6 +44,17 @@ export function BatchConfigSidebar({
   isPending,
   itemsCount,
 }: BatchConfigSidebarProps) {
+  const { modelOptions, isLoading: isLoadingModels } = useLocalAIModels()
+
+  const groupedOptions = useMemo(() => {
+    return modelOptions.reduce<Record<string, typeof modelOptions>>((acc, opt) => {
+      const group = opt.group || 'Outros Modelos'
+      if (!acc[group]) acc[group] = []
+      acc[group].push(opt)
+      return acc
+    }, {})
+  }, [modelOptions])
+
   return (
     <div className="space-y-6">
       <Card className="border-border bg-card/60 backdrop-blur-xs">
@@ -115,22 +129,32 @@ export function BatchConfigSidebar({
             <Select
               value={selectedModel}
               onValueChange={setSelectedModel}
+              disabled={isLoadingModels}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Selecione o modelo IA..." />
               </SelectTrigger>
               <SelectContent className="max-h-72 overflow-y-auto">
-                {AI_MODELS.map((m) => (
-                  <SelectItem
-                    key={m.id}
-                    value={m.id}
-                    className="text-xs"
-                  >
-                    <span className="truncate">{m.name}</span>
-                    {m.badge && (
-                      <span className="ml-1.5 text-[10px] text-muted-foreground">({m.badge})</span>
-                    )}
-                  </SelectItem>
+                {Object.entries(groupedOptions).map(([group, options]) => (
+                  <SelectGroup key={group}>
+                    <SelectLabel className="text-[10px] uppercase font-bold text-muted-foreground px-2 py-1">
+                      {group}
+                    </SelectLabel>
+                    {options.map((m) => (
+                      <SelectItem
+                        key={m.value}
+                        value={m.value}
+                        className="text-xs"
+                      >
+                        <span className="truncate">{m.label}</span>
+                        {m.badge && (
+                          <span className="ml-1.5 text-[10px] text-muted-foreground">
+                            ({m.badge})
+                          </span>
+                        )}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 ))}
               </SelectContent>
             </Select>
