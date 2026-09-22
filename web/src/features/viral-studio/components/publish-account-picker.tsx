@@ -1,6 +1,7 @@
 import { CheckCircle2, Layers, Loader2 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import type { SocialAccount } from '../data/publishing.types'
 
 export interface PublishAccountPickerProps {
@@ -55,9 +56,11 @@ export function PublishAccountPicker({
           })}
         </div>
       ) : (
-        <div className="p-3 border rounded-lg bg-muted/40 text-xs text-muted-foreground">
-          Nenhuma conta oficial vinculada. O modo de demonstração Mock será utilizado.
-        </div>
+        <Alert className="bg-muted/40 border-dashed text-xs text-muted-foreground">
+          <AlertDescription className="text-xs text-muted-foreground">
+            Nenhuma conta oficial vinculada. O modo de demonstração Mock será utilizado.
+          </AlertDescription>
+        </Alert>
       )}
     </div>
   )

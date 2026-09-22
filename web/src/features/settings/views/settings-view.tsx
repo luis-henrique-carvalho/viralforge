@@ -1,35 +1,73 @@
-import { Settings } from 'lucide-react'
-import { Card } from '@/components/ui/card'
+import { useState } from 'react'
+import { Separator } from '@/components/ui/separator'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { SettingsSidebarNav } from '../components/settings-sidebar-nav'
+import { PublishingProviderCard } from '../components/publishing-provider-card'
+import { AiModelsCard } from '../components/ai-models-card'
+import { TranscriptionProviderCard } from '../components/transcription-provider-card'
+import { CookiesManagerCard } from '../components/cookies-manager-card'
+import { HardwareStatusCard } from '../components/hardware-status-card'
+import { BrandAssetsCard } from '../components/brand-assets-card'
+import { useSettings } from '../hooks/use-settings'
+import type { SettingsTab } from '../data/settings.types'
 
 export function SettingsView() {
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Configurações & Provedores
-        </h1>
-        <Badge
-          variant="outline"
-          className="text-xs"
-        >
-          Sistema
-        </Badge>
-      </div>
-      <p className="text-sm text-muted-foreground">
-        Gerenciamento de credenciais (Gemini, Deepgram, ElevenLabs), modelo local Ollama e cookies
-        de sessão.
-      </p>
+  const [activeTab, setActiveTab] = useState<SettingsTab>('publishing')
+  const { isLoading } = useSettings()
 
-      <Card className="border-dashed border-border/80 bg-card/30 p-12 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary text-primary">
-          <Settings className="h-7 w-7" />
+  return (
+    <div className="space-y-6 pb-12">
+      {/* Page Header */}
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-2.5">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Configurações & Provedores
+          </h1>
+          <Badge
+            variant="outline"
+            className="text-xs"
+          >
+            Infraestrutura
+          </Badge>
         </div>
-        <h2 className="mt-4 text-lg font-semibold text-foreground">Painel de Configurações</h2>
-        <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
-          Pronto para migração na Fase 5 com persistência segura em data/config.json.
+        <p className="text-sm text-muted-foreground">
+          Gerencie as credenciais de IA, provedores de publicação, cookies de extração e recursos de
+          aceleração.
         </p>
-      </Card>
+      </div>
+
+      <Separator className="my-6" />
+
+      {/* Main Settings Grid: 2 columns layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Sidebar Nav */}
+        <aside className="lg:col-span-3">
+          <SettingsSidebarNav
+            activeTab={activeTab}
+            onSelectTab={setActiveTab}
+          />
+        </aside>
+
+        {/* Content Panel */}
+        <main className="lg:col-span-9">
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-10 w-48" />
+              <Skeleton className="h-64 w-full rounded-xl" />
+            </div>
+          ) : (
+            <div className="transition-all duration-200 ease-in-out">
+              {activeTab === 'publishing' && <PublishingProviderCard />}
+              {activeTab === 'ai-models' && <AiModelsCard />}
+              {activeTab === 'transcription' && <TranscriptionProviderCard />}
+              {activeTab === 'cookies' && <CookiesManagerCard />}
+              {activeTab === 'hardware' && <HardwareStatusCard />}
+              {activeTab === 'branding' && <BrandAssetsCard />}
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   )
 }

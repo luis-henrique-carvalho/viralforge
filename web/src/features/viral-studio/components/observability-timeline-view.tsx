@@ -3,6 +3,7 @@ import { Terminal, FileText, Copy, Check } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { toast } from 'sonner'
 import type { ViralItem } from '../data/batch.types'
 
@@ -29,21 +30,24 @@ export function ObservabilityTimelineView({ item }: TimelineViewProps) {
             : ''
         return `[${time}] [${stage}] ${msg}${details}`
       })
-      .join('\n\n')
+      .join('\n')
 
     navigator.clipboard.writeText(textToCopy)
     setCopied(true)
-    toast.success('Logs copiados!')
+    toast.success('Logs copiados para a área de transferência')
     setTimeout(() => setCopied(false), 2000)
   }
 
   return (
     <Card className="border-border/80 bg-card/60">
-      <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between space-y-0 gap-2">
-        <CardTitle className="text-xs font-semibold flex items-center gap-1.5 text-foreground">
-          <Terminal className="size-3.5 text-amber-500" />
-          <span>Linha do Tempo e Eventos</span>
-        </CardTitle>
+      <CardHeader className="p-3 pb-2 flex-row items-center justify-between space-y-0 gap-2">
+        <div className="flex items-center gap-2">
+          <Terminal className="size-4 text-primary" />
+          <CardTitle className="text-xs font-semibold text-foreground">
+            Linha do Tempo e Eventos
+          </CardTitle>
+        </div>
+
         {logs.length > 0 && (
           <div className="flex items-center gap-1.5">
             <Badge
@@ -53,10 +57,10 @@ export function ObservabilityTimelineView({ item }: TimelineViewProps) {
               {logs.length} eventos
             </Badge>
             <Button
-              variant="outline"
-              size="sm"
-              className="h-6 px-2 text-[10px] gap-1"
+              variant="ghost"
+              size="xs"
               onClick={handleCopyLogs}
+              className="h-6 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
               title="Copiar logs completos"
             >
               {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
@@ -68,7 +72,7 @@ export function ObservabilityTimelineView({ item }: TimelineViewProps) {
 
       <CardContent className="p-3 pt-0">
         {logs.length > 0 ? (
-          <div className="max-h-[500px] overflow-y-auto rounded-md border border-border/80 bg-black/90 p-3 overscroll-contain">
+          <ScrollArea className="max-h-[500px] rounded-md border border-border/80 bg-black/90 p-3 overscroll-contain">
             <div className="flex flex-col gap-2.5 font-mono text-xs">
               {logs.map((log, idx) => {
                 const stageUpper = String(log.stage || '').toUpperCase()
@@ -125,19 +129,19 @@ export function ObservabilityTimelineView({ item }: TimelineViewProps) {
                     </p>
 
                     {hasDetails && (
-                      <div className="rounded bg-white/5 p-2 text-[10px] text-muted-foreground border border-white/5">
+                      <Card className="rounded bg-white/5 p-2 text-[10px] text-muted-foreground border border-white/5 shadow-none">
                         <pre className="font-mono whitespace-pre-wrap break-all text-[10px] text-muted-foreground/90 leading-tight">
                           {typeof log.details === 'object'
                             ? JSON.stringify(log.details, null, 2)
                             : String(log.details)}
                         </pre>
-                      </div>
+                      </Card>
                     )}
                   </div>
                 )
               })}
             </div>
-          </div>
+          </ScrollArea>
         ) : (
           <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground gap-2">
             <FileText className="size-6 opacity-40" />

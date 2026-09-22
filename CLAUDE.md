@@ -306,6 +306,13 @@ through verbatim (the frontend parses per-platform 429 daily limits).
 - **Docker Host UID & Reload Workflow**:
   * `docker-entrypoint.sh` dynamically synchronizes container `appuser` with the host user's UID/GID (`stat -c '%u' /app`) at boot, ensuring all state files (`0o600`) in `data/` and `output/` belong to the developer on the host machine without permission errors.
   * Because backend `uvicorn` in Docker runs without `--reload`, **always run `docker restart clippyme-backend`** after modifying backend Python files so the running uvicorn process reloads updated Pydantic schemas and route handlers.
+- **Social Publishing & Auto-Chaining (Ports & Adapters)**:
+  * `SocialPublisherPort` (`clippyme.domain.social_publisher_port`): Core domain port for social distribution (`publish`, `schedule`, `cancel`, `get_status`, `list_accounts`). No domain or route code may import provider SDKs directly.
+  * `ZernioPublisherAdapter`: Production adapter integrating with Zernio API with presigned streaming upload, SSRF checks, 429 rate-limit mapping to `ValidationError`, and log secret sanitization.
+  * `MockPublisherAdapter`: Deterministic in-memory test double for offline execution and fast host tests.
+  * Provider Resolution (`get_social_publisher`): Resolves provider via `PUBLISHING_PROVIDER` config, explicit `provider=` argument, or safe mock fallback.
+  * Intelligent Gap-Filling Scheduling (`get_next_available_slots`): Evaluates candidate dates starting from earliest possible (`now.date()`), filling intermediate cancelled slots before advancing past the tail of the queue (`occupied_dates`). Every account projection is fully isolated.
+
 
 ## API endpoints
 

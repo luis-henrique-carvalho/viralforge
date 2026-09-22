@@ -1,6 +1,8 @@
 import { CheckCircle2, Clock, ExternalLink, XCircle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Table,
   TableBody,
@@ -23,7 +25,7 @@ export function PublishResultsTable({ items, results }: PublishResultsTableProps
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border">
+      <Card className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border shadow-none">
         <div className="flex items-center gap-2 text-xs">
           <CheckCircle2 className="size-4 text-emerald-500" />
           <span>
@@ -33,9 +35,9 @@ export function PublishResultsTable({ items, results }: PublishResultsTableProps
             vídeos processados com sucesso.
           </span>
         </div>
-      </div>
+      </Card>
 
-      <div className="border rounded-lg overflow-hidden max-h-60 overflow-y-auto">
+      <ScrollArea className="border rounded-lg max-h-60">
         <Table>
           <TableHeader className="bg-muted/40">
             <TableRow>
@@ -118,7 +120,7 @@ export function PublishResultsTable({ items, results }: PublishResultsTableProps
             })}
           </TableBody>
         </Table>
-      </div>
+      </ScrollArea>
     </div>
   )
 }

@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { usePublishingAccounts, usePreviewSlots, usePublishItems } from '../hooks/use-publishing'
 import { PublishAccountPicker } from './publish-account-picker'
 import { PublishModeSelector } from './publish-mode-selector'
@@ -36,54 +37,50 @@ export function ViralPublishDialog({
 }: ViralPublishDialogProps) {
   const [selectedAccountId, setSelectedAccountId] = useState<string>('')
   const [mode, setMode] = useState<PublishMode>('auto')
-  const [publishResults, setPublishResults] = useState<ViralPublishResult[] | null>(null)
+  const [results, setResults] = useState<ViralPublishResult[]>([])
   const [publishError, setPublishError] = useState<string | null>(null)
 
   const { data: accounts = [], isLoading: isLoadingAccounts } = usePublishingAccounts()
-  const publishMutation = usePublishItems(batchId)
-
-  const activeAccount: SocialAccount | undefined =
-    accounts.find((a) => a.id === selectedAccountId) || accounts[0]
-  const effectiveAccountId = activeAccount?.id || 'default'
+  const activeAccount =
+    accounts.find((a: SocialAccount) => a.id === selectedAccountId) || accounts[0]
 
   const { data: previewData, isLoading: isLoadingPreview } = usePreviewSlots(
-    effectiveAccountId,
+    activeAccount?.id,
     items.length,
-    undefined,
-    '18:00',
-    { enabled: isOpen && mode === 'auto' && items.length > 0 },
   )
 
-  const handlePublish = async () => {
-    setPublishError(null)
-    setPublishResults(null)
+  const publishMutation = usePublishItems(batchId)
 
-    const platform = activeAccount?.platform || 'tiktok'
-    const accountId = activeAccount?.id || 'default'
+  const handlePublish = async () => {
+    if (!activeAccount) return
+    setPublishError(null)
+
+    const platform = activeAccount.platform || 'tiktok'
+    const accountId = activeAccount.id || 'default'
 
     try {
-      const response = await publishMutation.mutateAsync({
+      const res = await publishMutation.mutateAsync({
         item_ids: items.map((i) => i.id),
         platforms: [{ platform, accountId }],
         schedule_mode: mode,
       })
 
-      setPublishResults(response.results)
+      if (res.results) {
+        setResults(res.results)
+      }
       onPublished?.()
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Falha ao processar publicação'
-      setPublishError(msg)
+      setPublishError(err instanceof Error ? err.message : 'Falha ao processar publicação')
     }
   }
 
   const handleClose = () => {
-    if (publishMutation.isPending) return
-    setPublishResults(null)
+    setResults([])
     setPublishError(null)
     onClose()
   }
 
-  const isCompleted = publishResults !== null
+  const isCompleted = results.length > 0
 
   return (
     <Dialog
@@ -105,38 +102,40 @@ export function ViralPublishDialog({
         </DialogHeader>
 
         {!publishMutation.isPending && !isCompleted && (
-          <div className="space-y-5 overflow-y-auto pr-1">
-            <PublishAccountPicker
-              accounts={accounts}
-              isLoading={isLoadingAccounts}
-              activeAccount={activeAccount}
-              onSelectAccount={setSelectedAccountId}
-            />
-
-            <PublishModeSelector
-              mode={mode}
-              onChangeMode={setMode}
-            />
-
-            {mode === 'auto' && (
-              <PublishSlotsTable
-                items={items}
-                projectedSlots={previewData?.projected_slots}
-                isLoading={isLoadingPreview}
+          <ScrollArea className="max-h-[60vh] pr-2">
+            <div className="space-y-5">
+              <PublishAccountPicker
+                accounts={accounts}
+                isLoading={isLoadingAccounts}
+                activeAccount={activeAccount}
+                onSelectAccount={setSelectedAccountId}
               />
-            )}
 
-            {publishError && (
-              <Alert
-                variant="destructive"
-                className="py-2.5"
-              >
-                <XCircle className="size-4" />
-                <AlertTitle className="text-xs font-semibold">Erro no disparo</AlertTitle>
-                <AlertDescription className="text-xs">{publishError}</AlertDescription>
-              </Alert>
-            )}
-          </div>
+              <PublishModeSelector
+                mode={mode}
+                onChangeMode={setMode}
+              />
+
+              {mode === 'auto' && (
+                <PublishSlotsTable
+                  items={items}
+                  projectedSlots={previewData?.projected_slots}
+                  isLoading={isLoadingPreview}
+                />
+              )}
+
+              {publishError && (
+                <Alert
+                  variant="destructive"
+                  className="py-2.5"
+                >
+                  <XCircle className="size-4" />
+                  <AlertTitle className="text-xs font-semibold">Erro no disparo</AlertTitle>
+                  <AlertDescription className="text-xs">{publishError}</AlertDescription>
+                </Alert>
+              )}
+            </div>
+          </ScrollArea>
         )}
 
         {publishMutation.isPending && (
@@ -157,10 +156,10 @@ export function ViralPublishDialog({
           </div>
         )}
 
-        {isCompleted && publishResults && (
+        {isCompleted && results && (
           <PublishResultsTable
             items={items}
-            results={publishResults}
+            results={results}
           />
         )}
 

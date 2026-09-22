@@ -123,16 +123,25 @@ def get_social_publisher(provider: Optional[str] = None) -> SocialPublisherPort:
 
     Resolution strategy:
     1. If _GLOBAL_PUBLISHER is set and provider is None, return it.
-    2. If MOCK_PUBLISHER=1 or provider == 'mock', return MockPublisherAdapter.
-    3. If provider == 'zernio' or Zernio API key is set, return ZernioPublisherAdapter.
-    4. Fallback to MockPublisherAdapter for offline execution.
+    2. If provider is None, inspect PUBLISHING_PROVIDER in env or config_store.
+    3. If MOCK_PUBLISHER=1 or resolved provider == 'mock', return MockPublisherAdapter.
+    4. If provider == 'zernio' (explicit) or (resolved provider != 'mock' and Zernio API key is set),
+       return ZernioPublisherAdapter.
+    5. Fallback to MockPublisherAdapter for offline execution.
     """
     global _GLOBAL_PUBLISHER
     if _GLOBAL_PUBLISHER is not None and provider is None:
         return _GLOBAL_PUBLISHER
 
+    configured_provider = None
+    if provider is None:
+        from clippyme.storage.config_store import load_persistent_config
+        persistent_cfg = load_persistent_config()
+        configured_provider = os.environ.get("PUBLISHING_PROVIDER") or persistent_cfg.get("PUBLISHING_PROVIDER")
+
     use_mock = (
         provider == "mock"
+        or configured_provider == "mock"
         or os.environ.get("MOCK_PUBLISHER", "").strip().lower() in ("1", "true", "yes")
     )
     if use_mock:
@@ -148,7 +157,7 @@ def get_social_publisher(provider: Optional[str] = None) -> SocialPublisherPort:
         or ""
     ).strip()
 
-    if (api_key or provider == "zernio") and provider != "mock":
+    if (api_key and provider != "mock") or provider == "zernio":
         from clippyme.domain.zernio_publisher_adapter import ZernioPublisherAdapter
         return ZernioPublisherAdapter(api_key=api_key or "dummy_zernio_key")
 

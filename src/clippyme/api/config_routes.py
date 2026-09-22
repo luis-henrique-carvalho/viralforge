@@ -242,6 +242,36 @@ async def list_gemini_models(
     return await asyncio.to_thread(list_available_models, api_key or os.environ.get("GEMINI_API_KEY"))
 
 
+@router.get("/api/config/hardware")
+async def get_hardware_config(request: Request):
+    """Return compute acceleration telemetry and auto-selected Whisper defaults."""
+    require_trusted_config_request(request)
+
+    def _read_hw():
+        from clippyme.pipeline.hardware import (
+            DEVICE,
+            GPU_BACKEND,
+            CUDA_AVAILABLE,
+            GPU_VRAM_GB,
+            GPU_DEVICE_NAME,
+            _total_ram_gb,
+            resolve_whisper_compute,
+        )
+        whisper_dev, whisper_mod = resolve_whisper_compute()
+        return {
+            "device": DEVICE,
+            "backend": GPU_BACKEND if CUDA_AVAILABLE else "CPU",
+            "cuda_available": CUDA_AVAILABLE,
+            "device_name": GPU_DEVICE_NAME if (CUDA_AVAILABLE and GPU_DEVICE_NAME) else ("CPU Host" if not CUDA_AVAILABLE else "GPU"),
+            "vram_gb": GPU_VRAM_GB,
+            "total_ram_gb": _total_ram_gb,
+            "whisper_device": whisper_dev,
+            "whisper_model": whisper_mod,
+        }
+
+    return await asyncio.to_thread(_read_hw)
+
+
 @router.get("/api/config")
 async def get_config(request: Request):
     """Return current active configuration (keys are partially masked for safety)."""

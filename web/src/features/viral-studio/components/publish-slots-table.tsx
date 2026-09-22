@@ -1,6 +1,7 @@
 import { Calendar, Loader2, Sparkles } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Table,
   TableBody,
@@ -45,7 +46,7 @@ export function PublishSlotsTable({ items, projectedSlots, isLoading }: PublishS
         </Alert>
       )}
 
-      <div className="border rounded-lg overflow-hidden max-h-48 overflow-y-auto">
+      <ScrollArea className="border rounded-lg max-h-48">
         <Table>
           <TableHeader className="bg-muted/40">
             <TableRow>
@@ -89,7 +90,7 @@ export function PublishSlotsTable({ items, projectedSlots, isLoading }: PublishS
             })}
           </TableBody>
         </Table>
-      </div>
+      </ScrollArea>
     </div>
   )
 }
