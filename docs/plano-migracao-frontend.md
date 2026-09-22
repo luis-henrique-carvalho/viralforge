@@ -221,8 +221,8 @@ flowchart LR
     Fase1 --> Fase2["✅ Fase 2: Viral Studio Core"]
     Fase2 --> Fase3["✅ Fase 3: Viral Editor (CONCLUÍDO)"]
     Fase3 --> Fase4["✅ Fase 4: Fila & Publicação (CONCLUÍDO)"]
-    Fase4 --> Fase5["🎯 Fase 5: Painel de Configurações & Provedores (/settings)"]
-    Fase5 -.-> Fase6["⏳ Fase 6: Templates Konva & IA Modular (V2)"]
+    Fase4 --> Fase5["✅ Fase 5: Configurações & Provedores (CONCLUÍDO)"]
+    Fase5 -.-> Fase6["🎯 Fase 6: Templates Konva & IA Modular (V2)"]
     Fase6 -.-> Fase7["⏳ Fase 7: Fila Global /publishing (V2)"]
     Fase7 -.-> Fase8["⏳ Fase 8: Discovery & Pipeline Clips (V2)"]
     Fase8 -.-> Fase9["⏳ Fase 9: Homologação & Docker (V2)"]
@@ -231,9 +231,9 @@ flowchart LR
     classDef current fill:#2563eb,stroke:#60a5fa,color:#ffffff,stroke-width:3px;
     classDef pending fill:#374151,stroke:#4b5563,color:#9ca3af;
 
-    class Fase0,Fase1,Fase2,Fase3,Fase4 completed;
-    class Fase5 current;
-    class Fase6,Fase7,Fase8,Fase9 pending;
+    class Fase0,Fase1,Fase2,Fase3,Fase4,Fase5 completed;
+    class Fase6 current;
+    class Fase7,Fase8,Fase9 pending;
 ```
 
 ---
@@ -339,51 +339,51 @@ flowchart LR
 
 ---
 
-### 🎯 Fase 4: Publicação Inteligente & Fila Contínua (Zernio) [ATUAL / EM EXECUÇÃO — FECHA V1]
+### ✅ Fase 4: Publicação Inteligente & Fila Contínua (Zernio) [CONCLUÍDO]
 > **Especificação Completa:** [`docs/publicacao-e-fila-continua.md`](publicacao-e-fila-continua.md)  
 > **ADR de Referência:** [`docs/adr/0001-ports-and-adapters-publishing.md`](adr/0001-ports-and-adapters-publishing.md)  
 > **Metodologia:** `/codebase-design` (Módulos Profundos, Costuras e Dois Adaptadores)
 
-- [ ] **Backend: Ports & Adapters e Fila Contínua:**
-  - [ ] Implementar a porta de domínio `SocialPublisherPort` em `clippyme.domain.social_publisher_port`.
-  - [ ] Implementar `ZernioPublisherAdapter` (produção com HTTP 429 backoff) e `MockPublisherAdapter` (testes offline).
-  - [ ] Implementar o algoritmo de fila contínua `get_next_available_slots(account_id, count)` sem colisão de horários no `viral_studio_store.py`.
-  - [ ] Criar endpoint `GET /api/viral-studio/publishing/preview-slots` para projeção transparente de datas no modal.
-  - [ ] Criar endpoint `POST /api/viral-studio/publish` disparando através da `SocialPublisherPort`.
-  - [ ] Criar endpoint `POST /api/viral-studio/publishing/{item_id}/cancel` para reversão de agendamento.
-- [ ] **Frontend: Modal, Ações e Indicadores:**
-  - [ ] `ViralPublishDialog`: modal oficial com seletor de contas, modos "Publicar Agora" e "Fila Contínua", tabela de projeção de datas/horários e acompanhamento de disparo item a item.
-  - [ ] Conectar o botão "Publicar ({count})" no `BulkActionsBar` da visão do lote (`batch-results-view.tsx`).
-  - [ ] Adicionar botão de publicação rápida no `ItemCard` e no `ViralEditorBottomBar` para vídeos com status `APPROVED`.
-  - [ ] Exibir pill "Agendado para DD/MM às HH:MM" com botão de ação rápida para "Cancelar Agendamento" diretamente no card do vídeo.
-  - [ ] Adicionar aba "Agendados / Publicados" no `BatchFilterToolbar`.
+- [x] **Backend: Ports & Adapters e Fila Contínua:**
+  - [x] Implementar a porta de domínio `SocialPublisherPort` em `clippyme.domain.social_publisher_port`.
+  - [x] Implementar `ZernioPublisherAdapter` (produção com HTTP 429 backoff) e `MockPublisherAdapter` (testes offline).
+  - [x] Implementar o algoritmo de fila contínua `get_next_available_slots(account_id, count)` sem colisão de horários no `viral_studio_store.py`.
+  - [x] Criar endpoint `GET /api/viral-studio/publishing/preview-slots` para projeção transparente de datas no modal.
+  - [x] Criar endpoint `POST /api/viral-studio/publish` disparando através da `SocialPublisherPort`.
+  - [x] Criar endpoint `POST /api/viral-studio/publishing/{item_id}/cancel` para reversão de agendamento.
+- [x] **Frontend: Modal, Ações e Indicadores:**
+  - [x] `ViralPublishDialog`: modal oficial com seletor de contas, modos "Publicar Agora" e "Fila Contínua", tabela de projeção de datas/horários e acompanhamento de disparo item a item.
+  - [x] Conectar o botão "Publicar ({count})" no `BulkActionsBar` da visão do lote (`batch-results-view.tsx`).
+  - [x] Adicionar botão de publicação rápida no `ItemCard` e no `ViralEditorBottomBar` para vídeos com status `APPROVED`.
+  - [x] Exibir pill "Agendado para DD/MM às HH:MM" com botão de ação rápida para "Cancelar Agendamento" diretamente no card do vídeo.
+  - [x] Adicionar aba "Agendados / Publicados" no `BatchFilterToolbar`.
 
 ---
 
-### 🎯 Fase 5: Painel de Configurações, Gestão de Provedores & Telemetria (`/settings`) [EM EXECUÇÃO]
+### ✅ Fase 5: Painel de Configurações, Gestão de Provedores & Telemetria (`/settings`) [CONCLUÍDO]
 > **Especificação Completa:** [`docs/fase-5-settings-e-provedores.md`](fase-5-settings-e-provedores.md)  
 > **Vocabulário de Domínio:** [`CONTEXT.md`](../CONTEXT.md)  
 > **Padrão Visual:** Shadcn UI Settings (Sidebar de navegação vertical à esquerda + painel modular à direita)
 
-- [ ] **Backend: Extensão de Configurações e Telemetria:**
-  - [ ] Adicionar suporte a `PUBLISHING_PROVIDER` em `config_store.py` e resolução dinâmica em `social_publisher_port.py`.
-  - [ ] Implementar endpoint `GET /api/config/hardware` expondo métricas limpas de GPU (CUDA/ROCm/CPU), VRAM, RAM e modelo dinâmico do Whisper.
-  - [ ] Testes unitários para persistência atômica e leitura de hardware em `tests/test_settings_backend.py`.
-- [ ] **Frontend: Arquitetura da Feature (`features/settings/`):**
-  - [ ] Schemas Zod (`settings.schema.ts`) e tipos TypeScript (`settings.types.ts`).
-  - [ ] Serviços de API (`settings.api.ts`) e factory de query keys (`settings.keys.ts`).
-  - [ ] Hooks TanStack Query (`use-settings.ts`, `use-update-settings.ts`).
-  - [ ] Componente reutilizável de campo seguro `ApiKeyInput` com revelação de senha, badge "Configurado" e botão de exclusão.
-  - [ ] Componente de navegação vertical `<SettingsSidebarNav />` com ícones Lucide e indicador de aba ativa.
-  - [ ] Cards modulares de configuração:
-    - [ ] `PublishingProviderCard`: Seletor Zernio/Mock, chave Zernio, descoberta de contas e mapeamento de canais.
-    - [ ] `AiModelsCard`: Chave Gemini, seletor de modelo padrão, URLs de Ollama/LM Studio com status online em tempo real.
-    - [ ] `TranscriptionProviderCard`: Seletor Deepgram/ElevenLabs/Whisper, API keys e token HuggingFace.
-    - [ ] `CookiesManagerCard`: Upload Netscape por plataforma (YouTube, TikTok, Instagram) e status de validade.
-    - [ ] `HardwareStatusCard`: Cards informativos de GPU/CPU, VRAM, RAM, Whisper compute e botão de recarregar.
-    - [ ] `BrandAssetsCard`: Gerenciador de Logo PNG d'água e Fontes TTF/OTF customizadas.
-  - [ ] View principal `SettingsView` substituindo o placeholder pela composição Shadcn Settings.
-  - [ ] Testes unitários com Vitest e React Testing Library (`settings-components.test.tsx`, `settings-view.test.tsx`).
+- [x] **Backend: Extensão de Configurações e Telemetria:**
+  - [x] Adicionar suporte a `PUBLISHING_PROVIDER` em `config_store.py` e resolução dinâmica em `social_publisher_port.py`.
+  - [x] Implementar endpoint `GET /api/config/hardware` expondo métricas limpas de GPU (CUDA/ROCm/CPU), VRAM, RAM e modelo dinâmico do Whisper.
+  - [x] Testes unitários para persistência atômica e leitura de hardware em `tests/test_settings_backend.py`.
+- [x] **Frontend: Arquitetura da Feature (`features/settings/`):**
+  - [x] Schemas Zod (`settings.schema.ts`) e tipos TypeScript (`settings.types.ts`).
+  - [x] Serviços de API (`settings.api.ts`) e factory de query keys (`settings.keys.ts`).
+  - [x] Hooks TanStack Query (`use-settings.ts`, `use-update-settings.ts`).
+  - [x] Componente reutilizável de campo seguro `ApiKeyInput` com revelação de senha, badge "Configurado" e botão de exclusão.
+  - [x] Componente de navegação vertical `<SettingsSidebarNav />` com ícones Lucide e indicador de aba ativa.
+  - [x] Cards modulares de configuração:
+    - [x] `PublishingProviderCard`: Seletor Zernio/Mock, chave Zernio, descoberta de contas e mapeamento de canais.
+    - [x] `AiModelsCard`: Chave Gemini, seletor de modelo padrão, URLs de Ollama/LM Studio com status online em tempo real.
+    - [x] `TranscriptionProviderCard`: Seletor Deepgram/ElevenLabs/Whisper, API keys e token HuggingFace.
+    - [x] `CookiesManagerCard`: Upload Netscape por plataforma (YouTube, TikTok, Instagram) e status de validade.
+    - [x] `HardwareStatusCard`: Cards informativos de GPU/CPU, VRAM, RAM, Whisper compute e botão de recarregar.
+    - [x] `BrandAssetsCard`: Gerenciador de Logo PNG d'água e Fontes TTF/OTF customizadas.
+  - [x] View principal `SettingsView` substituindo o placeholder pela composição Shadcn Settings.
+  - [x] Testes unitários com Vitest e React Testing Library (`settings-components.test.tsx`, `settings-view.test.tsx`).
 
 ---
 
