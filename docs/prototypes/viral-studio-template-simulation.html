@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Viral Studio — Simulação do Template Studio</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Montserrat:wght@700;800;900&family=Noto+Serif:wght@700&family=Poppins:wght@600;700;800&display=swap');
+
+    :root {
+      --bg-canvas: #08080B;
+      --bg-panel: #111116;
+      --bg-surface: #181820;
+      --bg-input: #0e0e13;
+      --border-line: #262633;
+      --border-focus: #0A81D9;
+      --brand-blue: #0A81D9;
+      --brand-emerald: #10B981;
+      --fg-primary: #F3F4F6;
+      --fg-secondary: #9CA3AF;
+      --fg-muted: #6B7280;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-canvas);
+      color: var(--fg-primary);
+      overflow-x: hidden;
+    }
+
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* 9:16 Canvas ratio container */
+    .canvas-9-16 {
+      aspect-ratio: 9 / 16;
+      width: 100%;
+      max-width: 420px;
+      height: auto;
+    }
+
+    /* Custom range slider */
+    input[type=range] {
+      accent-color: #0A81D9;
+    }
+
+    /* Active transformation box handles */
+    .resize-handle {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background-color: #0A81D9;
+      border: 2px solid #FFFFFF;
+      border-radius: 2px;
+      z-index: 40;
+    }
+  </style>
+</head>
+<body class="bg-[#08080B] text-gray-100 min-h-screen p-4 md:p-6 antialiased flex flex-col">
+
+  <!-- TOP APP HEADER -->
+  <header class="border-b border-[#242432] pb-4 mb-6 flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 font-bold text-lg shadow-inner">
+        ⚡
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-lg font-bold text-gray-100 tracking-tight">Viral Studio <span class="text-blue-500">Template Studio</span></h1>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-medium">Workstation 9:16</span>
+        </div>
+        <p class="text-xs text-gray-400">Simulação interativa da nova arquitetura de templates desacoplados, personas e editor visual</p>
+      </div>
+    </div>
+
+    <!-- PRESET SELECTOR QUICK BAR -->
+    <div class="flex items-center gap-2 bg-[#121218] p-1.5 rounded-xl border border-[#262633]">
+      <span class="text-xs font-semibold px-2 text-gray-400">Nichos de Fábrica:</span>
+      <button onclick="applyPreset('curiosities')" id="btn-curiosities" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white transition-all shadow-sm">
+        🌟 Curiosidades & Fatos
+      </button>
+      <button onclick="applyPreset('affiliate')" id="btn-affiliate" class="px-3 py-1.5 text-xs font-medium rounded-lg text-gray-300 hover:text-white hover:bg-[#1a1a24] transition-all">
+        🛍️ Achadinhos & Ofertas
+      </button>
+      <button onclick="applyPreset('news')" id="btn-news" class="px-3 py-1.5 text-xs font-medium rounded-lg text-gray-300 hover:text-white hover:bg-[#1a1a24] transition-all">
+        📰 Fatos & Notícias
+      </button>
+      <button onclick="applyPreset('tech')" id="btn-tech" class="px-3 py-1.5 text-xs font-medium rounded-lg text-gray-300 hover:text-white hover:bg-[#1a1a24] transition-all">
+        ⚡ Tech & Gadgets
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN DUAL-PANE WORKSTATION -->
+  <main class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 max-w-7xl mx-auto w-full">
+
+    <!-- LEFT PANE: STUDIO CONTROLS (TABS) -->
+    <section class="lg:col-span-7 bg-[#111116] border border-[#22222e] rounded-2xl p-5 shadow-2xl flex flex-col">
+      
+      <!-- TABS HEADER -->
+      <div class="flex items-center gap-2 border-b border-[#242432] pb-3 mb-5">
+        <button id="tab-visual-btn" onclick="switchTab('visual')" class="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg bg-[#1c1c27] text-white border border-[#303044] transition-all">
+          <span>🎨</span> Visual & Layout 9:16
+        </button>
+        <button id="tab-persona-btn" onclick="switchTab('persona')" class="flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg text-gray-400 hover:text-gray-200 hover:bg-[#181822] transition-all">
+          <span>🧠</span> Persona & Inteligência IA
+        </button>
+        <div class="ml-auto flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-md">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Desacoplado de Marcas</span>
+        </div>
+      </div>
+
+      <!-- TAB 1: VISUAL & LAYOUT -->
+      <div id="tab-visual" class="space-y-5 flex-1 overflow-y-auto pr-1">
+        
+        <!-- TEMPLATE IDENTIFIER & CANVAS BG -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1">Nome do Template</label>
+            <input type="text" id="tpl-name" value="Curiosidades & Fatos Incríveis" oninput="updateCanvas()" class="w-full bg-[#0a0a0f] border border-[#262636] rounded-lg px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-blue-500 font-medium">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1">Nicho / Categoria</label>
+            <select id="tpl-niche" onchange="updateCanvas()" class="w-full bg-[#0a0a0f] border border-[#262636] rounded-lg px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-blue-500 font-medium">
+              <option value="curiosities">Curiosidades & Ciência</option>
+              <option value="affiliate">Achadinhos / Afiliados</option>
+              <option value="news">Notícias Rápidas & Fatos</option>
+              <option value="tech">Tech & Reviews</option>
+              <option value="custom">Personalizado</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1">Fundo do Canvas</label>
+            <div class="flex items-center gap-2 bg-[#0a0a0f] border border-[#262636] rounded-lg px-3 py-1.5">
+              <input type="color" id="tpl-bg-color" value="#0D1117" oninput="updateCanvas()" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0">
+              <span id="lbl-bg-color" class="text-xs font-mono-code text-gray-300">#0D1117</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- HEADLINE EDITOR -->
+        <div id="card-headline" class="p-3.5 bg-[#161620] border border-[#242433] rounded-xl space-y-3 transition-all">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-gray-200 flex items-center gap-1.5">
+              <span>✍️</span> Headline do Vídeo (Gancho)
+            </span>
+            <div class="flex items-center gap-2">
+              <label class="text-[11px] text-gray-400">Ativa</label>
+              <input type="checkbox" id="chk-headline" checked onchange="updateCanvas()" class="rounded bg-gray-800 border-gray-700 text-blue-500">
+            </div>
+          </div>
+          <input type="text" id="tpl-headline-text" value="O BURACO NEGRO MAIS PERIGOSO DO UNIVERSO! 😱" oninput="updateCanvas()" class="w-full bg-[#0b0b10] border border-[#2c2c3e] rounded-lg px-3 py-2 text-xs text-gray-100 font-semibold focus:outline-none focus:border-blue-500">
+          
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Fonte</label>
+              <select id="tpl-font-family" onchange="updateCanvas()" class="w-full bg-[#0b0b10] border border-[#262636] rounded-md px-2 py-1.5 text-xs text-gray-200">
+                <option value="Montserrat">Montserrat ExtraBold</option>
+                <option value="Anton">Anton Display</option>
+                <option value="Poppins">Poppins Bold</option>
+                <option value="Noto Serif">Noto Serif Elegante</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Tamanho (<span id="lbl-font-size">48</span>px)</label>
+              <input type="range" id="tpl-font-size" min="28" max="72" value="48" oninput="document.getElementById('lbl-font-size').innerText=this.value; updateCanvas()" class="w-full">
+            </div>
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Posição Y (<span id="lbl-headline-y">130</span>px)</label>
+              <input type="range" id="tpl-headline-y" min="40" max="600" value="130" oninput="document.getElementById('lbl-headline-y').innerText=this.value; updateCanvas()" class="w-full">
+            </div>
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Cor do Texto</label>
+              <div class="flex items-center gap-2 bg-[#0b0b10] border border-[#262636] rounded-md px-2 py-1">
+                <input type="color" id="tpl-text-color" value="#FFFFFF" oninput="updateCanvas()" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0">
+                <span id="lbl-text-color" class="text-[11px] font-mono-code text-gray-300">#FFFFFF</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SELO / BADGE VISUAL DE NICHO -->
+        <div id="card-badge" class="p-3.5 bg-[#161620] border border-[#242433] rounded-xl space-y-3 transition-all">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-gray-200 flex items-center gap-1.5">
+              <span>🏷️</span> Selo de Destaque / Badge Superior
+            </span>
+            <div class="flex items-center gap-2">
+              <label class="text-[11px] text-gray-400">Exibir Selo</label>
+              <input type="checkbox" id="chk-badge" checked onchange="updateCanvas()" class="rounded bg-gray-800 border-gray-700 text-blue-500">
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Texto do Selo</label>
+              <input type="text" id="tpl-badge-text" value="VOCÊ SABIA?" oninput="updateCanvas()" class="w-full bg-[#0b0b10] border border-[#2c2c3e] rounded-md px-2.5 py-1.5 text-xs text-gray-100 font-bold focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Posição Y (<span id="lbl-badge-y">45</span>px)</label>
+              <input type="range" id="tpl-badge-y" min="20" max="400" value="45" oninput="document.getElementById('lbl-badge-y').innerText=this.value; updateCanvas()" class="w-full">
+            </div>
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Cor Fundo</label>
+              <div class="flex items-center gap-2 bg-[#0b0b10] border border-[#262636] rounded-md px-2 py-1">
+                <input type="color" id="tpl-badge-bg" value="#E11D48" oninput="updateCanvas()" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0">
+                <span id="lbl-badge-bg" class="text-[11px] font-mono-code text-gray-300">#E11D48</span>
+              </div>
+            </div>
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Cor Texto</label>
+              <div class="flex items-center gap-2 bg-[#0b0b10] border border-[#262636] rounded-md px-2 py-1">
+                <input type="color" id="tpl-badge-text-color" value="#FFFFFF" oninput="updateCanvas()" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0">
+                <span id="lbl-badge-text-color" class="text-[11px] font-mono-code text-gray-300">#FFFFFF</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIDEO FRAME GEOMETRY & VERTICAL HEIGHT -->
+        <div id="card-video" class="p-3.5 bg-[#161620] border border-[#242433] rounded-xl space-y-3.5 transition-all">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-gray-200 flex items-center gap-1.5">
+              <span>🎬</span> Enquadramento, Altura & Posição do Vídeo
+            </span>
+            <span class="text-[10px] font-mono-code text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+              Coordenadas 1080x1920
+            </span>
+          </div>
+
+          <!-- ASPECT RATIO PRESETS -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="text-[11px] text-gray-400 font-medium">Proporção Rápida do Vídeo:</label>
+              <span id="lbl-aspect-ratio-name" class="text-[10px] font-mono-code text-blue-400">1:1 Quadrado</span>
+            </div>
+            <div class="grid grid-cols-4 gap-2">
+              <button type="button" onclick="setVideoAspect('1:1')" id="btn-aspect-1-1" class="py-1.5 px-2 rounded-lg bg-blue-600 text-white text-xs font-bold border border-blue-500/50 shadow transition-all flex flex-col items-center">
+                <span>1:1</span>
+                <span class="text-[9px] opacity-80 font-normal">Quadrado</span>
+              </button>
+              <button type="button" onclick="setVideoAspect('4:5')" id="btn-aspect-4-5" class="py-1.5 px-2 rounded-lg bg-[#0f0f15] hover:bg-[#181824] text-gray-300 hover:text-white text-xs font-semibold border border-[#272738] transition-all flex flex-col items-center">
+                <span>4:5</span>
+                <span class="text-[9px] opacity-80 font-normal">Feed Vertical</span>
+              </button>
+              <button type="button" onclick="setVideoAspect('16:9')" id="btn-aspect-16-9" class="py-1.5 px-2 rounded-lg bg-[#0f0f15] hover:bg-[#181824] text-gray-300 hover:text-white text-xs font-semibold border border-[#272738] transition-all flex flex-col items-center">
+                <span>16:9</span>
+                <span class="text-[9px] opacity-80 font-normal">Widescreen</span>
+              </button>
+              <button type="button" onclick="setVideoAspect('free')" id="btn-aspect-free" class="py-1.5 px-2 rounded-lg bg-[#0f0f15] hover:bg-[#181824] text-gray-300 hover:text-white text-xs font-semibold border border-[#272738] transition-all flex flex-col items-center">
+                <span>Livre</span>
+                <span class="text-[9px] opacity-80 font-normal">Alças / Slider</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- GEOMETRY SLIDERS -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Modo de Enquadre</label>
+              <select id="tpl-video-fit" onchange="updateCanvas()" class="w-full bg-[#0b0b10] border border-[#262636] rounded-md px-2 py-1.5 text-xs text-gray-200">
+                <option value="contain">Contain (Sem corte)</option>
+                <option value="cover">Cover (Preencher tela)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Posição Y (<span id="lbl-video-y">360</span>px)</label>
+              <input type="range" id="tpl-video-y" min="50" max="950" value="360" oninput="document.getElementById('lbl-video-y').innerText=this.value; updateCanvas()" class="w-full">
+            </div>
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Altura Vertical (<span id="lbl-video-height">1000</span>px)</label>
+              <input type="range" id="tpl-video-height" min="400" max="1500" value="1000" oninput="document.getElementById('lbl-video-height').innerText=this.value; setVideoAspect('free'); updateCanvas()" class="w-full">
+            </div>
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Largura (<span id="lbl-video-scale">92</span>%)</label>
+              <input type="range" id="tpl-video-scale" min="70" max="100" value="92" oninput="document.getElementById('lbl-video-scale').innerText=this.value; updateCanvas()" class="w-full">
+            </div>
+          </div>
+
+          <!-- QUICK ALIGNMENT SHORTCUTS -->
+          <div class="flex items-center gap-1.5 pt-1 border-t border-[#222230]">
+            <span class="text-[10px] text-gray-400 font-medium mr-1">Atalhos Y:</span>
+            <button type="button" onclick="setVideoY(260)" class="px-2 py-0.5 rounded bg-[#13131c] hover:bg-blue-600/30 hover:text-blue-300 text-gray-300 text-[10px] border border-[#272738] transition-all">⬆️ Topo (260px)</button>
+            <button type="button" onclick="setVideoY(380)" class="px-2 py-0.5 rounded bg-[#13131c] hover:bg-blue-600/30 hover:text-blue-300 text-gray-300 text-[10px] border border-[#272738] transition-all">↕️ Centro (380px)</button>
+            <button type="button" onclick="setVideoY(550)" class="px-2 py-0.5 rounded bg-[#13131c] hover:bg-blue-600/30 hover:text-blue-300 text-gray-300 text-[10px] border border-[#272738] transition-all">⬇️ Baixo (550px)</button>
+            <span class="text-[10px] text-gray-500 ml-auto hidden sm:inline">Dica: você também pode arrastar o quadro diretamente no canvas 👆</span>
+          </div>
+
+          <!-- VIDEO BORDERS & STYLING CONTROLS -->
+          <div class="pt-2 border-t border-[#222230] space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-gray-300 flex items-center gap-1">
+                <span>🎨</span> Bordas, Cantos & Efeitos do Vídeo
+              </span>
+              <div class="flex items-center gap-1.5">
+                <button type="button" onclick="applyVideoStyle('none')" class="text-[10px] px-2 py-0.5 rounded bg-[#101017] border border-[#272738] text-gray-400 hover:text-white">Sem Borda</button>
+                <button type="button" onclick="applyVideoStyle('rounded')" class="text-[10px] px-2 py-0.5 rounded bg-[#101017] border border-[#272738] text-gray-400 hover:text-white">Arredondado</button>
+                <button type="button" onclick="applyVideoStyle('neon')" class="text-[10px] px-2 py-0.5 rounded bg-[#101017] border border-blue-500/40 text-blue-300 hover:text-white">Glow Neon</button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div>
+                <label class="block text-[11px] text-gray-400 mb-1">Arredondamento (<span id="lbl-video-radius">20</span>px)</label>
+                <input type="range" id="tpl-video-radius" min="0" max="48" value="20" oninput="document.getElementById('lbl-video-radius').innerText=this.value; updateCanvas()" class="w-full">
+              </div>
+              <div>
+                <label class="block text-[11px] text-gray-400 mb-1">Espessura Borda (<span id="lbl-video-border-w">2</span>px)</label>
+                <input type="range" id="tpl-video-border-w" min="0" max="10" value="2" oninput="document.getElementById('lbl-video-border-w').innerText=this.value; updateCanvas()" class="w-full">
+              </div>
+              <div>
+                <label class="block text-[11px] text-gray-400 mb-1">Cor da Borda</label>
+                <div class="flex items-center gap-2 bg-[#0b0b10] border border-[#262636] rounded-md px-2 py-1">
+                  <input type="color" id="tpl-video-border-color" value="#3B82F6" oninput="updateCanvas()" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0">
+                  <span id="lbl-video-border-color" class="text-[11px] font-mono-code text-gray-300">#3B82F6</span>
+                </div>
+              </div>
+              <div>
+                <label class="block text-[11px] text-gray-400 mb-1">Sombra / Glow</label>
+                <select id="tpl-video-shadow" onchange="updateCanvas()" class="w-full bg-[#0b0b10] border border-[#262636] rounded-md px-2 py-1.5 text-xs text-gray-200">
+                  <option value="none">Nenhuma</option>
+                  <option value="subtle">Sombra Suave</option>
+                  <option value="deep" selected>Sombra Profunda</option>
+                  <option value="glow-blue">Glow Azul Neon</option>
+                  <option value="glow-pink">Glow Rosa Neon</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- NEW: EXTRA IMAGE / FOOTER BANNER LAYER -->
+        <div id="card-extra-image" class="p-3.5 bg-gradient-to-br from-[#161622] to-[#1a1524] border border-purple-500/30 rounded-xl space-y-3 transition-all">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+              <span>🖼️</span> Imagem / Banner Extra (Preenchimento do Rodapé)
+            </span>
+            <div class="flex items-center gap-2">
+              <label class="text-[11px] text-purple-300 font-medium">Ativar Imagem</label>
+              <input type="checkbox" id="chk-extra-image" checked onchange="updateCanvas()" class="rounded bg-gray-800 border-purple-500 text-purple-600">
+            </div>
+          </div>
+
+          <p class="text-[11px] text-gray-300">
+            Adicione uma imagem personalizada do seu computador ou escolha um modelo pronto de rodapé para preencher o espaço inferior:
+          </p>
+
+          <!-- UPLOAD BUTTONS & PRESETS -->
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 shadow">
+              <span>📁</span> Fazer Upload do PC
+              <input type="file" id="file-extra-image" accept="image/*" onchange="handleExtraImageUpload(event)" class="hidden">
+            </label>
+            <button type="button" onclick="removeExtraImage()" class="px-2.5 py-1.5 bg-[#14141d] hover:bg-red-950/40 text-gray-300 hover:text-red-300 rounded-lg text-xs font-medium border border-[#2b2b3d] transition-all">
+              🗑️ Limpar
+            </button>
+            <div class="flex items-center gap-1 ml-auto">
+              <span class="text-[10px] text-gray-400">Modelos Prontos:</span>
+              <button type="button" onclick="applyFooterTemplate('comment')" class="px-2 py-0.5 rounded bg-[#20172e] hover:bg-purple-600/30 text-purple-300 text-[10px] border border-purple-500/30 transition-all">💬 Comente</button>
+              <button type="button" onclick="applyFooterTemplate('follow')" class="px-2 py-0.5 rounded bg-[#20172e] hover:bg-purple-600/30 text-purple-300 text-[10px] border border-purple-500/30 transition-all">🔔 Siga-nos</button>
+              <button type="button" onclick="applyFooterTemplate('deal')" class="px-2 py-0.5 rounded bg-[#20172e] hover:bg-purple-600/30 text-purple-300 text-[10px] border border-purple-500/30 transition-all">🛒 Oferta</button>
+              <button type="button" onclick="applyFooterTemplate('fact')" class="px-2 py-0.5 rounded bg-[#20172e] hover:bg-purple-600/30 text-purple-300 text-[10px] border border-purple-500/30 transition-all">💡 Fato</button>
+            </div>
+          </div>
+
+          <!-- IMAGE POSITIONING & DIMENSION SLIDERS -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 pt-1">
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Posição Y (<span id="lbl-image-y">1420</span>px)</label>
+              <input type="range" id="tpl-image-y" min="800" max="1750" value="1420" oninput="document.getElementById('lbl-image-y').innerText=this.value; updateCanvas()" class="w-full">
+            </div>
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Altura (<span id="lbl-image-height">340</span>px)</label>
+              <input type="range" id="tpl-image-height" min="100" max="700" value="340" oninput="document.getElementById('lbl-image-height').innerText=this.value; updateCanvas()" class="w-full">
+            </div>
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Largura (<span id="lbl-image-width">92</span>%)</label>
+              <input type="range" id="tpl-image-width" min="40" max="100" value="92" oninput="document.getElementById('lbl-image-width').innerText=this.value; updateCanvas()" class="w-full">
+            </div>
+            <div>
+              <label class="block text-[11px] text-gray-400 mb-1">Arredondamento (<span id="lbl-image-radius">16</span>px)</label>
+              <input type="range" id="tpl-image-radius" min="0" max="40" value="16" oninput="document.getElementById('lbl-image-radius').innerText=this.value; updateCanvas()" class="w-full">
+            </div>
+          </div>
+        </div>
+
+        <!-- TOGGLES AND BRAND ASSETS -->
+        <div class="grid grid-cols-3 gap-3 pt-1">
+          <label class="flex items-center gap-2 p-2.5 bg-[#14141c] border border-[#22222e] rounded-lg text-xs text-gray-300 cursor-pointer hover:bg-[#181822]">
+            <input type="checkbox" id="chk-avatar" checked onchange="updateCanvas()" class="rounded text-blue-500">
+            <span>Avatar da Marca</span>
+          </label>
+          <label class="flex items-center gap-2 p-2.5 bg-[#14141c] border border-[#22222e] rounded-lg text-xs text-gray-300 cursor-pointer hover:bg-[#181822]">
+            <input type="checkbox" id="chk-brandname" checked onchange="updateCanvas()" class="rounded text-blue-500">
+            <span>Nome e @Handle</span>
+          </label>
+          <label class="flex items-center gap-2 p-2.5 bg-[#14141c] border border-[#22222e] rounded-lg text-xs text-gray-300 cursor-pointer hover:bg-[#181822]">
+            <input type="checkbox" id="chk-watermark" checked onchange="updateCanvas()" class="rounded text-blue-500">
+            <span>Marca-d'água</span>
+          </label>
+        </div>
+
+      </div>
+
+      <!-- TAB 2: PERSONA & INTELIGÊNCIA IA -->
+      <div id="tab-persona" class="space-y-5 flex-1 overflow-y-auto pr-1 hidden">
+
+        <!-- ONE-CLICK AI PROMPT ASSISTANT -->
+        <div class="p-4 bg-gradient-to-br from-blue-950/40 via-[#131722] to-emerald-950/30 border border-blue-500/30 rounded-xl space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-blue-300 flex items-center gap-1.5">
+              <span>✨</span> Assistente de Criação de Prompt One-Click (IA)
+            </span>
+            <span class="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-medium">Auto-Prompting</span>
+          </div>
+          <p class="text-[11px] text-gray-300">Descreva em uma frase o estilo e objetivo do seu canal. A IA gerará a persona, tom de voz, regras de gancho e prompt estruturado automaticamente:</p>
+          
+          <div class="flex gap-2">
+            <input type="text" id="ai-assistant-input" placeholder="Ex: Canal de curiosidades científicas chocantes e mistérios do espaço profundo..." class="flex-1 bg-[#0b0c12] border border-blue-500/30 rounded-lg px-3 py-2 text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-400">
+            <button onclick="runAIAssistant()" id="btn-run-ai" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shrink-0">
+              <span id="ai-icon">✨</span>
+              <span id="ai-text">Gerar com IA</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- CONVERSION GOAL SELECTOR -->
+        <div class="p-3.5 bg-[#161620] border border-[#242433] rounded-xl space-y-2">
+          <label class="block text-xs font-bold text-gray-200">Objetivo de Conversão do Template</label>
+          <p class="text-[11px] text-gray-400 mb-2">Define como a IA constrói a legenda e se exige código/link de produto:</p>
+          
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-start gap-2 p-2.5 bg-[#0f0f15] border border-[#272738] rounded-lg cursor-pointer hover:border-blue-500/50">
+              <input type="radio" name="conv-goal" value="engagement" checked onchange="updateConversionGoal(this.value)" class="mt-0.5 text-blue-500">
+              <div>
+                <span class="block text-xs font-bold text-gray-200">Puro Engajamento Orgânico</span>
+                <span class="block text-[10px] text-gray-400">Sem código de produto nem link de bio. Foco 100% em comentários, curiosidade e retenção.</span>
+              </div>
+            </label>
+            <label class="flex items-start gap-2 p-2.5 bg-[#0f0f15] border border-[#272738] rounded-lg cursor-pointer hover:border-blue-500/50">
+              <input type="radio" name="conv-goal" value="affiliate" onchange="updateConversionGoal(this.value)" class="mt-0.5 text-blue-500">
+              <div>
+                <span class="block text-xs font-bold text-gray-200">Vendas & Afiliados</span>
+                <span class="block text-[10px] text-gray-400">Exige código de produto 📌, link na bio, benefícios práticos e hashtags #publi.</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- PERSONA ROLE & TONE -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1">Papel da Persona (Role)</label>
+            <input type="text" id="tpl-persona-role" value="Roteirista mestre em fatos curiosos e mistérios da ciência" class="w-full bg-[#0a0a0f] border border-[#262636] rounded-lg px-3 py-2 text-xs text-gray-200 font-medium">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1">Tom de Voz</label>
+            <input type="text" id="tpl-persona-tone" value="Intrigante, misterioso, dinâmico e provocativo" class="w-full bg-[#0a0a0f] border border-[#262636] rounded-lg px-3 py-2 text-xs text-gray-200 font-medium">
+          </div>
+        </div>
+
+        <!-- CALL TO ACTION (CTA) -->
+        <div>
+          <label class="block text-xs font-medium text-gray-400 mb-1">Chamada para Ação (CTA) Padrão</label>
+          <input type="text" id="tpl-cta" value="Qual dessas curiosidades mais te surpreendeu? Comente e siga para mais!" class="w-full bg-[#0a0a0f] border border-[#262636] rounded-lg px-3 py-2 text-xs text-gray-200 font-medium">
+        </div>
+
+        <!-- SYSTEM PROMPT WITH TAGS -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-xs font-medium text-gray-400">System Prompt Estruturado (com variáveis)</label>
+            <div class="flex gap-1.5 text-[10px] font-mono-code text-blue-400">
+              <span class="bg-[#181824] px-1.5 py-0.5 rounded border border-[#2b2b3e]">{transcript}</span>
+              <span class="bg-[#181824] px-1.5 py-0.5 rounded border border-[#2b2b3e]">{brand_name}</span>
+              <span class="bg-[#181824] px-1.5 py-0.5 rounded border border-[#2b2b3e]">{cta}</span>
+            </div>
+          </div>
+          <textarea id="tpl-system-prompt" rows="4" class="w-full bg-[#09090e] border border-[#242434] rounded-lg p-2.5 text-xs text-gray-300 font-mono-code leading-relaxed focus:outline-none focus:border-blue-500">Você é {persona_role}.
+Analise a transcrição de áudio: "{transcript}" e os frames visuais capturados.
+Identifique o fato mais surpreendente ou chocante e gere:
+1. HEADLINE: 1 gancho misterioso e curto para sobrepor no vídeo.
+2. LEGENDA: Explicação envolvente do fato finalizada com a pergunta: "{cta}".
+3. HASHTAGS: Tags relevantes de curiosidades e mistério.</textarea>
+        </div>
+
+        <!-- DEFAULT HASHTAGS -->
+        <div>
+          <label class="block text-xs font-medium text-gray-400 mb-1.5">Hashtags Padrão do Nicho</label>
+          <div id="hashtag-container" class="flex flex-wrap gap-1.5 p-2 bg-[#0a0a0f] border border-[#262636] rounded-lg">
+            <span class="text-xs bg-blue-500/10 text-blue-300 border border-blue-500/20 px-2 py-0.5 rounded-md font-mono-code">#curiosidades</span>
+            <span class="text-xs bg-blue-500/10 text-blue-300 border border-blue-500/20 px-2 py-0.5 rounded-md font-mono-code">#vocesabia</span>
+            <span class="text-xs bg-blue-500/10 text-blue-300 border border-blue-500/20 px-2 py-0.5 rounded-md font-mono-code">#misterio</span>
+            <span class="text-xs bg-blue-500/10 text-blue-300 border border-blue-500/20 px-2 py-0.5 rounded-md font-mono-code">#ciencia</span>
+            <span class="text-xs bg-blue-500/10 text-blue-300 border border-blue-500/20 px-2 py-0.5 rounded-md font-mono-code">#fatosdesconhecidos</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- FOOTER SAVE BAR -->
+      <div class="border-t border-[#242432] pt-4 mt-auto flex items-center justify-between">
+        <button onclick="resetCurrentTemplate()" class="text-xs text-gray-400 hover:text-gray-200 px-3 py-1.5 rounded-md hover:bg-[#181822]">
+          Descartar Alterações
+        </button>
+        <button onclick="saveSimulationSuccess()" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold shadow-md transition-all flex items-center gap-2">
+          <span>💾</span> Salvar Template Universal
+        </button>
+      </div>
+
+    </section>
+
+    <!-- RIGHT PANE: 9:16 LIVE CANVAS VIEWPORT (KONVA SIMULATION) -->
+    <section class="lg:col-span-5 flex flex-col items-center justify-start bg-[#0e0e13] border border-[#22222e] rounded-2xl p-5 shadow-2xl relative">
+      
+      <!-- CANVAS TOOLBAR -->
+      <div class="w-full flex items-center justify-between pb-3 mb-3 border-b border-[#242432] text-xs">
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-gray-300 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Canvas 9:16
+          </span>
+          <span class="font-mono-code text-[11px] text-gray-400 bg-[#161622] px-1.5 py-0.5 rounded border border-[#27273a]">1080×1920</span>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <!-- SAFE ZONE TOGGLE -->
+          <label class="flex items-center gap-1.5 text-xs text-amber-300 cursor-pointer font-medium bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
+            <input type="checkbox" id="chk-safezone" onchange="toggleSafeZones()" class="rounded text-amber-500">
+            <span>Safe Zones</span>
+          </label>
+          <!-- SAMPLE MEDIA TOGGLE -->
+          <button onclick="toggleSampleMedia()" id="btn-sample-media" class="px-2 py-0.5 rounded bg-[#1f1f2c] border border-[#34344a] text-gray-300 hover:text-white text-[11px] font-medium">
+            <span>📼</span> Vídeo Amostra
+          </button>
+        </div>
+      </div>
+
+      <!-- THE 9:16 CANVAS WRAPPER -->
+      <div class="canvas-9-16 relative rounded-2xl shadow-2xl overflow-hidden border border-[#2e2e3f] transition-all flex flex-col select-none" id="canvas-wrapper" style="background-color: #0D1117;">
+        
+        <!-- SAFE ZONE OVERLAY (INSTAGRAM/TIKTOK UI GHOSTS) -->
+        <div id="safezone-overlay" class="absolute inset-0 pointer-events-none z-50 hidden">
+          <!-- Top notch buffer -->
+          <div class="absolute top-0 inset-x-0 h-10 bg-amber-500/15 border-b border-amber-500/30 flex items-center justify-center text-[9px] font-mono-code text-amber-300">
+            ZONA DE STATUS / NAVEGAÇÃO
+          </div>
+          <!-- Right side buttons (Like, comment, share, audio) -->
+          <div class="absolute right-0 top-1/2 -translate-y-12 w-14 h-48 bg-amber-500/15 border-l border-amber-500/30 flex flex-col items-center justify-around text-amber-300 text-[10px]">
+            <span>❤️</span>
+            <span>💬</span>
+            <span>↗️</span>
+            <span>🎵</span>
+          </div>
+          <!-- Bottom caption & audio title bar -->
+          <div class="absolute bottom-0 inset-x-0 h-20 bg-amber-500/15 border-t border-amber-500/30 p-2 flex flex-col justify-end text-[9px] font-mono-code text-amber-300">
+            <span>@usuario · Legenda do post e áudio original</span>
+          </div>
+        </div>
+
+        <!-- SNAP GUIDE FOR CENTER ALIGNMENT -->
+        <div id="snap-guide-x" class="absolute inset-y-0 left-1/2 -translate-x-1/2 w-0.5 bg-blue-500/90 pointer-events-none z-40 hidden shadow-[0_0_10px_rgba(59,130,246,1)]"></div>
+
+        <!-- BADGE / SELO (DRAGGABLE LAYER) -->
+        <div id="cv-badge-wrapper" class="absolute z-30 cursor-grab touch-none select-none transition-all duration-75 px-1 py-0.5 rounded-lg border border-transparent hover:border-blue-400/40" style="left: 5%; top: 2.3%;">
+          <span id="cv-badge" class="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider shadow-md inline-block transition-all" style="background-color: #E11D48; color: #FFFFFF;">
+            VOCÊ SABIA?
+          </span>
+        </div>
+
+        <!-- BRAND HEADER: AVATAR + NAME + @HANDLE -->
+        <div id="cv-brand-header" class="absolute z-20 flex items-center gap-2.5 pointer-events-none" style="left: 5%; top: 5.2%;">
+          <div id="cv-avatar" class="w-7 h-7 rounded-full bg-slate-700 border border-slate-500 flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden shadow">
+            <span id="cv-avatar-text">V</span>
+          </div>
+          <div id="cv-brand-info" class="flex flex-col leading-tight">
+            <span id="cv-brand-name" class="text-xs font-extrabold tracking-tight" style="color: #F0F6FC;">Fatos & Mistérios</span>
+            <span id="cv-brand-handle" class="text-[10px] text-gray-400">@fatosmisteriosos</span>
+          </div>
+        </div>
+
+        <!-- DYNAMIC HEADLINE (DRAGGABLE LAYER) -->
+        <div id="cv-headline-wrapper" class="absolute z-30 cursor-grab touch-none select-none transition-all duration-75 px-2 py-1 rounded-lg border border-transparent hover:border-blue-400/40 w-[90%]" style="left: 5%; top: 7.2%;">
+          <h2 id="cv-headline" class="text-base font-black leading-tight tracking-tight uppercase transition-all" style="color: #FFFFFF; font-family: 'Montserrat', sans-serif;">
+            O BURACO NEGRO MAIS PERIGOSO DO UNIVERSO! 😱
+          </h2>
+        </div>
+
+        <!-- VIDEO FRAME BOX (WITH TRANSFORMER HANDLES) -->
+        <div id="cv-video-frame" class="absolute z-10 overflow-hidden bg-black flex items-center justify-center shadow-2xl group cursor-grab touch-none select-none transition-all duration-75">
+          
+          <!-- LIVE COORDINATES PILL -->
+          <div id="video-coord-badge" class="absolute top-2 left-2 z-30 px-2 py-0.5 bg-blue-600/90 text-white font-mono-code text-[9px] rounded-md shadow pointer-events-none flex items-center gap-1 backdrop-blur-sm border border-blue-400/30">
+            <span>📍</span> Y: 360px | 1080×1000
+          </div>
+
+          <!-- DRAG HINT PILL -->
+          <div id="video-drag-hint" class="absolute bottom-2 inset-x-0 z-30 flex justify-center pointer-events-none transition-opacity">
+            <span class="text-[9px] font-medium bg-black/80 text-blue-300 px-2.5 py-0.5 rounded-full border border-blue-500/40 shadow">
+              👆 Mover / Alças verticais redimensionam
+            </span>
+          </div>
+
+          <!-- TRANSFORMER 8-POINT HANDLES -->
+          <div class="resize-handle -top-1.5 -left-1.5 cursor-nwse-resize"></div>
+          <div id="handle-video-t" class="resize-handle -top-1.5 left-1/2 -translate-x-1/2 cursor-ns-resize"></div>
+          <div class="resize-handle -top-1.5 -right-1.5 cursor-nesw-resize"></div>
+          <div class="resize-handle top-1/2 -translate-y-1/2 -left-1.5 cursor-ew-resize"></div>
+          <div class="resize-handle top-1/2 -translate-y-1/2 -right-1.5 cursor-ew-resize"></div>
+          <div class="resize-handle -bottom-1.5 -left-1.5 cursor-nesw-resize"></div>
+          <div id="handle-video-b" class="resize-handle -bottom-1.5 left-1/2 -translate-x-1/2 cursor-ns-resize"></div>
+          <div class="resize-handle -bottom-1.5 -right-1.5 cursor-nwse-resize"></div>
+
+          <!-- WIREFRAME VIDEO PLACEHOLDER -->
+          <div id="video-wireframe" class="flex flex-col items-center justify-center p-4 text-center space-y-2 pointer-events-none">
+            <div class="w-12 h-12 rounded-full bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 text-xl shadow-inner">
+              ▶
+            </div>
+            <div>
+              <span class="text-xs font-bold text-gray-200 block" id="lbl-video-dim">Quadro 1080×1000</span>
+              <span class="text-[10px] font-mono-code text-gray-400"><span id="lbl-fit-display">CONTAIN</span></span>
+            </div>
+            <span class="text-[9px] text-gray-500">Vídeo central ajustável em altura e proporção</span>
+          </div>
+
+          <!-- SAMPLE VIDEO PREVIEW (HIDDEN BY DEFAULT) -->
+          <div id="video-sample" class="absolute inset-0 bg-cover bg-center hidden pointer-events-none" style="background-image: url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800&auto=format&fit=crop');">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex items-end p-3">
+              <span class="text-[10px] text-white/90 font-mono-code bg-black/70 px-2 py-0.5 rounded border border-white/10">Amostra de Mídia: Espaço Profundo</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- NEW: EXTRA IMAGE / FOOTER BANNER BOX -->
+        <div id="cv-extra-image" class="absolute z-25 overflow-hidden flex items-center justify-center cursor-grab touch-none select-none transition-all duration-75 group shadow-xl border border-dashed border-purple-500/80 bg-purple-950/20">
+          
+          <!-- LIVE COORDINATES PILL -->
+          <div id="image-coord-badge" class="absolute top-2 left-2 z-30 px-2 py-0.5 bg-purple-600/90 text-white font-mono-code text-[9px] rounded-md shadow pointer-events-none flex items-center gap-1 backdrop-blur-sm border border-purple-400/30">
+            <span>🖼️</span> Y: 1420px | Rodapé
+          </div>
+
+          <!-- TRANSFORMER HANDLES -->
+          <div class="resize-handle -top-1.5 -left-1.5 cursor-nwse-resize bg-purple-500 border-white"></div>
+          <div id="handle-image-t" class="resize-handle -top-1.5 left-1/2 -translate-x-1/2 cursor-ns-resize bg-purple-500 border-white"></div>
+          <div class="resize-handle -top-1.5 -right-1.5 cursor-nesw-resize bg-purple-500 border-white"></div>
+          <div class="resize-handle -bottom-1.5 -left-1.5 cursor-nesw-resize bg-purple-500 border-white"></div>
+          <div id="handle-image-b" class="resize-handle -bottom-1.5 left-1/2 -translate-x-1/2 cursor-ns-resize bg-purple-500 border-white"></div>
+          <div class="resize-handle -bottom-1.5 -right-1.5 cursor-nwse-resize bg-purple-500 border-white"></div>
+
+          <!-- CUSTOM UPLOADED IMAGE PREVIEW (IF ANY) -->
+          <img id="cv-extra-image-img" src="" alt="Banner Extra" class="w-full h-full object-cover hidden pointer-events-none">
+
+          <!-- RENDERED TEMPLATE CARD (DEFAULT) -->
+          <div id="cv-extra-image-content" class="w-full h-full flex flex-col items-center justify-center p-3 text-center pointer-events-none bg-gradient-to-r from-purple-900/40 via-indigo-900/40 to-purple-900/40 border border-purple-500/30 rounded-xl">
+            <span class="text-xs font-black text-purple-200 tracking-wide uppercase flex items-center gap-1.5">
+              <span>💬</span> DEIXE SUA OPINIÃO!
+            </span>
+            <span class="text-[10px] text-gray-300 mt-1 max-w-[85%] font-medium leading-tight">Você já conhecia essa curiosidade? Comente abaixo e siga para não perder nada!</span>
+          </div>
+        </div>
+
+        <!-- BOTTOM WATERMARK -->
+        <div id="cv-watermark" class="mt-auto p-4 flex justify-end z-20 pointer-events-none relative">
+          <div class="opacity-70 flex items-center gap-1.5 bg-black/40 px-2 py-1 rounded border border-white/10">
+            <span class="text-xs">⚡</span>
+            <span class="text-[10px] font-bold text-white tracking-widest uppercase">VIRALFORGE</span>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="mt-3 text-[11px] text-gray-400 flex items-center gap-1">
+        <span>💡</span>
+        <span>Arraste ou selecione as alças azuis para simular a manipulação do <code class="text-blue-400">&lt;Transformer&gt;</code> Konva.</span>
+      </div>
+
+    </section>
+
+  </main>
+
+  <script>
+    // PRESET CATALOG
+    const PRESETS = {
+      curiosities: {
+        name: "Curiosidades & Fatos Incríveis",
+        niche: "curiosities",
+        headline: "O BURACO NEGRO MAIS PERIGOSO DO UNIVERSO! 😱",
+        headlineY: 130,
+        font: "Montserrat",
+        fontSize: 48,
+        textColor: "#FFFFFF",
+        bgColor: "#0D1117",
+        badgeText: "VOCÊ SABIA?",
+        badgeBg: "#E11D48",
+        badgeTextColor: "#FFFFFF",
+        badgeEnabled: true,
+        badgeY: 45,
+        videoFit: "contain",
+        videoY: 340,
+        videoHeight: 980,
+        videoScale: 92,
+        videoRadius: 20,
+        videoBorderW: 2,
+        videoBorderColor: "#3B82F6",
+        videoShadow: "deep",
+        videoAspect: "1:1",
+        extraImageEnabled: true,
+        imageY: 1380,
+        imageHeight: 340,
+        imageWidth: 92,
+        imageRadius: 16,
+        footerType: "comment",
+        convGoal: "engagement",
+        personaRole: "Roteirista mestre em fatos curiosos e mistérios da ciência",
+        personaTone: "Intrigante, misterioso, dinâmico e provocativo",
+        cta: "Qual desses fatos mais te surpreendeu? Comente e siga para mais!",
+        prompt: `Você é Roteirista mestre em fatos curiosos.
+Analise a transcrição de áudio: "{transcript}" e os frames visuais.
+Identifique o fato mais surpreendente e gere:
+1. HEADLINE: Gancho magnético e instigante.
+2. LEGENDA: Explicação envolvente do fato finalizada com a pergunta: "{cta}".
+3. HASHTAGS: Sem código de produto. Foco em retenção orgânica.`,
+        hashtags: ["#curiosidades", "#vocesabia", "#misterio", "#ciencia", "#fatosdesconhecidos"]
+      },
+      affiliate: {
+        name: "Achadinhos & Ofertas",
+        niche: "affiliate",
+        headline: "ESSE ACHADINHO SALVOU MINHA COZINHA! 🛒",
+        headlineY: 120,
+        font: "Poppins",
+        fontSize: 44,
+        textColor: "#111111",
+        bgColor: "#FFFFFF",
+        badgeText: "OFERTA DO DIA",
+        badgeBg: "#F97316",
+        badgeTextColor: "#FFFFFF",
+        badgeEnabled: true,
+        badgeY: 40,
+        videoFit: "contain",
+        videoY: 320,
+        videoHeight: 1000,
+        videoScale: 92,
+        videoRadius: 24,
+        videoBorderW: 3,
+        videoBorderColor: "#F97316",
+        videoShadow: "deep",
+        videoAspect: "1:1",
+        extraImageEnabled: true,
+        imageY: 1380,
+        imageHeight: 360,
+        imageWidth: 92,
+        imageRadius: 16,
+        footerType: "deal",
+        convGoal: "affiliate",
+        personaRole: "Copywriter de alta conversão para achadinhos da Shopee e TikTok Shop",
+        personaTone: "Entusiasmado, prático, direto e persuasivo",
+        cta: "Link com desconto na bio! 📌 Produto {code}",
+        prompt: `Você é especialista em marketing de afiliados.
+Analise o produto demonstrado no vídeo.
+Gere:
+1. HEADLINE: Focada em problema e solução prática do dia a dia.
+2. LEGENDA: Benefícios práticos, código 📌 Produto {code}, e chamada para o link da bio.
+3. HASHTAGS: #achadinhos #shopee #utilidades #publi`,
+        hashtags: ["#achadinhos", "#shopee", "#utilidades", "#dicas", "#publi"]
+      },
+      news: {
+        name: "Notícias & Fatos Rápidos",
+        niche: "news",
+        headline: "URGENTE: DESCOBERTA CIENTÍFICA MUDA TUDO HOJE!",
+        headlineY: 100,
+        font: "Anton",
+        fontSize: 52,
+        textColor: "#FFFFFF",
+        bgColor: "#18181B",
+        badgeText: "URGENTE / FATO",
+        badgeBg: "#DC2626",
+        badgeTextColor: "#FFFFFF",
+        badgeEnabled: true,
+        badgeY: 35,
+        videoFit: "cover",
+        videoY: 0,
+        videoHeight: 1920,
+        videoScale: 100,
+        videoRadius: 0,
+        videoBorderW: 0,
+        videoBorderColor: "#FFFFFF",
+        videoShadow: "none",
+        videoAspect: "free",
+        extraImageEnabled: false,
+        imageY: 1420,
+        imageHeight: 340,
+        imageWidth: 92,
+        imageRadius: 16,
+        footerType: "follow",
+        convGoal: "engagement",
+        personaRole: "Jornalista investigativo de notícias rápidas e atualidades",
+        personaTone: "Urgente, sóbrio, objetivo e confiável",
+        cta: "O que você acha dessa notícia? Deixe sua opinião sincera abaixo!",
+        prompt: `Você é jornalista digital especializado em notícias virais.
+Resuma o acontecimento central do vídeo com máxima clareza.
+Gere headline impactante estilo manchete e legenda objetiva com pergunta para o público debater nos comentários.`,
+        hashtags: ["#noticias", "#urgente", "#fatos", "#atualidades", "#brasil", "#mundo"]
+      },
+      tech: {
+        name: "Tech & Gadgets Reviews",
+        niche: "tech",
+        headline: "O SMARTPHONE DO FUTURO CHEGOU ANTES DO ESPERADO!",
+        headlineY: 120,
+        font: "Montserrat",
+        fontSize: 46,
+        textColor: "#38BDF8",
+        bgColor: "#0F172A",
+        badgeText: "TECH REVIEW",
+        badgeBg: "#0284C7",
+        badgeTextColor: "#FFFFFF",
+        badgeEnabled: true,
+        badgeY: 40,
+        videoFit: "contain",
+        videoY: 330,
+        videoHeight: 960,
+        videoScale: 90,
+        videoRadius: 28,
+        videoBorderW: 2,
+        videoBorderColor: "#0284C7",
+        videoShadow: "glow-blue",
+        videoAspect: "1:1",
+        extraImageEnabled: true,
+        imageY: 1360,
+        imageHeight: 360,
+        imageWidth: 90,
+        imageRadius: 20,
+        footerType: "fact",
+        convGoal: "engagement",
+        personaRole: "Especialista em tecnologia, inteligência artificial e gadgets",
+        personaTone: "Futurista, analítico, empolgado e técnico-acessível",
+        cta: "Você usaria essa tecnologia no seu dia a dia? Comente e siga para mais tech!",
+        prompt: `Você é especialista em review de tecnologia.
+Analise as funcionalidades demonstradas no vídeo.
+Destaque a inovação principal e gere headline tecnológica magnética e legenda com especificações e opinião técnica.`,
+        hashtags: ["#tech", "#gadgets", "#tecnologia", "#inovacao", "#setup", "#ia"]
+      }
+    };
+
+    let currentPresetKey = 'curiosities';
+    let currentAspect = '1:1';
+
+    function switchTab(tab) {
+      const isVisual = tab === 'visual';
+      document.getElementById('tab-visual').classList.toggle('hidden', !isVisual);
+      document.getElementById('tab-persona').classList.toggle('hidden', isVisual);
+      
+      const vBtn = document.getElementById('tab-visual-btn');
+      const pBtn = document.getElementById('tab-persona-btn');
+
+      if (isVisual) {
+        vBtn.className = "flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg bg-[#1c1c27] text-white border border-[#303044] transition-all";
+        pBtn.className = "flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg text-gray-400 hover:text-gray-200 hover:bg-[#181822] transition-all";
+      } else {
+        pBtn.className = "flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg bg-[#1c1c27] text-white border border-[#303044] transition-all";
+        vBtn.className = "flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg text-gray-400 hover:text-gray-200 hover:bg-[#181822] transition-all";
+      }
+    }
+
+    function setVideoY(val) {
+      document.getElementById('tpl-video-y').value = val;
+      document.getElementById('lbl-video-y').innerText = val;
+      updateCanvas();
+    }
+
+    function setVideoAspect(aspect) {
+      currentAspect = aspect;
+      const aspectNames = {
+        '1:1': '1:1 Quadrado',
+        '4:5': '4:5 Feed Retrato',
+        '16:9': '16:9 Widescreen',
+        'free': 'Livre / Customizado'
+      };
+      document.getElementById('lbl-aspect-ratio-name').innerText = aspectNames[aspect] || 'Personalizado';
+
+      ['1-1', '4-5', '16-9', 'free'].forEach(k => {
+        const btn = document.getElementById('btn-aspect-' + k);
+        if (!btn) return;
+        if (k === aspect.replace(':', '-')) {
+          btn.className = "py-1.5 px-2 rounded-lg bg-blue-600 text-white text-xs font-bold border border-blue-500/50 shadow transition-all flex flex-col items-center";
+        } else {
+          btn.className = "py-1.5 px-2 rounded-lg bg-[#0f0f15] hover:bg-[#181824] text-gray-300 hover:text-white text-xs font-semibold border border-[#272738] transition-all flex flex-col items-center";
+        }
+      });
+
+      const scale = parseInt(document.getElementById('tpl-video-scale').value, 10) || 92;
+      const widthCanonical = Math.round(1080 * (scale / 100));
+
+      let newHeight = 1000;
+      if (aspect === '1:1') {
+        newHeight = widthCanonical;
+      } else if (aspect === '4:5') {
+        newHeight = Math.round(widthCanonical * 1.25);
+      } else if (aspect === '16:9') {
+        newHeight = Math.round(widthCanonical * (9 / 16));
+      }
+
+      if (aspect !== 'free') {
+        document.getElementById('tpl-video-height').value = newHeight;
+        document.getElementById('lbl-video-height').innerText = newHeight;
+      }
+      updateCanvas();
+    }
+
+    function applyVideoStyle(style) {
+      if (style === 'none') {
+        document.getElementById('tpl-video-radius').value = 0;
+        document.getElementById('lbl-video-radius').innerText = 0;
+        document.getElementById('tpl-video-border-w').value = 0;
+        document.getElementById('lbl-video-border-w').innerText = 0;
+        document.getElementById('tpl-video-shadow').value = 'none';
+      } else if (style === 'rounded') {
+        document.getElementById('tpl-video-radius').value = 24;
+        document.getElementById('lbl-video-radius').innerText = 24;
+        document.getElementById('tpl-video-border-w').value = 2;
+        document.getElementById('lbl-video-border-w').innerText = 2;
+        document.getElementById('tpl-video-border-color').value = '#FFFFFF';
+        document.getElementById('lbl-video-border-color').innerText = '#FFFFFF';
+        document.getElementById('tpl-video-shadow').value = 'deep';
+      } else if (style === 'neon') {
+        document.getElementById('tpl-video-radius').value = 20;
+        document.getElementById('lbl-video-radius').innerText = 20;
+        document.getElementById('tpl-video-border-w').value = 3;
+        document.getElementById('lbl-video-border-w').innerText = 3;
+        document.getElementById('tpl-video-border-color').value = '#3B82F6';
+        document.getElementById('lbl-video-border-color').innerText = '#3B82F6';
+        document.getElementById('tpl-video-shadow').value = 'glow-blue';
+      }
+      updateCanvas();
+    }
+
+    function handleExtraImageUpload(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = document.getElementById('cv-extra-image-img');
+        const content = document.getElementById('cv-extra-image-content');
+        img.src = e.target.result;
+        img.classList.remove('hidden');
+        content.classList.add('hidden');
+        document.getElementById('chk-extra-image').checked = true;
+        updateCanvas();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeExtraImage() {
+      const img = document.getElementById('cv-extra-image-img');
+      const content = document.getElementById('cv-extra-image-content');
+      img.src = '';
+      img.classList.add('hidden');
+      content.classList.remove('hidden');
+      document.getElementById('file-extra-image').value = '';
+      updateCanvas();
+    }
+
+    function applyFooterTemplate(type) {
+      const img = document.getElementById('cv-extra-image-img');
+      const content = document.getElementById('cv-extra-image-content');
+      img.src = '';
+      img.classList.add('hidden');
+      content.classList.remove('hidden');
+      document.getElementById('chk-extra-image').checked = true;
+
+      const templates = {
+        comment: `
+          <span class="text-xs font-black text-purple-200 tracking-wide uppercase flex items-center gap-1.5">
+            <span>💬</span> DEIXE SUA OPINIÃO!
+          </span>
+          <span class="text-[10px] text-gray-300 mt-1 max-w-[85%] font-medium leading-tight">Você já conhecia essa curiosidade? Comente abaixo e siga para não perder nada!</span>
+        `,
+        follow: `
+          <span class="text-xs font-black text-amber-200 tracking-wide uppercase flex items-center gap-1.5">
+            <span>🔔</span> GOSTOU DO VÍDEO?
+          </span>
+          <span class="text-[10px] text-gray-300 mt-1 max-w-[85%] font-medium leading-tight">Siga o canal para curiosidades diárias e ative o sininho!</span>
+        `,
+        deal: `
+          <span class="text-xs font-black text-emerald-200 tracking-wide uppercase flex items-center gap-1.5">
+            <span>🛒</span> OFERTA EXCLUSIVA NA BIO!
+          </span>
+          <span class="text-[10px] text-gray-300 mt-1 max-w-[85%] font-medium leading-tight">Use o cupom especial e garanta desconto por tempo limitado!</span>
+        `,
+        fact: `
+          <span class="text-xs font-black text-blue-200 tracking-wide uppercase flex items-center gap-1.5">
+            <span>💡</span> VOCÊ SABIA DISSO?
+          </span>
+          <span class="text-[10px] text-gray-300 mt-1 max-w-[85%] font-medium leading-tight">Mais de 80% das pessoas desconhecem esse detalhe impressionante!</span>
+        `
+      };
+
+      content.innerHTML = templates[type] || templates.comment;
+      updateCanvas();
+    }
+
+    function applyPreset(key) {
+      currentPresetKey = key;
+      const p = PRESETS[key];
+      if (!p) return;
+
+      // Update Top Nav active styles
+      ['curiosities', 'affiliate', 'news', 'tech'].forEach(k => {
+        const btn = document.getElementById('btn-' + k);
+        if (k === key) {
+          btn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white transition-all shadow-sm";
+        } else {
+          btn.className = "px-3 py-1.5 text-xs font-medium rounded-lg text-gray-300 hover:text-white hover:bg-[#1a1a24] transition-all";
+        }
+      });
+
+      // Populate Inputs
+      document.getElementById('tpl-name').value = p.name;
+      document.getElementById('tpl-niche').value = p.niche;
+      document.getElementById('tpl-headline-text').value = p.headline;
+      document.getElementById('tpl-headline-y').value = p.headlineY || 130;
+      document.getElementById('lbl-headline-y').innerText = p.headlineY || 130;
+      document.getElementById('tpl-font-family').value = p.font;
+      document.getElementById('tpl-font-size').value = p.fontSize;
+      document.getElementById('lbl-font-size').innerText = p.fontSize;
+      document.getElementById('tpl-text-color').value = p.textColor;
+      document.getElementById('tpl-bg-color').value = p.bgColor;
+      document.getElementById('tpl-badge-text').value = p.badgeText;
+      document.getElementById('tpl-badge-bg').value = p.badgeBg;
+      document.getElementById('tpl-badge-text-color').value = p.badgeTextColor;
+      document.getElementById('tpl-badge-y').value = p.badgeY || 45;
+      document.getElementById('lbl-badge-y').innerText = p.badgeY || 45;
+      document.getElementById('chk-badge').checked = p.badgeEnabled;
+      
+      // Video Fit, Geometry and Styling
+      document.getElementById('tpl-video-fit').value = p.videoFit || 'contain';
+      document.getElementById('tpl-video-y').value = p.videoY !== undefined ? p.videoY : 360;
+      document.getElementById('lbl-video-y').innerText = p.videoY !== undefined ? p.videoY : 360;
+      document.getElementById('tpl-video-height').value = p.videoHeight || 1000;
+      document.getElementById('lbl-video-height').innerText = p.videoHeight || 1000;
+      document.getElementById('tpl-video-scale').value = p.videoScale || 92;
+      document.getElementById('lbl-video-scale').innerText = p.videoScale || 92;
+      document.getElementById('tpl-video-radius').value = p.videoRadius || 20;
+      document.getElementById('lbl-video-radius').innerText = p.videoRadius || 20;
+      document.getElementById('tpl-video-border-w').value = p.videoBorderW !== undefined ? p.videoBorderW : 2;
+      document.getElementById('lbl-video-border-w').innerText = p.videoBorderW !== undefined ? p.videoBorderW : 2;
+      document.getElementById('tpl-video-border-color').value = p.videoBorderColor || '#3B82F6';
+      document.getElementById('lbl-video-border-color').innerText = p.videoBorderColor || '#3B82F6';
+      document.getElementById('tpl-video-shadow').value = p.videoShadow || 'deep';
+
+      // Extra Image
+      document.getElementById('chk-extra-image').checked = p.extraImageEnabled !== false;
+      document.getElementById('tpl-image-y').value = p.imageY || 1420;
+      document.getElementById('lbl-image-y').innerText = p.imageY || 1420;
+      document.getElementById('tpl-image-height').value = p.imageHeight || 340;
+      document.getElementById('lbl-image-height').innerText = p.imageHeight || 340;
+      document.getElementById('tpl-image-width').value = p.imageWidth || 92;
+      document.getElementById('lbl-image-width').innerText = p.imageWidth || 92;
+      document.getElementById('tpl-image-radius').value = p.imageRadius || 16;
+      document.getElementById('lbl-image-radius').innerText = p.imageRadius || 16;
+
+      document.getElementById('tpl-persona-role').value = p.personaRole;
+      document.getElementById('tpl-persona-tone').value = p.personaTone;
+      document.getElementById('tpl-cta').value = p.cta;
+      document.getElementById('tpl-system-prompt').value = p.prompt;
+
+      if (p.footerType) {
+        applyFooterTemplate(p.footerType);
+      }
+
+      setVideoAspect(p.videoAspect || '1:1');
+
+      // Radios
+      const radios = document.getElementsByName('conv-goal');
+      radios.forEach(r => r.checked = (r.value === p.convGoal));
+
+      // Hashtags
+      renderHashtags(p.hashtags);
+
+      // Update Canvas
+      updateCanvas();
+    }
+
+    function renderHashtags(tags) {
+      const container = document.getElementById('hashtag-container');
+      container.innerHTML = '';
+      tags.forEach(t => {
+        const span = document.createElement('span');
+        span.className = 'text-xs bg-blue-500/10 text-blue-300 border border-blue-500/20 px-2 py-0.5 rounded-md font-mono-code';
+        span.innerText = t;
+        container.appendChild(span);
+      });
+    }
+
+    function updateCanvas() {
+      const bg = document.getElementById('tpl-bg-color').value;
+      const text = document.getElementById('tpl-text-color').value;
+      const font = document.getElementById('tpl-font-family').value;
+      const fontSize = document.getElementById('tpl-font-size').value;
+      const headlineText = document.getElementById('tpl-headline-text').value;
+      const headlineY = parseInt(document.getElementById('tpl-headline-y').value, 10) || 130;
+      const showHeadline = document.getElementById('chk-headline').checked;
+      
+      const badgeText = document.getElementById('tpl-badge-text').value;
+      const badgeBg = document.getElementById('tpl-badge-bg').value;
+      const badgeColor = document.getElementById('tpl-badge-text-color').value;
+      const badgeY = parseInt(document.getElementById('tpl-badge-y').value, 10) || 45;
+      const showBadge = document.getElementById('chk-badge').checked;
+
+      const showAvatar = document.getElementById('chk-avatar').checked;
+      const showBrandName = document.getElementById('chk-brandname').checked;
+      const showWatermark = document.getElementById('chk-watermark').checked;
+      
+      const fit = document.getElementById('tpl-video-fit').value;
+      const videoY = parseInt(document.getElementById('tpl-video-y').value, 10) || 360;
+      const videoHeight = parseInt(document.getElementById('tpl-video-height').value, 10) || 1000;
+      const scale = parseInt(document.getElementById('tpl-video-scale').value, 10) || 92;
+      const radius = parseInt(document.getElementById('tpl-video-radius').value, 10) || 20;
+      const borderW = parseInt(document.getElementById('tpl-video-border-w').value, 10) || 0;
+      const borderColor = document.getElementById('tpl-video-border-color').value;
+      const shadow = document.getElementById('tpl-video-shadow').value;
+
+      // Extra image
+      const showImage = document.getElementById('chk-extra-image').checked;
+      const imageY = parseInt(document.getElementById('tpl-image-y').value, 10) || 1420;
+      const imageHeight = parseInt(document.getElementById('tpl-image-height').value, 10) || 340;
+      const imageWidth = parseInt(document.getElementById('tpl-image-width').value, 10) || 92;
+      const imageRadius = parseInt(document.getElementById('tpl-image-radius').value, 10) || 16;
+
+      // Labels
+      document.getElementById('lbl-bg-color').innerText = bg;
+      document.getElementById('lbl-text-color').innerText = text;
+      document.getElementById('lbl-badge-bg').innerText = badgeBg;
+      document.getElementById('lbl-badge-text-color').innerText = badgeColor;
+      document.getElementById('lbl-video-y').innerText = videoY;
+      document.getElementById('lbl-video-height').innerText = videoHeight;
+      document.getElementById('lbl-video-scale').innerText = scale;
+      document.getElementById('lbl-video-radius').innerText = radius;
+      document.getElementById('lbl-video-border-w').innerText = borderW;
+      document.getElementById('lbl-video-border-color').innerText = borderColor;
+      document.getElementById('lbl-headline-y').innerText = headlineY;
+      document.getElementById('lbl-badge-y').innerText = badgeY;
+      document.getElementById('lbl-image-y').innerText = imageY;
+      document.getElementById('lbl-image-height').innerText = imageHeight;
+      document.getElementById('lbl-image-width').innerText = imageWidth;
+      document.getElementById('lbl-image-radius').innerText = imageRadius;
+      document.getElementById('lbl-fit-display').innerText = fit.toUpperCase();
+
+      // Apply to Canvas Wrapper
+      document.getElementById('canvas-wrapper').style.backgroundColor = bg;
+
+      // BADGE LAYER POSITION
+      const cvBadgeWrapper = document.getElementById('cv-badge-wrapper');
+      cvBadgeWrapper.style.display = showBadge ? 'flex' : 'none';
+      cvBadgeWrapper.style.top = `${(badgeY / 1920) * 100}%`;
+      const cvBadge = document.getElementById('cv-badge');
+      cvBadge.innerText = badgeText;
+      cvBadge.style.backgroundColor = badgeBg;
+      cvBadge.style.color = badgeColor;
+
+      // BRAND HEADER POSITION (Anchored below badge)
+      const brandHeader = document.getElementById('cv-brand-header');
+      brandHeader.style.display = (showAvatar || showBrandName) ? 'flex' : 'none';
+      brandHeader.style.top = `${((badgeY + 45) / 1920) * 100}%`;
+      document.getElementById('cv-avatar').style.display = showAvatar ? 'flex' : 'none';
+      document.getElementById('cv-brand-info').style.display = showBrandName ? 'flex' : 'none';
+      const isLightBg = bg.toLowerCase() === '#ffffff' || bg.toLowerCase() === '#f8fafc';
+      document.getElementById('cv-brand-name').style.color = isLightBg ? '#111111' : '#F0F6FC';
+
+      // HEADLINE LAYER POSITION
+      const cvHeadlineWrapper = document.getElementById('cv-headline-wrapper');
+      cvHeadlineWrapper.style.display = showHeadline ? 'block' : 'none';
+      cvHeadlineWrapper.style.top = `${(headlineY / 1920) * 100}%`;
+      const cvHeadline = document.getElementById('cv-headline');
+      cvHeadline.style.color = text;
+      cvHeadline.style.fontFamily = `'${font}', sans-serif`;
+      cvHeadline.style.fontSize = (fontSize * 0.35) + 'px';
+      cvHeadline.innerText = headlineText;
+
+      // VIDEO FRAME GEOMETRY & FIT DYNAMICS
+      const cvVideo = document.getElementById('cv-video-frame');
+      const handles = cvVideo.querySelectorAll('.resize-handle');
+      const coordBadge = document.getElementById('video-coord-badge');
+      const dragHint = document.getElementById('video-drag-hint');
+      const videoDim = document.getElementById('lbl-video-dim');
+
+      if (fit === 'cover') {
+        cvVideo.style.top = '0px';
+        cvVideo.style.left = '0px';
+        cvVideo.style.width = '100%';
+        cvVideo.style.height = '100%';
+        cvVideo.style.aspectRatio = 'unset';
+        cvVideo.style.borderRadius = '0px';
+        cvVideo.style.border = 'none';
+        cvVideo.style.boxShadow = 'none';
+        cvVideo.style.cursor = 'default';
+        handles.forEach(h => h.style.display = 'none');
+        if (coordBadge) coordBadge.innerHTML = '<span>📍</span> 1080×1920 (Cover Full Bleed)';
+        if (dragHint) dragHint.style.display = 'none';
+        if (videoDim) videoDim.innerText = 'Preencher Tela (9:16 Full)';
+      } else {
+        // Contain mode
+        const topPct = (videoY / 1920) * 100;
+        const leftPct = (100 - scale) / 2;
+        const heightPct = (videoHeight / 1920) * 100;
+        const canonicalW = Math.round(1080 * (scale / 100));
+        
+        cvVideo.style.top = `${topPct}%`;
+        cvVideo.style.left = `${leftPct}%`;
+        cvVideo.style.width = `${scale}%`;
+        cvVideo.style.height = `${heightPct}%`;
+        cvVideo.style.aspectRatio = 'unset';
+        cvVideo.style.borderRadius = `${radius * 0.5}px`;
+        cvVideo.style.border = borderW > 0 ? `${borderW}px solid ${borderColor}` : '2px dashed rgba(59, 130, 246, 0.7)';
+        
+        // Shadow effects
+        let shadowCss = 'none';
+        if (shadow === 'subtle') shadowCss = '0 6px 20px rgba(0,0,0,0.4)';
+        else if (shadow === 'deep') shadowCss = '0 14px 32px rgba(0,0,0,0.7)';
+        else if (shadow === 'glow-blue') shadowCss = '0 0 24px rgba(59,130,246,0.65), 0 0 8px rgba(59,130,246,0.9)';
+        else if (shadow === 'glow-pink') shadowCss = '0 0 24px rgba(225,29,72,0.65), 0 0 8px rgba(225,29,72,0.9)';
+        cvVideo.style.boxShadow = shadowCss;
+
+        cvVideo.style.cursor = 'grab';
+        handles.forEach(h => h.style.display = 'block');
+        if (coordBadge) coordBadge.innerHTML = `<span>📍</span> Y: ${videoY}px | ${canonicalW}×${videoHeight}`;
+        if (dragHint) dragHint.style.display = 'flex';
+        if (videoDim) videoDim.innerText = `Quadro ${canonicalW}×${videoHeight}`;
+      }
+
+      // EXTRA IMAGE / FOOTER BANNER BOX
+      const cvImage = document.getElementById('cv-extra-image');
+      if (showImage && fit !== 'cover') {
+        cvImage.style.display = 'flex';
+        cvImage.style.top = `${(imageY / 1920) * 100}%`;
+        cvImage.style.left = `${(100 - imageWidth) / 2}%`;
+        cvImage.style.width = `${imageWidth}%`;
+        cvImage.style.height = `${(imageHeight / 1920) * 100}%`;
+        cvImage.style.borderRadius = `${imageRadius * 0.5}px`;
+        const imgBadge = document.getElementById('image-coord-badge');
+        if (imgBadge) imgBadge.innerHTML = `<span>🖼️</span> Y: ${imageY}px | ${Math.round(1080 * imageWidth / 100)}×${imageHeight}`;
+      } else {
+        cvImage.style.display = 'none';
+      }
+
+      // Watermark
+      document.getElementById('cv-watermark').style.display = showWatermark ? 'flex' : 'none';
+    }
+
+    // MULTI-LAYER DRAG AND DROP & RESIZING SYSTEM
+    let activeDrag = null; // { type: 'video-move' | 'video-resize-b' | 'video-resize-t' | 'headline' | 'badge' | 'image-move' | 'image-resize-b', startY, startVal, startHeight }
+    const canvasWrapper = document.getElementById('canvas-wrapper');
+    const snapGuide = document.getElementById('snap-guide-x');
+
+    function startDrag(e, type) {
+      const fit = document.getElementById('tpl-video-fit').value;
+      if (fit === 'cover' && (type.startsWith('video') || type.startsWith('image'))) return;
+
+      activeDrag = {
+        type: type,
+        startY: e.clientY,
+        videoY: parseInt(document.getElementById('tpl-video-y').value, 10) || 360,
+        videoHeight: parseInt(document.getElementById('tpl-video-height').value, 10) || 1000,
+        headlineY: parseInt(document.getElementById('tpl-headline-y').value, 10) || 130,
+        badgeY: parseInt(document.getElementById('tpl-badge-y').value, 10) || 45,
+        imageY: parseInt(document.getElementById('tpl-image-y').value, 10) || 1420,
+        imageHeight: parseInt(document.getElementById('tpl-image-height').value, 10) || 340
+      };
+
+      snapGuide.classList.remove('hidden');
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    // Bind Drag Starters
+    document.getElementById('cv-video-frame').addEventListener('pointerdown', (e) => {
+      if (e.target.id === 'handle-video-b') return startDrag(e, 'video-resize-b');
+      if (e.target.id === 'handle-video-t') return startDrag(e, 'video-resize-t');
+      startDrag(e, 'video-move');
+    });
+
+    document.getElementById('handle-video-b').addEventListener('pointerdown', (e) => startDrag(e, 'video-resize-b'));
+    document.getElementById('handle-video-t').addEventListener('pointerdown', (e) => startDrag(e, 'video-resize-t'));
+
+    document.getElementById('cv-headline-wrapper').addEventListener('pointerdown', (e) => startDrag(e, 'headline'));
+    document.getElementById('cv-badge-wrapper').addEventListener('pointerdown', (e) => startDrag(e, 'badge'));
+
+    document.getElementById('cv-extra-image').addEventListener('pointerdown', (e) => {
+      if (e.target.id === 'handle-image-b') return startDrag(e, 'image-resize-b');
+      startDrag(e, 'image-move');
+    });
+    document.getElementById('handle-image-b').addEventListener('pointerdown', (e) => startDrag(e, 'image-resize-b'));
+
+    window.addEventListener('pointermove', (e) => {
+      if (!activeDrag) return;
+      const deltaScreenY = e.clientY - activeDrag.startY;
+      const canvasHeight = canvasWrapper.clientHeight || 640;
+      const deltaCanonical = Math.round(deltaScreenY * (1920 / canvasHeight));
+
+      if (activeDrag.type === 'video-move') {
+        let newY = Math.max(50, Math.min(950, activeDrag.videoY + deltaCanonical));
+        document.getElementById('tpl-video-y').value = newY;
+        document.getElementById('lbl-video-y').innerText = newY;
+      } else if (activeDrag.type === 'video-resize-b') {
+        let newH = Math.max(300, Math.min(1500, activeDrag.videoHeight + deltaCanonical));
+        document.getElementById('tpl-video-height').value = newH;
+        document.getElementById('lbl-video-height').innerText = newH;
+        setVideoAspect('free');
+      } else if (activeDrag.type === 'video-resize-t') {
+        let newH = Math.max(300, Math.min(1500, activeDrag.videoHeight - deltaCanonical));
+        let newY = Math.max(50, Math.min(950, activeDrag.videoY + deltaCanonical));
+        document.getElementById('tpl-video-height').value = newH;
+        document.getElementById('lbl-video-height').innerText = newH;
+        document.getElementById('tpl-video-y').value = newY;
+        document.getElementById('lbl-video-y').innerText = newY;
+        setVideoAspect('free');
+      } else if (activeDrag.type === 'headline') {
+        let newY = Math.max(40, Math.min(600, activeDrag.headlineY + deltaCanonical));
+        document.getElementById('tpl-headline-y').value = newY;
+        document.getElementById('lbl-headline-y').innerText = newY;
+      } else if (activeDrag.type === 'badge') {
+        let newY = Math.max(20, Math.min(400, activeDrag.badgeY + deltaCanonical));
+        document.getElementById('tpl-badge-y').value = newY;
+        document.getElementById('lbl-badge-y').innerText = newY;
+      } else if (activeDrag.type === 'image-move') {
+        let newY = Math.max(700, Math.min(1750, activeDrag.imageY + deltaCanonical));
+        document.getElementById('tpl-image-y').value = newY;
+        document.getElementById('lbl-image-y').innerText = newY;
+      } else if (activeDrag.type === 'image-resize-b') {
+        let newH = Math.max(100, Math.min(700, activeDrag.imageHeight + deltaCanonical));
+        document.getElementById('tpl-image-height').value = newH;
+        document.getElementById('lbl-image-height').innerText = newH;
+      }
+
+      updateCanvas();
+    });
+
+    function endAllDrag() {
+      if (activeDrag) {
+        activeDrag = null;
+        snapGuide.classList.add('hidden');
+      }
+    }
+
+    window.addEventListener('pointerup', endAllDrag);
+    window.addEventListener('pointercancel', endAllDrag);
+
+    function toggleSafeZones() {
+      const chk = document.getElementById('chk-safezone').checked;
+      document.getElementById('safezone-overlay').classList.toggle('hidden', !chk);
+    }
+
+    let sampleMediaActive = false;
+    function toggleSampleMedia() {
+      sampleMediaActive = !sampleMediaActive;
+      document.getElementById('video-wireframe').classList.toggle('hidden', sampleMediaActive);
+      document.getElementById('video-sample').classList.toggle('hidden', !sampleMediaActive);
+      const btn = document.getElementById('btn-sample-media');
+      btn.className = sampleMediaActive 
+        ? "px-2 py-0.5 rounded bg-blue-600 text-white text-[11px] font-bold"
+        : "px-2 py-0.5 rounded bg-[#1f1f2c] border border-[#34344a] text-gray-300 hover:text-white text-[11px] font-medium";
+    }
+
+    function runAIAssistant() {
+      const input = document.getElementById('ai-assistant-input').value.trim();
+      const btn = document.getElementById('btn-run-ai');
+      const icon = document.getElementById('ai-icon');
+      const text = document.getElementById('ai-text');
+
+      icon.innerText = '⏳';
+      text.innerText = 'Criando Persona...';
+      btn.disabled = true;
+
+      setTimeout(() => {
+        icon.innerText = '✨';
+        text.innerText = 'Gerar com IA';
+        btn.disabled = false;
+
+        document.getElementById('tpl-name').value = input ? `Template: ${input.slice(0, 30)}...` : "Curiosidades Científicas & Mistérios";
+        document.getElementById('tpl-persona-role').value = "Roteirista investigativo e astrofísico digital";
+        document.getElementById('tpl-persona-tone').value = "Cativante, misterioso, profundo e reflexivo";
+        document.getElementById('tpl-cta').value = "Qual mistério do universo mais te fascina? Comente!";
+        document.getElementById('tpl-headline-text').value = "A COISA MAIS ANTIGA DO UNIVERSO FOI ENCONTRADA!";
+        document.getElementById('tpl-system-prompt').value = `Você é Roteirista investigativo do canal.
+Analise a transcrição "{transcript}" e os frames espaciais.
+Gere 1 headline instigante sem entregar o final imediatamente.
+Na legenda, conte o fato em 3 atos e termine perguntando a opinião do seguidor.`;
+        
+        renderHashtags(["#astronomia", "#universo", "#curiosidades", "#misterios", "#ciencia"]);
+        updateCanvas();
+        alert('✨ Persona e Prompts estruturados gerados com sucesso!');
+      }, 700);
+    }
+
+    function saveSimulationSuccess() {
+      const name = document.getElementById('tpl-name').value;
+      alert(`✅ Template "${name}" salvo com sucesso no armazenamento local!\n\nPronto para ser consumido pelo motor FFmpeg e pela IA.`);
+    }
+
+    function resetCurrentTemplate() {
+      applyPreset(currentPresetKey);
+    }
+
+    // Initialize on load
+    applyPreset('curiosities');
+  </script>
+</body>
+</html>

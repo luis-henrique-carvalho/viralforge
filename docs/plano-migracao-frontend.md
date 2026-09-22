@@ -220,9 +220,12 @@ flowchart LR
     Fase0["✅ Fase 0: Setup & Theme"] --> Fase1["✅ Fase 1: Shell, Router & Testes"]
     Fase1 --> Fase2["✅ Fase 2: Viral Studio Core"]
     Fase2 --> Fase3["✅ Fase 3: Viral Editor (CONCLUÍDO)"]
-    Fase3 --> Fase4["🎯 Fase 4: Discovery (PRÓXIMA)"]
-    Fase4 --> Fase5["⏳ Fase 5: Clips & Settings"]
-    Fase5 --> Fase6["⏳ Fase 6: Homologação & Docker"]
+    Fase3 --> Fase4["🎯 Fase 4: Fila & Publicação (FECHA V1)"]
+    Fase4 -.-> Fase5["⏳ Fase 5: Templates Konva (V2)"]
+    Fase5 -.-> Fase6["⏳ Fase 6: Fila Global /publishing (V2)"]
+    Fase6 -.-> Fase7["⏳ Fase 7: Discovery (V2)"]
+    Fase7 -.-> Fase8["⏳ Fase 8: Clips & Settings (V2)"]
+    Fase8 -.-> Fase9["⏳ Fase 9: Homologação & Docker (V2)"]
 
     classDef completed fill:#059669,stroke:#10b981,color:#ffffff;
     classDef current fill:#2563eb,stroke:#60a5fa,color:#ffffff,stroke-width:3px;
@@ -230,7 +233,7 @@ flowchart LR
 
     class Fase0,Fase1,Fase2,Fase3 completed;
     class Fase4 current;
-    class Fase5,Fase6 pending;
+    class Fase5,Fase6,Fase7,Fase8,Fase9 pending;
 ```
 
 ---
@@ -310,18 +313,79 @@ flowchart LR
     - [x] `signals-audio-section.tsx`: Transcrição de áudio com detecção de fala e `<ScrollArea>`.
     - [x] `signals-metadata-section.tsx`: Metadados do post original e métricas de engajamento (views, likes, comments, reposts) com `<ScrollArea>`.
     - [x] `observability-telemetry-view.tsx`: 6 cards de métricas (Tokens, Custo USD, Latência, TPS, Modelo), Prompt completo e JSON bruto com cópia rápida.
-    - [x] `observability-timeline-view.tsx`: Linha do tempo cronológica com Badges de status semânticos e `<ScrollArea>` oficial.
-- [x] **Rigor Shadcn-First & Endurecimento do Linter:**
-  - [x] `scripts/check_shadcn_usage.py` aprimorado com Camada 3 ativa para `<ScrollArea>`, eliminando scrollbars manuais e bypasses permissivos de terminal.
-  - [x] Todos os componentes refatorados para `<Card>`, `<CardContent>`, `<ScrollArea>` e `<Badge>` sem classes legadas `space-y-*`.
-- [x] **Camada de Estado, Serviços e Testes:**
-  - [x] Form management com React Hook Form + Zod (`use-item-editor.ts` + `item-editor.schema.ts`).
-  - [x] Mocks MSW v2, 46 arquivos de teste e **135 testes unitários/integração passando com cobertura global >90%**.
-  - [x] Build de produção Vite gerado com sucesso.
+- [x] Roteador com TanStack Router em modo file-based (`src/routes/`).
+- [x] Shell base com `AppSidebar` colapsável e `TopNav` com status de rede.
+- [x] Infraestrutura de testes com Vitest, Happy-DOM, Testing Library e MSW v2 (`web/src/mocks/server.ts`).
+- [x] Testes E2E com Playwright (`web/e2e/app-shell.spec.ts`).
 
 ---
 
-### ⏳ Fase 4: Descoberta Multiplataforma de Tendências [PENDENTE]
+### ✅ Fase 2: Viral Studio Core (Lotes & Marcas) [CONCLUÍDO]
+- [x] Schemas Zod para Brands (`brand.schema.ts`) e Batches (`batch.schema.ts`).
+- [x] Hooks TanStack Query para CRUD de lotes e marcas com invalidação de cache otimista.
+- [x] Componentes: `CreateBatchDialog`, `BrandFormDialog`, `BatchCard`, `BrandCard`.
+- [x] Views `/viral-studio` e `/viral-studio/brands` com cobertura rigorosa de testes unitários.
+
+---
+
+### ✅ Fase 3: Viral Editor Widescreen & Curadoria Modular [CONCLUÍDO]
+- [x] Desacoplamento do monólito em página dedicada (`/viral-studio/$id/items/$itemId`).
+- [x] Player de vídeo 9:16 central com Safe Zones (TikTok/Reels/Shorts) e controle de velocidade.
+- [x] Hub de observabilidade com 3 abas: *Revisão & Cópia*, *Galeria de Keyframes*, *Telemetria & Logs*.
+- [x] Seletor e carrossel de ganchos sugeridos pela IA com re-renderização instantânea.
+- [x] Form management com React Hook Form + Zod (`use-item-editor.ts` + `item-editor.schema.ts`).
+- [x] Mocks MSW v2, 46 arquivos de teste e **135 testes unitários/integração passando com cobertura global >90%**.
+- [x] Build de produção Vite gerado com sucesso.
+
+---
+
+### 🎯 Fase 4: Publicação Inteligente & Fila Contínua (Zernio) [ATUAL / EM EXECUÇÃO — FECHA V1]
+> **Especificação Completa:** [`docs/publicacao-e-fila-continua.md`](publicacao-e-fila-continua.md)  
+> **ADR de Referência:** [`docs/adr/0001-ports-and-adapters-publishing.md`](adr/0001-ports-and-adapters-publishing.md)  
+> **Metodologia:** `/codebase-design` (Módulos Profundos, Costuras e Dois Adaptadores)
+
+- [ ] **Backend: Ports & Adapters e Fila Contínua:**
+  - [ ] Implementar a porta de domínio `SocialPublisherPort` em `clippyme.domain.social_publisher_port`.
+  - [ ] Implementar `ZernioPublisherAdapter` (produção com HTTP 429 backoff) e `MockPublisherAdapter` (testes offline).
+  - [ ] Implementar o algoritmo de fila contínua `get_next_available_slots(account_id, count)` sem colisão de horários no `viral_studio_store.py`.
+  - [ ] Criar endpoint `GET /api/viral-studio/publishing/preview-slots` para projeção transparente de datas no modal.
+  - [ ] Criar endpoint `POST /api/viral-studio/publish` disparando através da `SocialPublisherPort`.
+  - [ ] Criar endpoint `POST /api/viral-studio/publishing/{item_id}/cancel` para reversão de agendamento.
+- [ ] **Frontend: Modal, Ações e Indicadores:**
+  - [ ] `ViralPublishDialog`: modal oficial com seletor de contas, modos "Publicar Agora" e "Fila Contínua", tabela de projeção de datas/horários e acompanhamento de disparo item a item.
+  - [ ] Conectar o botão "Publicar ({count})" no `BulkActionsBar` da visão do lote (`batch-results-view.tsx`).
+  - [ ] Adicionar botão de publicação rápida no `ItemCard` e no `ViralEditorBottomBar` para vídeos com status `APPROVED`.
+  - [ ] Exibir pill "Agendado para DD/MM às HH:MM" com botão de ação rápida para "Cancelar Agendamento" diretamente no card do vídeo.
+  - [ ] Adicionar aba "Agendados / Publicados" no `BatchFilterToolbar`.
+
+---
+
+### ⏳ Fase 5: Estúdio de Templates Universais & IA Modular (Konva 9:16) [V2 — POSTERGADO]
+> **Especificação Completa:** [`docs/viral-studio-template-architecture.md`](viral-studio-template-architecture.md)  
+> **ADR de Referência:** [`docs/adr/0002-decoupled-templates-personas-konva.md`](adr/0002-decoupled-templates-personas-konva.md)  
+> **Protótipos Validados:** [`docs/prototypes/viral-studio-template-simulation.html`](prototypes/viral-studio-template-simulation.html) e [`docs/prototypes/dynamic-generation-tasks-simulation.html`](prototypes/dynamic-generation-tasks-simulation.html)
+
+- [ ] **Backend: Schemas, Store, CopyEngine & Renderer:**
+  - [ ] Implementar `GenerationTask` e atualizar `VisualTemplate` com 35+ campos (geometria 1080x1920, altura 400-1500px, bordas, rodapé e lista de `generation_tasks`).
+  - [ ] Atualizar `AICopyData` com `custom_outputs: Dict[str, Any]` preservando retrocompatibilidade total.
+  - [ ] Inicializar os 4 templates de fábrica universais no `viral_studio_store.py` (`curiosities-viral`, `classic-affiliate`, `quick-facts-news`, `tech-review`).
+  - [ ] Refatorar `viral_studio_copy.py` (`CopyEngine`): montagem dinâmica de prompt por tarefas ativas, JSON Schema dinâmico sob demanda e desativação de manchetes em templates de vídeo limpo (*Clean Video Mode*).
+  - [ ] Refatorar `viral_studio_renderer.py`: desenhar selo em `badge_y`, headline em `headline_y`, máscara de cantos arredondados (`video_radius`), moldura colorida e sobreposição do card/imagem extra de rodapé.
+- [ ] **Frontend: TemplateStudio Workstation (`react-konva`):**
+  - [ ] Criar o modal `TemplateEditorModal.tsx` dual-pane integrado aos componentes Shadcn e `react-konva`.
+  - [ ] Implementar o canvas 1080×1920 com manipulação livre de camadas, alças verticais de altura do vídeo e guia magnética central (*Snap Guide*).
+  - [ ] Implementar a aba "Persona & Tarefas de IA" com catálogo de blocos (+ Adicionar Tarefa de IA: Headline, Legenda, Título, Rodapé, Quiz, Imagem IA) e inserção de tags dinâmicas.
+
+---
+
+### ⏳ Fase 6: Central Dedicada de Fila e Calendário (`/publishing`) [V2 — POSTERGADO]
+- [ ] `views/publishing-queue-view.tsx` + rota `_app/publishing.tsx`: Tela de gestão e calendário global da fila com filtros por rede/conta, miniatura com preview, reagendamento e cancelamento.
+- [ ] Item "Fila de Postagens" adicionado ao menu lateral `AppSidebar`.
+- [ ] Endpoint `PATCH /api/viral-studio/publishing/{item_id}/reschedule`.
+
+---
+
+### ⏳ Fase 7: Descoberta Multiplataforma de Tendências [V2 — POSTERGADO]
 - [ ] Implementar `features/discovery/` com integração ao endpoint `/api/discovery/search`.
 - [ ] Criar barra de busca unificada por hashtag/palavra-chave e filtros por plataforma (TikTok, Instagram, YouTube).
 - [ ] Implementar card de tendências com métricas de engajamento e cálculo de viral score.
@@ -329,7 +393,7 @@ flowchart LR
 
 ---
 
-### ⏳ Fase 5: Pipeline Tradicional de Cortes & Configurações [PENDENTE]
+### ⏳ Fase 8: Pipeline Tradicional de Cortes & Configurações [V2 — POSTERGADO]
 - [ ] Migrar submissão de vídeos longos para cortes (`features/pipeline-clips/`).
 - [ ] Implementar a tela de configurações (`features/settings/`):
   - [ ] Gerenciamento seguro de API keys (Gemini, Deepgram, ElevenLabs).
@@ -339,7 +403,7 @@ flowchart LR
 
 ---
 
-### ⏳ Fase 6: Homologação, E2E & Substituição no Docker [PENDENTE]
+### ⏳ Fase 9: Homologação, E2E & Substituição no Docker [V2 — POSTERGADO]
 - [ ] Execução completa da suíte de testes unitários, integração e E2E Playwright.
 - [ ] Atualizar `docker-compose.yml` e `Dockerfile` para o build do novo `web/`.
 - [ ] Validar containers em desenvolvimento e produção.
