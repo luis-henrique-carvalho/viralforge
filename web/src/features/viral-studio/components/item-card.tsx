@@ -150,14 +150,15 @@ export function ItemCard({
         {/* Title and Mini Icon Buttons */}
         <div className="flex items-center justify-between gap-2 min-w-0">
           <div className="min-w-0 flex-1">
-            <button
+            <Button
+              variant="link"
               type="button"
               onClick={handleEdit}
-              className="text-left text-xs sm:text-[13px] font-semibold tracking-tight text-foreground hover:text-primary transition-colors truncate block w-full focus:outline-none"
+              className="p-0 h-auto text-left text-xs sm:text-[13px] font-semibold tracking-tight text-foreground hover:text-primary transition-colors truncate block w-full justify-start hover:no-underline"
               title={`${headline} (Clique para editar)`}
             >
               {headline}
-            </button>
+            </Button>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">

@@ -1,4 +1,5 @@
 import { Loader2 } from 'lucide-react'
+import { Separator } from '@/components/ui/separator'
 
 type StatCellTone = 'neutral' | 'success' | 'warning' | 'danger' | 'muted'
 
@@ -30,7 +31,7 @@ export function StatCell({
   const styles = toneStyles[tone]
   return (
     <div className="flex flex-col min-w-0">
-      <div className={`h-0.5 w-full ${styles.bar}`} />
+      <Separator className={`h-0.5 w-full ${styles.bar}`} />
       <div className="flex flex-col gap-1 px-5 py-4 sm:py-5 min-w-0">
         <span className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-widest truncate select-none">
           {label}

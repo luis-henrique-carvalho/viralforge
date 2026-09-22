@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle2, Film, Link2, Plus, Trash2, FileText } from '
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { VideoTagItem } from './video-tag-item'
 import { BulkPasteCard } from './bulk-paste-card'
 import type { ViralItemInput } from '../data/batch.types'
@@ -224,19 +225,21 @@ export function UrlParserInput({ value, onChange, error }: UrlParserInputProps) 
       </div>
 
       {items.length > 0 ? (
-        <div className="max-h-72 overflow-y-auto space-y-2 rounded-xl border border-border/80 bg-card/40 p-2 sm:p-3">
-          {items.map((item, idx) => {
-            const itemKey = `${item.source_url}::${item.product_code ?? ''}::${item.manual_headline ?? ''}::item-${idx}`
-            return (
-              <VideoTagItem
-                key={itemKey}
-                item={item}
-                index={idx}
-                onRemove={handleRemoveItem}
-              />
-            )
-          })}
-        </div>
+        <ScrollArea className="max-h-72 rounded-xl border border-border/80 bg-card/40 p-2 sm:p-3">
+          <div className="space-y-2">
+            {items.map((item, idx) => {
+              const itemKey = `${item.source_url}::${item.product_code ?? ''}::${item.manual_headline ?? ''}::item-${idx}`
+              return (
+                <VideoTagItem
+                  key={itemKey}
+                  item={item}
+                  index={idx}
+                  onRemove={handleRemoveItem}
+                />
+              )
+            })}
+          </div>
+        </ScrollArea>
       ) : (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/80 bg-card/20 p-8 text-center space-y-2">
           <div className="rounded-full bg-primary/10 p-3 text-primary">

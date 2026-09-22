@@ -67,7 +67,7 @@ describe('ItemDetailSheet', () => {
     await user.click(screen.getByRole('tab', { name: /Telemetria IA/i }))
     await waitFor(() => {
       expect(screen.getByText('gemini-2.5-flash')).toBeInTheDocument()
-      expect(screen.getByText('840ms')).toBeInTheDocument()
+      expect(screen.getByText('840 ms')).toBeInTheDocument()
     })
 
     // Switch to Logs tab
@@ -106,7 +106,7 @@ describe('ItemDetailSheet', () => {
 
     // Switch to Logs tab when empty
     await user.click(screen.getByRole('tab', { name: /Logs/i }))
-    expect(screen.getByText('Nenhum log gravado para este job.')).toBeInTheDocument()
+    expect(screen.getByText('Nenhum log registrado para este item.')).toBeInTheDocument()
 
     // Retry button in footer
     await user.click(screen.getByText('Tentar Novamente'))

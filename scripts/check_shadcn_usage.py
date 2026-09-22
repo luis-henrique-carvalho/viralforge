@@ -280,7 +280,39 @@ def main() -> None:
         sys.exit(1)
 
     all_violations: list[dict] = []
-    for tsx_file in web_src.rglob("*.tsx"):
+    tsx_files = list(web_src.rglob("*.tsx"))
+
+    # ── Camada 4: Auditoria de Arquivos sem imports Shadcn UI ─────────────────
+    # Detecta componentes com estrutura JSX substancial (>50 linhas) que não
+    # importam nenhum componente de @/components/ui/*.
+    for tsx_file in tsx_files:
+        if is_excluded(tsx_file, web_src):
+            continue
+        try:
+            content = tsx_file.read_text(encoding="utf-8")
+            loc = len(content.splitlines())
+            has_shadcn = bool(re.search(r'from\s+["\']@/components/ui/', content))
+            has_bypass = "shadcn-ignore" in content
+            
+            if loc >= 50 and not has_shadcn and not has_bypass:
+                rel = tsx_file.relative_to(web_src.parent.parent).as_posix()
+                all_violations.append({
+                    "layer": 4,
+                    "severity": "warning",
+                    "file": rel,
+                    "line": 1,
+                    "content": f"Arquivo possui {loc} linhas de UI sem nenhum import de '@/components/ui/*'",
+                    "message": (
+                        "COMPONENTE SEM USO DE SHADCN UI. "
+                        "Este arquivo possui estrutura de interface considerável mas não compõe nenhum componente "
+                        "do catálogo Shadcn (ex: Card, Badge, Button, AspectRatio, Skeleton, Alert, Separator, etc.). "
+                        "Refatore para compor o catálogo Shadcn ou adicione '// shadcn-ignore: <motivo>' se for um componente puramente customizado."
+                    ),
+                })
+        except Exception:
+            pass
+
+    for tsx_file in tsx_files:
         if is_excluded(tsx_file, web_src):
             continue
         all_violations.extend(scan_file(tsx_file, web_src))

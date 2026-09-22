@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { AlertCircle, Film, Loader2, Pause, Play, Sparkles } from 'lucide-react'
+import { Card } from '@/components/ui/card'
 import { getViralVideoUrl } from '../services/viral-media.utils'
 import type { ViralItem } from '../data/batch.types'
 
@@ -40,8 +41,8 @@ export function VideoPreviewCard({ item, className = '', children }: VideoPrevie
   const videoUrl = getViralVideoUrl(item)
 
   return (
-    <div
-      className={`relative aspect-[9/16] w-full overflow-hidden rounded-[11px] bg-zinc-950 border border-zinc-800/80 flex items-center justify-center group select-none shadow-sm transition-all ${className}`}
+    <Card
+      className={`relative aspect-[9/16] w-full overflow-hidden rounded-[11px] bg-zinc-950 border border-zinc-800/80 flex items-center justify-center group select-none shadow-sm transition-all gap-0 py-0 ${className}`}
       onClick={isReady && videoUrl ? togglePlay : undefined}
       role={isReady && videoUrl ? 'button' : undefined}
       tabIndex={isReady && videoUrl ? 0 : undefined}
@@ -147,6 +148,6 @@ export function VideoPreviewCard({ item, className = '', children }: VideoPrevie
           {children}
         </div>
       )}
-    </div>
+    </Card>
   )
 }

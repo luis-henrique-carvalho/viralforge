@@ -3,6 +3,7 @@ import { Check, Copy, Eye, Heart, MessageSquare, Repeat } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { toast } from 'sonner'
 
 export interface PostMetadata {
@@ -128,9 +129,9 @@ export function SignalsMetadataSection({ metadata }: SignalsMetadataSectionProps
             <span className="font-semibold text-muted-foreground block text-[11px]">
               Descrição Original:
             </span>
-            <div className="max-h-20 overflow-y-auto rounded-md border border-border/60 bg-muted/30 p-2 text-xs text-foreground/85 leading-relaxed">
+            <ScrollArea className="max-h-20 rounded-md border border-border/60 bg-muted/30 p-2 text-xs text-foreground/85 leading-relaxed">
               {metadata.caption}
-            </div>
+            </ScrollArea>
           </div>
         )}
 

@@ -3,6 +3,7 @@ import { Check, Copy, Mic, Music } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { toast } from 'sonner'
 
 interface SignalsAudioSectionProps {
@@ -66,9 +67,9 @@ export function SignalsAudioSection({ transcript, transcriptWords }: SignalsAudi
 
       <CardContent className="p-3 pt-1">
         {hasSpeech ? (
-          <div className="max-h-28 overflow-y-auto rounded-md border border-border/60 bg-muted/30 p-2.5 text-xs text-foreground/90 leading-relaxed">
+          <ScrollArea className="max-h-28 rounded-md border border-border/60 bg-muted/30 p-2.5 text-xs text-foreground/90 leading-relaxed">
             {transcript}
-          </div>
+          </ScrollArea>
         ) : (
           <p className="text-xs text-muted-foreground italic">
             Nenhuma faixa de voz identificada no áudio (conteúdo com trilha sonora ou ruído

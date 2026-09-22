@@ -84,9 +84,11 @@ export function ItemDetailCopyTab({ item, aiCopy }: ItemDetailCopyTabProps) {
             <Copy className="size-3 mr-1" /> Copiar Legenda
           </Button>
         </div>
-        <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs leading-relaxed whitespace-pre-wrap">
-          {item.caption || aiCopy?.caption || 'Legenda comercial não gerada.'}
-        </div>
+        <Card className="border-border bg-muted/40 shadow-none">
+          <CardContent className="p-3 text-xs leading-relaxed whitespace-pre-wrap">
+            {item.caption || aiCopy?.caption || 'Legenda comercial não gerada.'}
+          </CardContent>
+        </Card>
       </div>
     </TabsContent>
   )

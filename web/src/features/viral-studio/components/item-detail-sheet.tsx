@@ -39,7 +39,6 @@ export function ItemDetailSheet({
 
   const aiCopy = item.ai_copy
   const logs = item.logs || []
-  const telemetry = item.ai_telemetry || {}
 
   return (
     <Sheet
@@ -47,7 +46,7 @@ export function ItemDetailSheet({
       onOpenChange={(open) => !open && onClose()}
     >
       <SheetContent className="w-full sm:max-w-xl flex flex-col gap-0 p-0 overflow-hidden">
-        <SheetHeader className="p-6 pb-4 border-b border-border">
+        <SheetHeader className="p-6 pb-4 border-b border-border shrink-0">
           <div className="flex items-center justify-between gap-2">
             <Badge
               variant="outline"
@@ -67,9 +66,9 @@ export function ItemDetailSheet({
 
         <Tabs
           defaultValue="copy"
-          className="flex-1 flex flex-col overflow-hidden"
+          className="flex-1 flex flex-col overflow-hidden min-h-0"
         >
-          <div className="px-6 border-b border-border bg-muted/20">
+          <div className="px-6 border-b border-border bg-muted/20 shrink-0">
             <TabsList className="w-full justify-start h-10 bg-transparent p-0 gap-4">
               <TabsTrigger
                 value="copy"
@@ -95,20 +94,19 @@ export function ItemDetailSheet({
             </TabsList>
           </div>
 
-          <ScrollArea className="flex-1 p-6">
-            <ItemDetailCopyTab
-              item={item}
-              aiCopy={aiCopy}
-            />
-            <ItemDetailTelemetryTab
-              item={item}
-              telemetry={telemetry}
-            />
-            <ItemDetailLogsTab logs={logs} />
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="p-6">
+              <ItemDetailCopyTab
+                item={item}
+                aiCopy={aiCopy}
+              />
+              <ItemDetailTelemetryTab item={item} />
+              <ItemDetailLogsTab item={item} />
+            </div>
           </ScrollArea>
         </Tabs>
 
-        <div className="p-4 border-t border-border bg-background flex items-center justify-end gap-2">
+        <div className="p-4 border-t border-border bg-background flex items-center justify-end gap-2 shrink-0">
           {item.status === 'READY_FOR_REVIEW' && onApprove && (
             <Button
               size="sm"

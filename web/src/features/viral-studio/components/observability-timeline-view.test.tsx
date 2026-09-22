@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '@/test-utils/render'
 import { ObservabilityTimelineView } from './observability-timeline-view'
 import type { ViralItem } from '../data/batch.types'
@@ -72,4 +73,17 @@ describe('ObservabilityTimelineView', () => {
     renderWithProviders(<ObservabilityTimelineView item={emptyItem} />)
     expect(screen.getByText('Nenhum log registrado para este item.')).toBeInTheDocument()
   })
+
+  it('copies formatted logs to clipboard when clicking Copiar Logs button', async () => {
+    const user = userEvent.setup()
+    const writeTextSpy = vi.spyOn(navigator.clipboard, 'writeText')
+
+    renderWithProviders(<ObservabilityTimelineView item={itemWithLogs} />)
+    const copyBtn = screen.getByRole('button', { name: /Copiar Logs/i })
+    await user.click(copyBtn)
+
+    expect(writeTextSpy).toHaveBeenCalled()
+    expect(screen.getByText('Copiado')).toBeInTheDocument()
+  })
 })
+
