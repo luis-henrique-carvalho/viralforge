@@ -56,29 +56,36 @@ export function AppSidebar() {
       className="border-r border-border bg-sidebar/95 backdrop-blur-md"
     >
       {/* Brand Header */}
-      <SidebarHeader className="border-b border-border/50 px-4 py-3.5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20">
-            <Sparkles className="h-5 w-5" />
-          </div>
-          <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-            <span className="text-base font-bold tracking-tight text-foreground">
-              Viral<span className="font-black text-primary">Forge</span>
-            </span>
-            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              AI Video Studio
-            </span>
-          </div>
-        </div>
+      <SidebarHeader className="border-b border-border/50 p-2 group-data-[collapsible=icon]:p-1.5">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="lg"
+              className="h-12 rounded-xl transition-all hover:bg-transparent group-data-[collapsible=icon]:!h-10 group-data-[collapsible=icon]:!w-10 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center"
+            >
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20">
+                <Sparkles className="size-5" />
+              </div>
+              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                <span className="truncate font-bold tracking-tight text-foreground">
+                  Viral<span className="font-black text-primary">Forge</span>
+                </span>
+                <span className="truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  AI Video Studio
+                </span>
+              </div>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
 
       {/* Main Navigation */}
-      <SidebarContent className="px-2 py-4">
+      <SidebarContent className="px-2 py-4 group-data-[collapsible=icon]:px-1.5">
         <SidebarGroup>
-          <SidebarGroupLabel className="px-3 text-[11px] font-semibold tracking-wider text-muted-foreground/70 uppercase">
+          <SidebarGroupLabel className="px-3 text-[11px] font-semibold tracking-wider text-muted-foreground/70 uppercase group-data-[collapsible=icon]:hidden">
             Estúdio & Criação
           </SidebarGroupLabel>
-          <SidebarGroupContent className="mt-2">
+          <SidebarGroupContent className="mt-2 group-data-[collapsible=icon]:mt-0">
             <SidebarMenu className="space-y-1.5">
               {NAV_ITEMS.map((item) => {
                 const Icon = item.icon
@@ -86,12 +93,15 @@ export function AppSidebar() {
                   currentPath === item.to || (item.to !== '/' && currentPath.startsWith(item.to))
 
                 return (
-                  <SidebarMenuItem key={item.to}>
+                  <SidebarMenuItem
+                    key={item.to}
+                    className="flex justify-center"
+                  >
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
                       tooltip={item.label}
-                      className={`h-11 rounded-2xl px-3.5 text-sm font-medium transition-all ${
+                      className={`h-11 rounded-2xl px-3.5 text-sm font-medium transition-all group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:!rounded-xl group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center ${
                         isActive
                           ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/30 hover:bg-primary/95 hover:text-primary-foreground data-[active=true]:bg-primary data-[active=true]:text-primary-foreground'
                           : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground'
@@ -99,20 +109,22 @@ export function AppSidebar() {
                     >
                       <Link
                         to={item.to}
-                        className="flex items-center gap-3"
+                        className="flex w-full items-center gap-3 group-data-[collapsible=icon]:justify-center"
                       >
                         <Icon
-                          className={`h-4 w-4 shrink-0 transition-transform ${
+                          className={`size-4 shrink-0 transition-transform ${
                             isActive ? 'text-primary-foreground' : 'text-muted-foreground'
                           }`}
                         />
-                        <span className="truncate">{item.label}</span>
+                        <span className="truncate group-data-[collapsible=icon]:hidden">
+                          {item.label}
+                        </span>
                       </Link>
                     </SidebarMenuButton>
 
                     {item.badge && (
                       <SidebarMenuBadge
-                        className={`right-2.5 rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider ${
+                        className={`right-2.5 rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider group-data-[collapsible=icon]:hidden ${
                           isActive
                             ? 'border-white/30 bg-white/20 text-white'
                             : 'border-border/80 bg-muted/40 text-muted-foreground'
