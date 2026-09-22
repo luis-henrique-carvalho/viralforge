@@ -25,18 +25,26 @@ export function BatchCard({ batch }: BatchCardProps) {
   const isAllFailed = total > 0 && failedCount === total
   const isCompleted = total > 0 && processingCount === 0 && !isAllFailed
 
+  const rawId = batch.batch_id || batch.id
+
   return (
-    <Card className="flex flex-col justify-between border-border bg-card/60 backdrop-blur-xs transition-all hover:border-primary/40 hover:shadow-md">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
+    <Card className="flex flex-col justify-between border-border bg-card/60 backdrop-blur-xs transition-all hover:border-primary/40 hover:shadow-md min-w-0">
+      <CardHeader className="p-4 sm:p-5 pb-3">
+        <div className="flex items-start justify-between gap-2 min-w-0">
+          <div className="space-y-1 min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 min-w-0">
               <Layers className="size-4 text-primary shrink-0" />
-              <CardTitle className="text-base font-semibold tracking-tight text-foreground truncate max-w-[200px]">
-                {batch.batch_id || batch.id}
+              <CardTitle
+                className="text-sm sm:text-base font-semibold tracking-tight text-foreground truncate"
+                title={rawId}
+              >
+                {rawId}
               </CardTitle>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p
+              className="text-xs text-muted-foreground truncate"
+              title={`${batch.brand_id} ${batch.model ? `· ${batch.model}` : ''}`}
+            >
               Marca: <span className="font-medium text-foreground">{batch.brand_id}</span>
               {batch.model && (
                 <>

@@ -75,7 +75,7 @@ export function ViralStudioView() {
 
         {/* Loading Skeletons */}
         {isLoading && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 w-full min-w-0">
             {[1, 2, 3].map((n) => (
               <Card
                 key={n}
@@ -100,7 +100,7 @@ export function ViralStudioView() {
 
         {/* Batches Grid */}
         {!isLoading && batches.length > 0 && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:gap-5 sm:grid-cols-2 xl:grid-cols-3 w-full min-w-0">
             {batches.map((batch) => (
               <BatchCard
                 key={batch.batch_id || batch.id}

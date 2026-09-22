@@ -97,7 +97,15 @@ if [ "$run_web" = true ]; then
   echo -e "${YELLOW}${BOLD}  2. FRONTEND WEB (web/ — Pirâmide de Testes & Build)${RESET}"
   echo -e "${YELLOW}${BOLD}=====================================================${RESET}"
 
-  step "[Web 1/4] TypeScript Typecheck (TanStack Router + Strict TS)..."
+  step "[Web 1/5] Shadcn UI Compliance Check (garantindo uso prioritário de @/components/ui/*)..."
+  if ./scripts/check_shadcn_usage.py; then
+    success "Componentes Shadcn UI validados com sucesso."
+  else
+    error "Falha no uso de componentes Shadcn UI."
+    exit 1
+  fi
+
+  step "[Web 2/5] TypeScript Typecheck (TanStack Router + Strict TS)..."
   if pnpm --dir web typecheck; then
     success "Typecheck do Web passou sem erros."
   else
@@ -105,7 +113,7 @@ if [ "$run_web" = true ]; then
     exit 1
   fi
 
-  step "[Web 2/4] ESLint..."
+  step "[Web 3/5] ESLint..."
   if pnpm --dir web lint; then
     success "ESLint do Web passou sem erros."
   else
@@ -113,7 +121,7 @@ if [ "$run_web" = true ]; then
     exit 1
   fi
 
-  step "[Web 3/4] Vitest com Cobertura V8 (Unitários + Integração MSW v2)..."
+  step "[Web 4/5] Vitest com Cobertura V8 (Unitários + Integração MSW v2)..."
   if pnpm --dir web test:coverage; then
     success "Testes e Thresholds de Cobertura do Web validados com sucesso."
   else
@@ -121,7 +129,7 @@ if [ "$run_web" = true ]; then
     exit 1
   fi
 
-  step "[Web 4/4] Vite Production Build..."
+  step "[Web 5/5] Vite Production Build..."
   if pnpm --dir web build; then
     success "Build de produção do Web gerado com sucesso."
   else

@@ -43,30 +43,32 @@ export function TopNav() {
     retry: false,
   })
 
-  const isOnline = !isError && health?.status === 'ok'
+  const isOnline = !isError && (health?.status === 'healthy' || health?.status === 'ok')
 
   return (
     <header className="sticky top-0 z-40 flex h-16 w-full shrink-0 items-center justify-between border-b border-border bg-card/75 px-4 backdrop-blur-md md:px-6">
       {/* Left section: Sidebar trigger + Breadcrumb */}
-      <div className="flex items-center gap-2">
-        <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground" />
+      <div className="flex items-center gap-2 min-w-0">
+        <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground shrink-0" />
         <Separator
           orientation="vertical"
-          className="mr-2 h-4 bg-border/80"
+          className="mr-2 h-4 bg-border/80 shrink-0"
         />
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbPage className="font-semibold text-foreground">{pageTitle}</BreadcrumbPage>
+        <Breadcrumb className="min-w-0 truncate">
+          <BreadcrumbList className="min-w-0">
+            <BreadcrumbItem className="min-w-0">
+              <BreadcrumbPage className="font-semibold text-foreground truncate">
+                {pageTitle}
+              </BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
       </div>
 
       {/* Right Controls */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Backend Connectivity Status */}
-        <div className="flex items-center gap-2 rounded-full border border-border bg-background/50 px-3 py-1">
+        <div className="flex items-center gap-2 rounded-full border border-border bg-background/50 px-2.5 py-1 sm:px-3">
           <span className="relative flex h-2 w-2">
             <span
               className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${
@@ -79,7 +81,7 @@ export function TopNav() {
               }`}
             />
           </span>
-          <span className="text-xs font-medium text-muted-foreground">
+          <span className="text-xs font-medium text-muted-foreground hidden sm:inline">
             {isOnline ? 'API Conectada' : 'API Desconectada'}
           </span>
         </div>

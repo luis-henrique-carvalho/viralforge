@@ -77,21 +77,24 @@ export function CreateBatchView() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2 space-y-6">
+      <form
+        onSubmit={handleSubmit}
+        className="w-full min-w-0"
+      >
+        <div className="flex flex-col lg:flex-row gap-6 items-start w-full min-w-0">
+          <div className="flex-1 w-full min-w-0 space-y-6">
             <Card className="border-border bg-card/60 backdrop-blur-xs">
-              <CardHeader>
+              <CardHeader className="p-4 sm:p-6 pb-3">
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <Layers className="size-4 text-primary" />
+                  <Layers className="size-4 text-primary shrink-0" />
                   URLs de Origem & Produtos
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs sm:text-sm">
                   Insira os links dos vídeos (TikTok, Shorts, Reels) e opcionalmente um código de
                   produto.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6 pt-0">
                 <UrlParserInput
                   value={rawUrlsText}
                   onChange={handleUrlsChange}
@@ -101,20 +104,22 @@ export function CreateBatchView() {
             </Card>
           </div>
 
-          <BatchConfigSidebar
-            brands={brands}
-            templates={templates}
-            isLoadingBrands={isLoadingBrands}
-            isLoadingTemplates={isLoadingTemplates}
-            selectedBrandId={selectedBrandId}
-            setSelectedBrandId={setSelectedBrandId}
-            selectedTemplateId={selectedTemplateId}
-            setSelectedTemplateId={setSelectedTemplateId}
-            selectedModel={selectedModel}
-            setSelectedModel={setSelectedModel}
-            isPending={createBatchMutation.isPending}
-            itemsCount={parsedItems.length}
-          />
+          <div className="w-full lg:w-80 xl:w-96 shrink-0 lg:sticky lg:top-20">
+            <BatchConfigSidebar
+              brands={brands}
+              templates={templates}
+              isLoadingBrands={isLoadingBrands}
+              isLoadingTemplates={isLoadingTemplates}
+              selectedBrandId={selectedBrandId}
+              setSelectedBrandId={setSelectedBrandId}
+              selectedTemplateId={selectedTemplateId}
+              setSelectedTemplateId={setSelectedTemplateId}
+              selectedModel={selectedModel}
+              setSelectedModel={setSelectedModel}
+              isPending={createBatchMutation.isPending}
+              itemsCount={parsedItems.length}
+            />
+          </div>
         </div>
       </form>
     </div>

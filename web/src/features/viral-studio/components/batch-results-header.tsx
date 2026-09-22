@@ -30,33 +30,40 @@ export function BatchResultsHeader({
   const isAllFailed = total > 0 && failedCount === total
   const isCompleted = total > 0 && progressPercent === 100 && !isAllFailed
 
+  const rawId = batch.batch_id || batch.id
+
   return (
-    <div className="space-y-4 rounded-xl border border-border bg-card/60 p-5 backdrop-blur-xs">
+    <div className="space-y-4 rounded-xl border border-border bg-card/60 p-4 sm:p-5 backdrop-blur-xs w-full min-w-0">
       {/* Top Bar: Back & Main Details */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
+        <div className="space-y-1.5 min-w-0 flex-1">
+          <div className="flex items-center gap-2 min-w-0 flex-wrap sm:flex-nowrap">
             <Button
               asChild
               variant="ghost"
               size="icon"
-              className="size-8 rounded-lg"
+              className="size-8 rounded-lg shrink-0"
               title="Voltar aos Lotes"
             >
               <Link to="/viral-studio">
                 <ArrowLeft className="size-4" />
               </Link>
             </Button>
-            <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-              <Layers className="size-5 text-primary" />
-              Lote <span className="font-mono text-primary">{batch.batch_id || batch.id}</span>
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground flex items-center gap-2 min-w-0 truncate">
+              <Layers className="size-5 text-primary shrink-0" />
+              <span
+                className="font-mono text-primary truncate"
+                title={rawId}
+              >
+                {batch.batch_id || batch.id}
+              </span>
             </h1>
             <BatchStatusBadge
               status={isAllFailed ? 'FAILED' : isCompleted ? 'COMPLETED' : batch.status}
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 pt-1 pl-10 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2 pt-0.5 pl-0 sm:pl-10 text-xs text-muted-foreground">
             <Badge
               variant="secondary"
               className="gap-1 font-medium"

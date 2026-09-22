@@ -119,13 +119,17 @@ export function BatchConfigSidebar({
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Selecione o modelo IA..." />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-72 overflow-y-auto">
                 {AI_MODELS.map((m) => (
                   <SelectItem
                     key={m.id}
                     value={m.id}
+                    className="text-xs"
                   >
-                    {m.name} {m.badge ? `(${m.badge})` : ''}
+                    <span className="truncate">{m.name}</span>
+                    {m.badge && (
+                      <span className="ml-1.5 text-[10px] text-muted-foreground">({m.badge})</span>
+                    )}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -139,8 +143,8 @@ export function BatchConfigSidebar({
               size="lg"
               disabled={isPending || itemsCount === 0}
             >
-              <Plus className="size-4" />
-              {isPending ? 'Criando Lote...' : `Processar Lote (${itemsCount} vídeos)`}
+              <Plus className="size-4 shrink-0" />
+              <span>{isPending ? 'Criando Lote...' : `Processar Lote (${itemsCount} vídeos)`}</span>
             </Button>
           </div>
         </CardContent>

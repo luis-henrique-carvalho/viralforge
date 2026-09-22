@@ -32,13 +32,12 @@ describe('CreateBatchView Integration', () => {
       expect(screen.getByText(/Perfil da Marca/i)).toBeInTheDocument()
     })
 
-    const textarea = screen.getByPlaceholderText(/Cole uma URL por linha/i)
-    await user.type(
-      textarea,
-      'https://tiktok.com/@user/video/999 #TEST01\nhttps://youtube.com/shorts/888 #TEST02',
-    )
+    const input = screen.getByPlaceholderText(/Cole a URL do vídeo/i)
+    await user.type(input, 'https://tiktok.com/@user/video/999 #TEST01{enter}')
 
-    expect(screen.getByText('2 vídeos detectados')).toBeInTheDocument()
+    await user.type(input, 'https://youtube.com/shorts/888 #TEST02{enter}')
+
+    expect(screen.getByText('2 vídeos na lista')).toBeInTheDocument()
 
     const submitBtn = screen.getByRole('button', { name: /Processar Lote \(2 vídeos\)/i })
     expect(submitBtn).toBeEnabled()
