@@ -197,12 +197,15 @@ async def process_viral_item(item_id: str) -> Dict[str, Any]:
 
         try:
             brand_dict = viral_studio_store.get_brand(brand_id) or DEFAULT_BRAND.model_dump()
+            batch_dict = viral_studio_store.get_batch(batch_id) if batch_id and batch_id != "default" else None
             template_id = (
                 item.get("template_id")
+                or (batch_dict.get("template_id") if batch_dict else None)
                 or brand_dict.get("template_id")
                 or DEFAULT_TEMPLATE.id
             )
             template_dict = viral_studio_store.get_template_or_raise(template_id)
+            template_obj = VisualTemplate.model_validate(template_dict)
 
             append_item_log(
                 item_id,
@@ -352,6 +355,7 @@ async def process_viral_item(item_id: str) -> Dict[str, Any]:
                 keyframes_count = len(getattr(video_context, "keyframes", [])) if video_context else 0
                 _log_ai_routing(item_id, model_override, keyframes_count=keyframes_count)
                 copy_kwargs: Dict[str, Any] = {
+                    "template": template_obj,
                     "brand": brand_obj,
                     "item": item_obj,
                     "video_path": source_path,
@@ -362,16 +366,16 @@ async def process_viral_item(item_id: str) -> Dict[str, Any]:
                     copy_kwargs["model"] = model_override
 
                 try:
-                    copy_data = await viral_studio_copy.generate_affiliate_copy(**copy_kwargs)
+                    copy_data = await viral_studio_copy.generate_viral_copy(**copy_kwargs)
                 except TypeError as t_err:
                     err_msg = str(t_err)
                     if "model" in err_msg or "video_context" in err_msg:
                         copy_kwargs.pop("model", None)
                         try:
-                            copy_data = await viral_studio_copy.generate_affiliate_copy(**copy_kwargs)
+                            copy_data = await viral_studio_copy.generate_viral_copy(**copy_kwargs)
                         except TypeError:
                             copy_kwargs.pop("video_context", None)
-                            copy_data = await viral_studio_copy.generate_affiliate_copy(**copy_kwargs)
+                            copy_data = await viral_studio_copy.generate_viral_copy(**copy_kwargs)
                     else:
                         raise
                 except Exception as ai_exc:
@@ -942,21 +946,31 @@ async def regenerate_item_copy(
         except Exception as exc:
             logger.debug("Context re-extraction skipped: %s", exc)
 
+    batch_dict = viral_studio_store.get_batch(batch_id) if batch_id and batch_id != "default" else None
+    tpl_id = (
+        item.get("template_id")
+        or (batch_dict.get("template_id") if batch_dict else None)
+        or brand_dict.get("template_id")
+        or DEFAULT_TEMPLATE.id
+    )
+    template_dict = viral_studio_store.get_template_or_raise(tpl_id)
+    template_obj = VisualTemplate.model_validate(template_dict)
+
     effective_model = model or item.get("model")
-    if not effective_model and batch_id:
-        batch_dict = viral_studio_store.get_batch(batch_id)
-        if batch_dict:
-            effective_model = batch_dict.get("model")
+    if not effective_model and batch_dict:
+        effective_model = batch_dict.get("model")
 
     keyframes_count = len(getattr(video_context, "keyframes", [])) if video_context else 0
     _log_ai_routing(item_id, effective_model, keyframes_count=keyframes_count)
 
     try:
-        copy_data = await viral_studio_copy.generate_affiliate_copy(
+        copy_data = await viral_studio_copy.generate_viral_copy(
+            template=template_obj,
             brand=brand_obj,
             item=item_obj,
             video_path=source_path,
             model=effective_model,
+            manual_instructions=manual_instructions,
             video_context=video_context,
         )
     except Exception as exc:

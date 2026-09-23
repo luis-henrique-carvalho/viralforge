@@ -47,6 +47,24 @@ export function BrandFormFields({ control }: BrandFormFieldsProps) {
 
       <FormField
         control={control}
+        name="avatar_url"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>URL do Avatar / Foto de Perfil (Opcional)</FormLabel>
+            <FormControl>
+              <Input
+                placeholder="https://... (ou preenchido ao vincular conta)"
+                {...field}
+                value={field.value || ''}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={control}
         name="default_cta"
         render={({ field }) => (
           <FormItem>

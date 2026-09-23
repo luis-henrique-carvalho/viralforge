@@ -27,7 +27,7 @@ export const mockTemplates: VisualTemplate[] = [
     width: 1080,
     height: 1920,
     background_color: '#0D1117',
-    video_fit: 'contain',
+    video_fit: 'cover',
     video_aspect: '1:1',
     video_x: null,
     video_y: 360,

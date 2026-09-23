@@ -850,6 +850,7 @@ def create_batch(batch: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
             item["item_id"] = item_id
             item["batch_id"] = batch_id
             item["brand_id"] = brand_id
+            item["template_id"] = item.get("template_id") or template_id
             item_model = item.get("model") or data.get("model")
             item["model"] = str(item_model).strip() if item_model and str(item_model).strip() else None
             item.setdefault("status", "PENDING")

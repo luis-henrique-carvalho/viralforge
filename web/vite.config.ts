@@ -26,6 +26,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 5176,
+      allowedHosts: true,
       proxy: {
         '/api': {
           target: backendTarget,

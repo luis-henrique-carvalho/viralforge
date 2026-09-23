@@ -9,6 +9,15 @@ interface KonvaHeadlineGroupProps {
   onDragEnd: (y: number) => void
 }
 
+function getFontFamily(fontName?: string): string {
+  if (!fontName) return 'Montserrat'
+  if (fontName.includes('Montserrat')) return 'Montserrat'
+  if (fontName.includes('Poppins')) return 'Poppins'
+  if (fontName.includes('Anton')) return 'Anton'
+  if (fontName.includes('NotoSerif') || fontName.includes('Noto Serif')) return 'Noto Serif'
+  return fontName
+}
+
 export function KonvaHeadlineGroup({ template, onDragStart, onDragEnd }: KonvaHeadlineGroupProps) {
   if (!template.headline_enabled) return null
   return (
@@ -30,7 +39,7 @@ export function KonvaHeadlineGroup({ template, onDragStart, onDragEnd }: KonvaHe
         align="center"
         fontSize={template.headline_font_size}
         fontStyle="bold"
-        fontFamily={template.headline_font || 'Montserrat'}
+        fontFamily={getFontFamily(template.headline_font)}
         fill={template.headline_color}
         lineHeight={1.2}
       />

@@ -81,6 +81,7 @@ class BrandBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     handle: str = Field(..., min_length=1, max_length=60)
     avatar_path: Optional[str] = Field(None, max_length=512)
+    avatar_url: Optional[str] = Field(None, max_length=1024)
     logo_path: Optional[str] = Field(None, max_length=512)
     default_cta: str = Field("Confira os achadinhos no link da bio!", max_length=500)
     default_affiliate_url: Optional[str] = Field(None, max_length=2048)
@@ -142,6 +143,7 @@ class BrandCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     handle: str = Field(..., min_length=1, max_length=60)
     avatar_path: Optional[str] = Field(None, max_length=512)
+    avatar_url: Optional[str] = Field(None, max_length=1024)
     logo_path: Optional[str] = Field(None, max_length=512)
     default_cta: str = Field("Confira os achadinhos no link da bio!", max_length=500)
     default_affiliate_url: Optional[str] = Field(None, max_length=2048)
@@ -207,6 +209,7 @@ class BrandUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     handle: Optional[str] = Field(None, min_length=1, max_length=60)
     avatar_path: Optional[str] = Field(None, max_length=512)
+    avatar_url: Optional[str] = Field(None, max_length=1024)
     logo_path: Optional[str] = Field(None, max_length=512)
     default_cta: Optional[str] = Field(None, max_length=500)
     default_affiliate_url: Optional[str] = Field(None, max_length=2048)
@@ -1024,7 +1027,7 @@ FACTORY_TEMPLATES: List[VisualTemplate] = [
         brand_name_enabled=True,
         headline_enabled=True,
         watermark_enabled=True,
-        video_fit="contain",
+        video_fit="cover",
         video_aspect="1:1",
         video_y=360,
         video_height=1000,

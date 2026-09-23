@@ -1,3 +1,4 @@
+// shadcn-ignore: konva-canvas-badge
 import { Group, Rect, Text } from 'react-konva'
 import type { VisualTemplate } from '../data/template.types'
 
@@ -7,6 +8,15 @@ interface KonvaBadgeGroupProps {
   template: VisualTemplate
   onDragStart: () => void
   onDragEnd: (y: number) => void
+}
+
+function getFontFamily(fontName?: string): string {
+  if (!fontName) return 'Montserrat'
+  if (fontName.includes('Montserrat')) return 'Montserrat'
+  if (fontName.includes('Poppins')) return 'Poppins'
+  if (fontName.includes('Anton')) return 'Anton'
+  if (fontName.includes('NotoSerif') || fontName.includes('Noto Serif')) return 'Noto Serif'
+  return fontName
 }
 
 export function KonvaBadgeGroup({ template, onDragStart, onDragEnd }: KonvaBadgeGroupProps) {
@@ -38,7 +48,7 @@ export function KonvaBadgeGroup({ template, onDragStart, onDragEnd }: KonvaBadge
         align="center"
         fontSize={24}
         fontStyle="bold"
-        fontFamily={template.headline_font || 'Montserrat'}
+        fontFamily={getFontFamily(template.headline_font)}
         fill={template.custom_badge_text_color}
       />
     </Group>

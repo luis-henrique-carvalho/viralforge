@@ -73,6 +73,28 @@ async def update_brand(id: str, payload: BrandUpdate):
     return brand
 
 
+@router.post("/brands/{id}/avatar", response_model=BrandResponse)
+async def upload_brand_avatar(id: str, file: UploadFile = File(...)):
+    """Upload and attach a custom avatar image to a brand profile."""
+    import os
+    brand = await asyncio.to_thread(viral_studio_store.get_brand_or_raise, id)
+    ext = os.path.splitext(file.filename or "")[1] or ".png"
+    upload_dir = os.path.join("data", "uploads", "brands")
+    os.makedirs(upload_dir, exist_ok=True)
+    target_path = os.path.join(upload_dir, f"{id}_avatar{ext}")
+
+    content = await file.read()
+    with open(target_path, "wb") as f:
+        f.write(content)
+
+    updated = await asyncio.to_thread(
+        viral_studio_store.update_brand,
+        id,
+        BrandUpdate(avatar_path=target_path),
+    )
+    return updated
+
+
 # ---------------------------------------------------------------------------
 # Template Endpoints
 # ---------------------------------------------------------------------------

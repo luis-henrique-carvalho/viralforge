@@ -17,10 +17,14 @@ from clippyme.api.viral_studio_schemas import (
     VisualTemplate,
 )
 from clippyme.domain import (
+    viral_studio_copy,
     viral_studio_orchestrator,
     viral_studio_store,
 )
 from clippyme.domain.errors import ClippyMeError, NotFoundError, ValidationError
+
+_ORIGINAL_GENERATE_VIRAL_COPY = viral_studio_copy.generate_viral_copy
+_ORIGINAL_GENERATE_AFFILIATE_COPY = viral_studio_copy.generate_affiliate_copy
 
 
 @pytest.fixture
@@ -40,6 +44,32 @@ def tmp_store_and_output(tmp_path, monkeypatch):
 
     # Seed default brand and template
     viral_studio_store.seed_defaults(force=True)
+
+    from clippyme.domain.viral_studio_context import VideoContext
+
+    fake_ctx = VideoContext(
+        keyframes=[b"f1", b"f2"],
+        transcript="Testando transcricao e observabilidade",
+        original_caption="Post original #achadinho",
+        title="Título Teste",
+        scenes_count=2,
+        has_audio=True,
+        duration=15.0,
+    )
+    monkeypatch.setattr("clippyme.domain.viral_studio_context.extract_viral_context", lambda *a, **k: fake_ctx)
+
+    async def default_fake_copy(*args, **kwargs):
+        return AICopyData(
+            product="Organizador Teste",
+            product_description="Descrição",
+            headlines=["H1", "H2", "H3", "H4", "H5"],
+            selected_headline="H1 Selecionada",
+            caption="Legenda gerada",
+            hashtags=["#achadinhos"],
+        )
+
+    monkeypatch.setattr("clippyme.domain.viral_studio_copy.generate_viral_copy", default_fake_copy)
+    monkeypatch.setattr("clippyme.domain.viral_studio_copy.generate_affiliate_copy", default_fake_copy)
 
     yield {
         "data_dir": data_dir,
@@ -79,7 +109,7 @@ async def test_process_viral_item_success(tmp_store_and_output, dummy_video_file
             f.write(b"fake video data")
         return out_path
 
-    async def fake_copy(brand, item, video_path=None):
+    async def fake_copy(*args, **kwargs):
         return AICopyData(
             product="Organizador Teste",
             product_description="Descrição",
@@ -96,6 +126,7 @@ async def test_process_viral_item_success(tmp_store_and_output, dummy_video_file
         return output_path
 
     monkeypatch.setattr("clippyme.domain.viral_studio_download.download_viral_video", fake_dl)
+    monkeypatch.setattr("clippyme.domain.viral_studio_copy.generate_viral_copy", fake_copy)
     monkeypatch.setattr("clippyme.domain.viral_studio_copy.generate_affiliate_copy", fake_copy)
     monkeypatch.setattr("clippyme.domain.viral_studio_renderer.render_viral_video", fake_render)
 
@@ -133,7 +164,7 @@ async def test_process_viral_batch_failure_isolation(tmp_store_and_output, monke
             f.write(b"video data")
         return out_path
 
-    async def fake_copy(brand, item, video_path=None):
+    async def fake_copy(*args, **kwargs):
         return AICopyData(
             product="Item Teste",
             product_description="Desc",
@@ -150,6 +181,7 @@ async def test_process_viral_batch_failure_isolation(tmp_store_and_output, monke
         return output_path
 
     monkeypatch.setattr("clippyme.domain.viral_studio_download.download_viral_video", fake_dl)
+    monkeypatch.setattr("clippyme.domain.viral_studio_copy.generate_viral_copy", fake_copy)
     monkeypatch.setattr("clippyme.domain.viral_studio_copy.generate_affiliate_copy", fake_copy)
     monkeypatch.setattr("clippyme.domain.viral_studio_renderer.render_viral_video", fake_render)
 
@@ -397,7 +429,7 @@ async def test_process_viral_item_persists_logs_and_context(tmp_store_and_output
         duration=15.0,
     )
 
-    async def fake_copy(brand, item, video_path=None, video_context=None):
+    async def fake_copy(*args, **kwargs):
         return AICopyData(
             product="Produto Log",
             product_description="Desc",
@@ -415,6 +447,7 @@ async def test_process_viral_item_persists_logs_and_context(tmp_store_and_output
 
     monkeypatch.setattr("clippyme.domain.viral_studio_download.download_viral_video", fake_dl)
     monkeypatch.setattr("clippyme.domain.viral_studio_context.extract_viral_context", lambda *a, **k: fake_ctx)
+    monkeypatch.setattr("clippyme.domain.viral_studio_copy.generate_viral_copy", fake_copy)
     monkeypatch.setattr("clippyme.domain.viral_studio_copy.generate_affiliate_copy", fake_copy)
     monkeypatch.setattr("clippyme.domain.viral_studio_renderer.render_viral_video", fake_render)
 
@@ -463,7 +496,7 @@ async def test_batch_and_item_model_propagation(tmp_store_and_output):
 
 @pytest.mark.asyncio
 async def test_process_viral_item_passes_model_to_copy(tmp_store_and_output, monkeypatch):
-    """process_viral_item forwards item/batch model to generate_affiliate_copy."""
+    """process_viral_item forwards item/batch model to generate_viral_copy."""
     batch = viral_studio_store.create_batch({
         "brand_id": "vale-o-clique",
         "model": "ollama:llama3.2",
@@ -481,7 +514,7 @@ async def test_process_viral_item_passes_model_to_copy(tmp_store_and_output, mon
             f.write(b"video data")
         return out_path
 
-    async def fake_copy(brand, item, video_path=None, video_context=None, model=None):
+    async def fake_copy(template=None, brand=None, item=None, video_path=None, video_context=None, model=None, **kwargs):
         captured_model.append(model)
         return AICopyData(
             product="Produto",
@@ -499,6 +532,7 @@ async def test_process_viral_item_passes_model_to_copy(tmp_store_and_output, mon
         return output_path
 
     monkeypatch.setattr("clippyme.domain.viral_studio_download.download_viral_video", fake_dl)
+    monkeypatch.setattr("clippyme.domain.viral_studio_copy.generate_viral_copy", fake_copy)
     monkeypatch.setattr("clippyme.domain.viral_studio_copy.generate_affiliate_copy", fake_copy)
     monkeypatch.setattr("clippyme.domain.viral_studio_renderer.render_viral_video", fake_render)
 
@@ -529,6 +563,7 @@ async def test_process_viral_item_records_ai_routing_and_ai_error(tmp_store_and_
         raise ClippyMeError("Cannot connect to LM Studio at http://localhost:1234")
 
     monkeypatch.setattr("clippyme.domain.viral_studio_download.download_viral_video", fake_dl)
+    monkeypatch.setattr("clippyme.domain.viral_studio_copy.generate_viral_copy", fake_copy_fail)
     monkeypatch.setattr("clippyme.domain.viral_studio_copy.generate_affiliate_copy", fake_copy_fail)
 
     res = await viral_studio_orchestrator.process_viral_item(item_id)
@@ -568,7 +603,7 @@ async def test_regenerate_item_copy_success(tmp_store_and_output, monkeypatch):
         },
     })
 
-    async def fake_copy(brand, item, video_path=None, model=None, video_context=None):
+    async def fake_copy(template=None, brand=None, item=None, video_path=None, model=None, video_context=None, **kwargs):
         return AICopyData(
             product="Novo Produto Regerado",
             product_description="Descricao nova",
@@ -578,6 +613,7 @@ async def test_regenerate_item_copy_success(tmp_store_and_output, monkeypatch):
             hashtags=["#novo", "#achadinhos"],
         )
 
+    monkeypatch.setattr("clippyme.domain.viral_studio_copy.generate_viral_copy", fake_copy)
     monkeypatch.setattr("clippyme.domain.viral_studio_copy.generate_affiliate_copy", fake_copy)
 
     res = await viral_studio_orchestrator.regenerate_item_copy(
@@ -654,6 +690,7 @@ async def test_regenerate_item_copy_overwrites_stale_headlines_end_to_end(tmp_st
         def __exit__(self, *args):
             pass
 
+    monkeypatch.setattr("clippyme.domain.viral_studio_copy.generate_viral_copy", _ORIGINAL_GENERATE_VIRAL_COPY)
     monkeypatch.setattr("urllib.request.urlopen", lambda req, timeout=120: FakeResponse())
 
     res = await viral_studio_orchestrator.regenerate_item_copy(

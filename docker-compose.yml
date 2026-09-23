@@ -20,7 +20,10 @@ services:
         ENABLE_WHISPER_DIARIZE: ${ENABLE_WHISPER_DIARIZE:-0}
     container_name: clippyme-backend
     image: clippyme-backend
-    network_mode: host
+    ports:
+      - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -132,7 +135,8 @@ services:
     build: ./dashboard
     container_name: clippyme-frontend
     image: clippyme-frontend
-    network_mode: host
+    ports:
+      - "5175:5175"
     volumes:
       - ./dashboard:/app
       - /app/node_modules

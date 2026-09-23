@@ -50,6 +50,27 @@ export function TemplateVisualTabVideo({ template, onChange }: TemplateVisualTab
         </div>
 
         <div className="space-y-1.5">
+          <Label className="text-xs">Ajuste do Vídeo (Enquadramento)</Label>
+          <div className="grid grid-cols-2 gap-1.5">
+            {[
+              { id: 'cover', label: 'Preencher / Cover' },
+              { id: 'contain', label: 'Conter / Contain' },
+            ].map((fitOpt) => (
+              <Button
+                key={fitOpt.id}
+                type="button"
+                size="sm"
+                variant={template.video_fit === fitOpt.id ? 'default' : 'outline'}
+                onClick={() => onChange('video_fit', fitOpt.id)}
+                className="h-7 text-xs font-medium"
+              >
+                {fitOpt.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>Posição Y</span>
             <span>{template.video_y}px</span>

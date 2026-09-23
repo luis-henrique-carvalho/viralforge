@@ -24,6 +24,9 @@ export function KonvaVideoGroup({
   onResizeHeight,
 }: KonvaVideoGroupProps) {
   const handleSize = 24
+  const isContain = template.video_fit === 'contain'
+  const containW = Math.min(videoWidth, Math.round(videoHeight * (9 / 16)))
+  const containX = (videoWidth - containW) / 2
 
   return (
     <Group
@@ -36,6 +39,7 @@ export function KonvaVideoGroup({
         onDragEnd(newY)
       }}
     >
+      {/* Outer Container Frame */}
       <Rect
         x={0}
         y={0}
@@ -49,8 +53,27 @@ export function KonvaVideoGroup({
         shadowBlur={template.video_shadow === 'none' ? 0 : 16}
         shadowOpacity={template.video_shadow === 'none' ? 0 : 0.4}
       />
+
+      {/* Inner Video Area for Contain Fit */}
+      {isContain && containW < videoWidth && (
+        <Rect
+          x={containX}
+          y={0}
+          width={containW}
+          height={videoHeight}
+          fill="#0F172A"
+          stroke="#475569"
+          strokeWidth={1}
+          dash={[8, 8]}
+        />
+      )}
+
       <Text
-        text={`VÍDEO 9:16 (${videoWidth}×${videoHeight}px)`}
+        text={
+          isContain
+            ? `VÍDEO 9:16 CONTAIN (${containW}×${videoHeight}px)`
+            : `VÍDEO 9:16 COVER (${videoWidth}×${videoHeight}px)`
+        }
         x={0}
         y={videoHeight / 2 - 20}
         width={videoWidth}
@@ -60,7 +83,11 @@ export function KonvaVideoGroup({
         fill="#94A3B8"
       />
       <Text
-        text="[Arraste para mover / Use as alças para redimensionar a altura]"
+        text={
+          isContain
+            ? `[Modo Contain: Preserva proporção original com moldura lateral]`
+            : `[Modo Cover: Preenche 100% da caixa com recorte central]`
+        }
         x={0}
         y={videoHeight / 2 + 20}
         width={videoWidth}

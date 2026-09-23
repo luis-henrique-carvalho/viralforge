@@ -914,7 +914,7 @@ def test_regenerate_copy_endpoint(api_client, monkeypatch):
     assert batch_resp.status_code == 201
     item_id = batch_resp.json()["items"][0]["id"]
 
-    async def mock_fake_copy(brand, item, video_path=None, model=None, video_context=None):
+    async def mock_fake_copy(*args, **kwargs):
         return AICopyData(
             product="Produto Regenerado API",
             product_description="Desc",
@@ -924,6 +924,7 @@ def test_regenerate_copy_endpoint(api_client, monkeypatch):
             hashtags=["#regen"],
         )
 
+    monkeypatch.setattr("clippyme.domain.viral_studio_copy.generate_viral_copy", mock_fake_copy)
     monkeypatch.setattr("clippyme.domain.viral_studio_copy.generate_affiliate_copy", mock_fake_copy)
 
     resp = api_client.post(
