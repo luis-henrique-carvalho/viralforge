@@ -327,6 +327,7 @@ class VisualTemplate(BaseModel):
     video_shadow: str = Field("deep", pattern=r"^(none|subtle|deep|glow-blue|glow-pink)$")
 
     # Typography & Header
+    brand_alignment: str = Field("left", pattern=r"^(left|center)$")
     avatar_enabled: bool = True
     avatar_x: int = Field(60, ge=0, le=3840)
     avatar_y: int = Field(80, ge=0, le=3840)
@@ -359,6 +360,11 @@ class VisualTemplate(BaseModel):
     extra_image_path: Optional[str] = Field(None, max_length=512)
     extra_image_url: Optional[str] = Field(None, max_length=2048)
     extra_image_template_type: str = Field("comment", pattern=r"^(comment|follow|deal|fact|custom_upload)$")
+    extra_image_title: Optional[str] = Field(None, max_length=120)
+    extra_image_subtitle: Optional[str] = Field(None, max_length=240)
+    extra_image_bg_color: str = Field("#18181B", max_length=9)
+    extra_image_text_color: str = Field("#FFFFFF", max_length=9)
+    extra_image_border_color: str = Field("#3F3F46", max_length=9)
     extra_image_x: Optional[int] = None
     extra_image_y: int = Field(1420, ge=0, le=1920)
     extra_image_height: int = Field(340, ge=50, le=1200)
@@ -406,6 +412,9 @@ class VisualTemplate(BaseModel):
         "video_border_color",
         "custom_badge_bg_color",
         "custom_badge_text_color",
+        "extra_image_bg_color",
+        "extra_image_text_color",
+        "extra_image_border_color",
     )
     @classmethod
     def _check_hex_color(cls, v: str) -> str:
@@ -437,6 +446,7 @@ class TemplateCreate(BaseModel):
     video_border_color: str = Field("#3B82F6", max_length=9)
     video_shadow: str = Field("deep", pattern=r"^(none|subtle|deep|glow-blue|glow-pink)$")
 
+    brand_alignment: str = Field("left", pattern=r"^(left|center)$")
     avatar_enabled: bool = True
     avatar_x: int = Field(60, ge=0, le=3840)
     avatar_y: int = Field(80, ge=0, le=3840)
@@ -466,6 +476,11 @@ class TemplateCreate(BaseModel):
     extra_image_path: Optional[str] = Field(None, max_length=512)
     extra_image_url: Optional[str] = Field(None, max_length=2048)
     extra_image_template_type: str = Field("comment", pattern=r"^(comment|follow|deal|fact|custom_upload)$")
+    extra_image_title: Optional[str] = Field(None, max_length=120)
+    extra_image_subtitle: Optional[str] = Field(None, max_length=240)
+    extra_image_bg_color: str = Field("#18181B", max_length=9)
+    extra_image_text_color: str = Field("#FFFFFF", max_length=9)
+    extra_image_border_color: str = Field("#3F3F46", max_length=9)
     extra_image_x: Optional[int] = None
     extra_image_y: int = Field(1420, ge=0, le=1920)
     extra_image_height: int = Field(340, ge=50, le=1200)
@@ -515,6 +530,9 @@ class TemplateCreate(BaseModel):
         "video_border_color",
         "custom_badge_bg_color",
         "custom_badge_text_color",
+        "extra_image_bg_color",
+        "extra_image_text_color",
+        "extra_image_border_color",
     )
     @classmethod
     def _check_hex_color(cls, v: str) -> str:
@@ -545,6 +563,7 @@ class TemplateUpdate(BaseModel):
     video_border_color: Optional[str] = Field(None, max_length=9)
     video_shadow: Optional[str] = Field(None, pattern=r"^(none|subtle|deep|glow-blue|glow-pink)$")
 
+    brand_alignment: Optional[str] = Field(None, pattern=r"^(left|center)$")
     avatar_enabled: Optional[bool] = None
     avatar_x: Optional[int] = Field(None, ge=0, le=3840)
     avatar_y: Optional[int] = Field(None, ge=0, le=3840)
@@ -574,6 +593,11 @@ class TemplateUpdate(BaseModel):
     extra_image_path: Optional[str] = Field(None, max_length=512)
     extra_image_url: Optional[str] = Field(None, max_length=2048)
     extra_image_template_type: Optional[str] = Field(None, pattern=r"^(comment|follow|deal|fact|custom_upload)$")
+    extra_image_title: Optional[str] = Field(None, max_length=120)
+    extra_image_subtitle: Optional[str] = Field(None, max_length=240)
+    extra_image_bg_color: Optional[str] = Field(None, max_length=9)
+    extra_image_text_color: Optional[str] = Field(None, max_length=9)
+    extra_image_border_color: Optional[str] = Field(None, max_length=9)
     extra_image_x: Optional[int] = None
     extra_image_y: Optional[int] = Field(None, ge=0, le=1920)
     extra_image_height: Optional[int] = Field(None, ge=50, le=1200)
@@ -612,6 +636,9 @@ class TemplateUpdate(BaseModel):
         "video_border_color",
         "custom_badge_bg_color",
         "custom_badge_text_color",
+        "extra_image_bg_color",
+        "extra_image_text_color",
+        "extra_image_border_color",
     )
     @classmethod
     def _check_hex_color(cls, v: Optional[str]) -> Optional[str]:

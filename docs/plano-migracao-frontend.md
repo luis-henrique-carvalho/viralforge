@@ -222,8 +222,8 @@ flowchart LR
     Fase2 --> Fase3["✅ Fase 3: Viral Editor (CONCLUÍDO)"]
     Fase3 --> Fase4["✅ Fase 4: Fila & Publicação (CONCLUÍDO)"]
     Fase4 --> Fase5["✅ Fase 5: Configurações & Provedores (CONCLUÍDO)"]
-    Fase5 -.-> Fase6["🎯 Fase 6: Templates Konva & IA Modular (V2)"]
-    Fase6 -.-> Fase7["⏳ Fase 7: Fila Global /publishing (V2)"]
+    Fase5 --> Fase6["✅ Fase 6: Templates Konva & IA Modular (CONCLUÍDO)"]
+    Fase6 -.-> Fase7["🎯 Fase 7: Fila Global /publishing (V2)"]
     Fase7 -.-> Fase8["⏳ Fase 8: Discovery & Pipeline Clips (V2)"]
     Fase8 -.-> Fase9["⏳ Fase 9: Homologação & Docker (V2)"]
 
@@ -231,9 +231,9 @@ flowchart LR
     classDef current fill:#2563eb,stroke:#60a5fa,color:#ffffff,stroke-width:3px;
     classDef pending fill:#374151,stroke:#4b5563,color:#9ca3af;
 
-    class Fase0,Fase1,Fase2,Fase3,Fase4,Fase5 completed;
-    class Fase6 current;
-    class Fase7,Fase8,Fase9 pending;
+    class Fase0,Fase1,Fase2,Fase3,Fase4,Fase5,Fase6 completed;
+    class Fase7 current;
+    class Fase8,Fase9 pending;
 ```
 
 ---
@@ -387,21 +387,22 @@ flowchart LR
 
 ---
 
-### ⏳ Fase 6: Estúdio de Templates Universais & IA Modular (Konva 9:16) [V2 — POSTERGADO]
+### ✅ Fase 6: Estúdio de Templates Universais & IA Modular (Konva 9:16) [CONCLUÍDO]
 > **Especificação Completa:** [`docs/viral-studio-template-architecture.md`](viral-studio-template-architecture.md)  
 > **ADR de Referência:** [`docs/adr/0002-decoupled-templates-personas-konva.md`](adr/0002-decoupled-templates-personas-konva.md)  
 > **Protótipos Validados:** [`docs/prototypes/viral-studio-template-simulation.html`](prototypes/viral-studio-template-simulation.html) e [`docs/prototypes/dynamic-generation-tasks-simulation.html`](prototypes/dynamic-generation-tasks-simulation.html)
 
-- [ ] **Backend: Schemas, Store, CopyEngine & Renderer:**
-  - [ ] Implementar `GenerationTask` e atualizar `VisualTemplate` com 35+ campos (geometria 1080x1920, altura 400-1500px, bordas, rodapé e lista de `generation_tasks`).
-  - [ ] Atualizar `AICopyData` com `custom_outputs: Dict[str, Any]` preservando retrocompatibilidade total.
-  - [ ] Inicializar os 4 templates de fábrica universais no `viral_studio_store.py` (`curiosities-viral`, `classic-affiliate`, `quick-facts-news`, `tech-review`).
-  - [ ] Refatorar `viral_studio_copy.py` (`CopyEngine`): montagem dinâmica de prompt por tarefas ativas, JSON Schema dinâmico sob demanda e desativação de manchetes em templates de vídeo limpo (*Clean Video Mode*).
-  - [ ] Refatorar `viral_studio_renderer.py`: desenhar selo em `badge_y`, headline em `headline_y`, máscara de cantos arredondados (`video_radius`), moldura colorida e sobreposição do card/imagem extra de rodapé.
-- [ ] **Frontend: TemplateStudio Workstation (`react-konva`):**
-  - [ ] Criar o modal `TemplateEditorModal.tsx` dual-pane integrado aos componentes Shadcn e `react-konva`.
-  - [ ] Implementar o canvas 1080×1920 com manipulação livre de camadas, alças verticais de altura do vídeo e guia magnética central (*Snap Guide*).
-  - [ ] Implementar a aba "Persona & Tarefas de IA" com catálogo de blocos (+ Adicionar Tarefa de IA: Headline, Legenda, Título, Rodapé, Quiz, Imagem IA) e inserção de tags dinâmicas.
+- [x] **Backend: Schemas, Store, CopyEngine & Renderer:**
+  - [x] Implementar `GenerationTask` e atualizar `VisualTemplate` com 35+ campos (geometria 1080x1920, altura 400-1500px, bordas, rodapé e lista de `generation_tasks`).
+  - [x] Atualizar `AICopyData` com `custom_outputs: Dict[str, Any]` preservando retrocompatibilidade total.
+  - [x] Inicializar os 4 templates de fábrica universais no `viral_studio_store.py` (`curiosities-viral`, `classic-affiliate`, `quick-facts-news`, `tech-review`).
+  - [x] Refatorar `viral_studio_copy.py` (`CopyEngine`): montagem dinâmica de prompt por tarefas ativas, JSON Schema dinâmico sob demanda e desativação de manchetes em templates de vídeo limpo (*Clean Video Mode*).
+  - [x] Refatorar `viral_studio_renderer.py`: desenhar selo em `badge_y`, headline em `headline_y`, máscara de cantos arredondados (`video_radius`), moldura colorida, resolução de avatar real e sobreposição do card/imagem extra de rodapé.
+- [x] **Frontend: TemplateStudio Workstation (`react-konva`):**
+  - [x] Criar o estúdio dual-pane `/viral-studio/templates/$templateId` integrado aos componentes Shadcn e `react-konva`.
+  - [x] Implementar o canvas 1080×1920 com manipulação livre de camadas, alças verticais de altura do vídeo e guia magnética central (*Snap Guide*).
+  - [x] Implementar a aba "Persona & Tarefas de IA" com catálogo de blocos (+ Adicionar Tarefa de IA: Headline, Legenda, Título, Rodapé, Quiz, Imagem IA) e inserção de tags dinâmicas.
+  - [x] Implementar a Galeria de Templates `/viral-studio/templates` com filtros, badges FÁBRICA vs CUSTOM, duplicação e reset.
 
 ---
 

@@ -77,6 +77,7 @@ const mockTemplate: VisualTemplate = {
   video_border_width: 2,
   video_border_color: '#3B82F6',
   video_shadow: 'deep',
+  brand_alignment: 'left',
   avatar_enabled: true,
   avatar_x: 60,
   avatar_y: 80,
@@ -103,6 +104,11 @@ const mockTemplate: VisualTemplate = {
   extra_image_path: null,
   extra_image_url: null,
   extra_image_template_type: 'comment',
+  extra_image_title: null,
+  extra_image_subtitle: null,
+  extra_image_bg_color: '#18181B',
+  extra_image_text_color: '#FFFFFF',
+  extra_image_border_color: '#3F3F46',
   extra_image_x: null,
   extra_image_y: 1420,
   extra_image_height: 340,
@@ -131,6 +137,7 @@ describe('Konva Canvas & Groups', () => {
     const { container } = render(
       <KonvaBadgeGroup
         template={mockTemplate}
+        scale={1}
         onDragStart={onStart}
         onDragEnd={onEnd}
       />,
@@ -149,6 +156,7 @@ describe('Konva Canvas & Groups', () => {
     const { container } = render(
       <KonvaHeadlineGroup
         template={mockTemplate}
+        scale={1}
         onDragStart={onStart}
         onDragEnd={onEnd}
       />,
@@ -162,6 +170,7 @@ describe('Konva Canvas & Groups', () => {
     const { container } = render(
       <KonvaVideoGroup
         template={mockTemplate}
+        scale={1}
         videoX={100}
         videoY={360}
         videoWidth={880}
@@ -179,6 +188,7 @@ describe('Konva Canvas & Groups', () => {
     const { container } = render(
       <KonvaExtraFooterGroup
         template={mockTemplate}
+        scale={1}
         extraX={100}
         extraWidth={880}
         onDragStart={onStart}
@@ -191,6 +201,35 @@ describe('Konva Canvas & Groups', () => {
   it('renders KonvaSafeZonesGroup', () => {
     const { container } = render(<KonvaSafeZonesGroup showSafeZones={true} />)
     expect(container).toBeDefined()
+  })
+
+  it('renders KonvaBrandGroup in center alignment mode', () => {
+    const { container } = render(
+      <KonvaBrandGroup template={{ ...mockTemplate, brand_alignment: 'center' }} />,
+    )
+    expect(container).toBeDefined()
+  })
+
+  it('renders KonvaWatermarkGroup when enabled and disabled', () => {
+    const { container: enabledCont } = render(
+      <TemplateCanvasKonva
+        template={{ ...mockTemplate, watermark_enabled: true, watermark_position: 'top-left' }}
+        scale={0.35}
+        showSafeZones={false}
+        onChange={vi.fn()}
+      />,
+    )
+    expect(enabledCont.querySelector('[data-testid="stage"]')).toBeInTheDocument()
+
+    const { container: disabledCont } = render(
+      <TemplateCanvasKonva
+        template={{ ...mockTemplate, watermark_enabled: false }}
+        scale={0.35}
+        showSafeZones={false}
+        onChange={vi.fn()}
+      />,
+    )
+    expect(disabledCont.querySelector('[data-testid="stage"]')).toBeInTheDocument()
   })
 
   it('renders TemplateCanvasKonva complete stage', () => {
@@ -210,5 +249,27 @@ describe('Konva Canvas & Groups', () => {
       groups.forEach((g) => g.dispatchEvent(new MouseEvent('click', { bubbles: true })))
     })
     expect(onChange).toHaveBeenCalled()
+  })
+
+  it('renders KonvaVideoGroup in free mode with resize handles', () => {
+    const onStart = vi.fn()
+    const onEnd = vi.fn()
+    const onResizeH = vi.fn()
+    const onResizeW = vi.fn()
+    const { container } = render(
+      <KonvaVideoGroup
+        template={{ ...mockTemplate, video_aspect: 'free' }}
+        scale={1}
+        videoX={100}
+        videoY={360}
+        videoWidth={880}
+        videoHeight={1000}
+        onDragStart={onStart}
+        onDragEnd={onEnd}
+        onResizeHeight={onResizeH}
+        onResizeWidth={onResizeW}
+      />,
+    )
+    expect(container).toBeDefined()
   })
 })

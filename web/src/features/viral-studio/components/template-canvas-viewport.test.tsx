@@ -26,6 +26,7 @@ const mockTemplate: VisualTemplate = {
   video_border_width: 2,
   video_border_color: '#3B82F6',
   video_shadow: 'deep',
+  brand_alignment: 'left',
   avatar_enabled: true,
   avatar_x: 60,
   avatar_y: 80,
@@ -52,6 +53,11 @@ const mockTemplate: VisualTemplate = {
   extra_image_path: null,
   extra_image_url: null,
   extra_image_template_type: 'comment',
+  extra_image_title: null,
+  extra_image_subtitle: null,
+  extra_image_bg_color: '#18181B',
+  extra_image_text_color: '#FFFFFF',
+  extra_image_border_color: '#3F3F46',
   extra_image_x: null,
   extra_image_y: 1420,
   extra_image_height: 340,
@@ -88,6 +94,14 @@ describe('TemplateCanvasViewport', () => {
 
     const safeZonesBtn = screen.getByRole('button', { name: /Safe Zones/i })
     fireEvent.click(safeZonesBtn)
+
+    const centerBtn = screen.getByRole('button', { name: /Centralizar/i })
+    fireEvent.click(centerBtn)
+    expect(onChange).toHaveBeenCalledWith('video_x', null)
+    expect(onChange).toHaveBeenCalledWith('extra_image_x', null)
+
+    const fitBtn = screen.getByRole('button', { name: /Ajustar à tela/i })
+    fireEvent.click(fitBtn)
 
     const zoomInBtn = screen.getByRole('button', { name: /Aumentar zoom/i })
     fireEvent.click(zoomInBtn)

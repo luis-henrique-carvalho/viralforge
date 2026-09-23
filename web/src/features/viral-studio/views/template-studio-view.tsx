@@ -75,7 +75,17 @@ export function TemplateStudioView({ templateId }: TemplateStudioViewProps) {
   const handleUploadExtraImage = async (file: File) => {
     if (!template) return
     const updated = await uploadExtraMutation.mutateAsync({ id: template.id, file })
-    setTemplate(updated)
+    setTemplate((prev) =>
+      prev
+        ? {
+            ...prev,
+            ...updated,
+            extra_image_template_type: 'custom_upload',
+            extra_image_enabled: true,
+          }
+        : updated,
+    )
+    setIsDirty(true)
   }
 
   return (

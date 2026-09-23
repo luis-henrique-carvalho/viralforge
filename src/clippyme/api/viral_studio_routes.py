@@ -205,7 +205,12 @@ async def upload_template_extra_image(id: str, file: UploadFile = File(...)):
     updated = await asyncio.to_thread(
         viral_studio_store.update_template,
         id,
-        TemplateUpdate(extra_image_path=target_path, extra_image_enabled=True),
+        TemplateUpdate(
+            extra_image_path=target_path,
+            extra_image_url=f"/uploads/templates/{id}_extra{ext}",
+            extra_image_enabled=True,
+            extra_image_template_type="custom_upload",
+        ),
     )
     return updated
 

@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { Typography } from '@/components/ui/typography'
+import { TemplateVideoFreeControls } from './template-video-free-controls'
 import type { VisualTemplate } from '../data/template.types'
 
 interface TemplateVisualTabVideoProps {
@@ -12,6 +13,8 @@ interface TemplateVisualTabVideoProps {
 }
 
 export function TemplateVisualTabVideo({ template, onChange }: TemplateVisualTabVideoProps) {
+  const isFree = template.video_aspect === 'free'
+
   return (
     // shadcn-ignore: layout
     <div className="space-y-3 rounded-lg border border-border/60 bg-card/50 p-4">
@@ -26,6 +29,7 @@ export function TemplateVisualTabVideo({ template, onChange }: TemplateVisualTab
       </div>
 
       <div className="space-y-3 pt-1">
+        {/* Aspect Ratio Presets */}
         <div className="space-y-1.5">
           <Label className="text-xs">Proporção Rápida</Label>
           <div className="grid grid-cols-4 gap-1.5">
@@ -49,6 +53,7 @@ export function TemplateVisualTabVideo({ template, onChange }: TemplateVisualTab
           </div>
         </div>
 
+        {/* Video Fit */}
         <div className="space-y-1.5">
           <Label className="text-xs">Ajuste do Vídeo (Enquadramento)</Label>
           <div className="grid grid-cols-2 gap-1.5">
@@ -70,14 +75,33 @@ export function TemplateVisualTabVideo({ template, onChange }: TemplateVisualTab
           </div>
         </div>
 
+        {/* FREE Mode Width & Scale Sliders */}
+        {isFree && (
+          <TemplateVideoFreeControls
+            template={template}
+            onChange={onChange}
+          />
+        )}
+
+        {/* Video Y Position */}
         <div className="space-y-1.5">
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Posição Y</span>
-            <span>{template.video_y}px</span>
+            <Typography
+              variant="muted"
+              className="text-xs"
+            >
+              Posição Vertical (Y)
+            </Typography>
+            <Typography
+              variant="muted"
+              className="text-xs font-mono"
+            >
+              {template.video_y}px
+            </Typography>
           </div>
           <Slider
             value={[template.video_y]}
-            min={50}
+            min={40}
             max={950}
             step={10}
             onValueChange={([val]) => onChange('video_y', val)}
@@ -102,20 +126,32 @@ export function TemplateVisualTabVideo({ template, onChange }: TemplateVisualTab
           </div>
         </div>
 
+        {/* Video Height */}
         <div className="space-y-1.5">
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Altura do Vídeo</span>
-            <span>{template.video_height}px</span>
+            <Typography
+              variant="muted"
+              className="text-xs"
+            >
+              Altura do Vídeo
+            </Typography>
+            <Typography
+              variant="muted"
+              className="text-xs font-mono"
+            >
+              {template.video_height}px
+            </Typography>
           </div>
           <Slider
             value={[template.video_height]}
-            min={400}
-            max={1500}
+            min={300}
+            max={1600}
             step={20}
             onValueChange={([val]) => onChange('video_height', val)}
           />
         </div>
 
+        {/* Border & Radius */}
         <div className="grid grid-cols-2 gap-3 pt-1">
           <div className="space-y-1.5">
             <Label className="text-xs">Arredondamento</Label>
@@ -128,7 +164,20 @@ export function TemplateVisualTabVideo({ template, onChange }: TemplateVisualTab
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Espessura Borda</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Borda</Label>
+              <Button
+                type="button"
+                size="sm"
+                variant={template.video_border_width === 0 ? 'secondary' : 'ghost'}
+                onClick={() =>
+                  onChange('video_border_width', template.video_border_width === 0 ? 2 : 0)
+                }
+                className="h-5 px-1.5 text-[10px]"
+              >
+                {template.video_border_width === 0 ? 'Sem Borda ✓' : 'Sem Borda'}
+              </Button>
+            </div>
             <Slider
               value={[template.video_border_width]}
               min={0}
@@ -139,22 +188,25 @@ export function TemplateVisualTabVideo({ template, onChange }: TemplateVisualTab
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <Label className="text-xs">Cor da Borda</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              type="color"
-              value={template.video_border_color}
-              onChange={(e) => onChange('video_border_color', e.target.value)}
-              className="h-8 w-10 p-0.5"
-            />
-            <Input
-              value={template.video_border_color}
-              onChange={(e) => onChange('video_border_color', e.target.value)}
-              className="h-8 text-xs font-mono"
-            />
+        {/* Border Color */}
+        {template.video_border_width > 0 && (
+          <div className="space-y-1.5">
+            <Label className="text-xs">Cor da Borda</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="color"
+                value={template.video_border_color}
+                onChange={(e) => onChange('video_border_color', e.target.value)}
+                className="h-8 w-10 p-0.5"
+              />
+              <Input
+                value={template.video_border_color}
+                onChange={(e) => onChange('video_border_color', e.target.value)}
+                className="h-8 text-xs font-mono"
+              />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )

@@ -7,6 +7,7 @@ import { KonvaExtraFooterGroup } from './konva-extra-footer-group'
 import { KonvaHeadlineGroup } from './konva-headline-group'
 import { KonvaSafeZonesGroup } from './konva-safe-zones-group'
 import { KonvaVideoGroup } from './konva-video-group'
+import { KonvaWatermarkGroup } from './konva-watermark-group'
 import type { VisualTemplate } from '../data/template.types'
 
 interface TemplateCanvasKonvaProps {
@@ -64,6 +65,7 @@ export function TemplateCanvasKonva({
 
         <KonvaBadgeGroup
           template={template}
+          scale={scale}
           onDragStart={() => setIsDragging(true)}
           onDragEnd={(y) => {
             setIsDragging(false)
@@ -75,6 +77,7 @@ export function TemplateCanvasKonva({
 
         <KonvaHeadlineGroup
           template={template}
+          scale={scale}
           onDragStart={() => setIsDragging(true)}
           onDragEnd={(y) => {
             setIsDragging(false)
@@ -84,23 +87,32 @@ export function TemplateCanvasKonva({
 
         <KonvaVideoGroup
           template={template}
+          scale={scale}
           videoX={videoX}
           videoY={videoY}
           videoWidth={videoWidth}
           videoHeight={videoHeight}
           onDragStart={() => setIsDragging(true)}
-          onDragEnd={(y) => {
+          onDragEnd={(y, x) => {
             setIsDragging(false)
             onChange('video_y', y)
+            if (x !== undefined) {
+              onChange('video_x', x)
+            }
           }}
           onResizeHeight={(height) => {
             setIsDragging(false)
             onChange('video_height', height)
           }}
+          onResizeWidth={(newScale) => {
+            setIsDragging(false)
+            onChange('video_scale', newScale)
+          }}
         />
 
         <KonvaExtraFooterGroup
           template={template}
+          scale={scale}
           extraX={extraX}
           extraWidth={extraWidth}
           onDragStart={() => setIsDragging(true)}
@@ -109,6 +121,8 @@ export function TemplateCanvasKonva({
             onChange('extra_image_y', y)
           }}
         />
+
+        <KonvaWatermarkGroup template={template} />
 
         <KonvaSafeZonesGroup showSafeZones={showSafeZones} />
       </Layer>

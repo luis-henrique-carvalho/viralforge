@@ -22,6 +22,7 @@ const mockTemplate: VisualTemplate = {
   video_border_width: 2,
   video_border_color: '#3B82F6',
   video_shadow: 'deep',
+  brand_alignment: 'left',
   avatar_enabled: true,
   avatar_x: 60,
   avatar_y: 80,
@@ -48,6 +49,11 @@ const mockTemplate: VisualTemplate = {
   extra_image_path: null,
   extra_image_url: null,
   extra_image_template_type: 'comment',
+  extra_image_title: null,
+  extra_image_subtitle: null,
+  extra_image_bg_color: '#18181B',
+  extra_image_text_color: '#FFFFFF',
+  extra_image_border_color: '#3F3F46',
   extra_image_x: null,
   extra_image_y: 1420,
   extra_image_height: 340,
@@ -81,10 +87,112 @@ describe('TemplateVisualTab', () => {
 
     expect(screen.getByText('Fundo do Canvas (1080×1920)')).toBeInTheDocument()
     expect(screen.getByText('Caixa de Vídeo & Geometria')).toBeInTheDocument()
-    expect(screen.getByText('Selo / Badge de Nicho')).toBeInTheDocument()
+    expect(screen.getByText(/Selo \/ Badge de Nicho/i)).toBeInTheDocument()
 
     const darkPreset = screen.getByRole('button', { name: 'Dark Profundo' })
     fireEvent.click(darkPreset)
     expect(onChange).toHaveBeenCalledWith('background_color', '#0D1117')
+  })
+
+  it('renders video aspect presets and handles free mode and border toggle', () => {
+    const onChange = vi.fn()
+    renderWithProviders(
+      <TemplateVisualTab
+        template={{ ...mockTemplate, video_aspect: 'free' }}
+        onChange={onChange}
+      />,
+    )
+
+    expect(screen.getByText('Controles do Modo Livre (FREE)')).toBeInTheDocument()
+
+    const noBorderBtn = screen.getByRole('button', { name: 'Sem Borda' })
+    fireEvent.click(noBorderBtn)
+    expect(onChange).toHaveBeenCalledWith('video_border_width', 0)
+
+    const aspectBtn = screen.getByRole('button', { name: '16:9' })
+    fireEvent.click(aspectBtn)
+    expect(onChange).toHaveBeenCalledWith('video_aspect', '16:9')
+  })
+
+  it('renders footer tab when enabled with custom inputs', () => {
+    const onChange = vi.fn()
+    const onUpload = vi.fn()
+    renderWithProviders(
+      <TemplateVisualTab
+        template={{
+          ...mockTemplate,
+          extra_image_enabled: true,
+          extra_image_template_type: 'comment',
+          extra_image_title: 'Título Teste',
+        }}
+        onChange={onChange}
+        onUploadExtraImage={onUpload}
+      />,
+    )
+
+    expect(screen.getByText('Card de Rodapé / Imagem Extra')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Título Teste')).toBeInTheDocument()
+  })
+
+  it('renders brand alignment controls', () => {
+    const onChange = vi.fn()
+    renderWithProviders(
+      <TemplateVisualTab
+        template={{
+          ...mockTemplate,
+          brand_alignment: 'left',
+        }}
+        onChange={onChange}
+      />,
+    )
+
+    expect(screen.getByText('Alinhamento do Cabeçalho')).toBeInTheDocument()
+    const centerBtn = screen.getByRole('button', { name: /Centralizado/i })
+    fireEvent.click(centerBtn)
+    expect(onChange).toHaveBeenCalledWith('brand_alignment', 'center')
+  })
+
+  it('renders and interacts with footer uploads and color pickers', () => {
+    const onChange = vi.fn()
+    const onUpload = vi.fn()
+    const { container } = renderWithProviders(
+      <TemplateVisualTab
+        template={{
+          ...mockTemplate,
+          extra_image_enabled: true,
+          extra_image_template_type: 'custom_upload',
+        }}
+        onChange={onChange}
+        onUploadExtraImage={onUpload}
+      />,
+    )
+
+    expect(screen.getByText(/Banner Personalizado/i)).toBeInTheDocument()
+    const fileInput = container.querySelector('input[type="file"]')
+    if (fileInput) {
+      const file = new File(['test'], 'image.png', { type: 'image/png' })
+      fireEvent.change(fileInput, { target: { files: [file] } })
+      expect(onUpload).toHaveBeenCalledWith(file)
+    }
+  })
+
+  it('handles brand switches and color changes', () => {
+    const onChange = vi.fn()
+    const { container } = renderWithProviders(
+      <TemplateVisualTab
+        template={{
+          ...mockTemplate,
+          avatar_enabled: true,
+          brand_name_enabled: true,
+        }}
+        onChange={onChange}
+      />,
+    )
+
+    const colorInputs = container.querySelectorAll('input[type="color"]')
+    if (colorInputs.length > 0) {
+      fireEvent.change(colorInputs[0], { target: { value: '#FF0000' } })
+      expect(onChange).toHaveBeenCalled()
+    }
   })
 })

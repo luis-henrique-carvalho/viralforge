@@ -285,6 +285,11 @@ app.mount("/thumbnails", StaticFiles(directory=THUMBNAILS_DIR), name="thumbnails
 # Mount static files for serving fonts (used by subtitle preview in frontend)
 app.mount("/fonts", StaticFiles(directory="fonts"), name="fonts")
 
+# Mount static files for serving user template uploads
+UPLOADS_DIR = os.path.join("data", "uploads")
+os.makedirs(UPLOADS_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
+
 # Config-family routes (keys, cookies, fonts, logo, zernio) live in their own
 # router — they touch none of the job runtime state, so keeping them out of
 # app.py lets this module stay focused on the job lifecycle.

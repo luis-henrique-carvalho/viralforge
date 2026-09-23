@@ -1,3 +1,4 @@
+// shadcn-ignore: konva-canvas-group
 import { Group, Text } from 'react-konva'
 import type { VisualTemplate } from '../data/template.types'
 
@@ -5,6 +6,7 @@ const CANVAS_WIDTH = 1080
 
 interface KonvaHeadlineGroupProps {
   template: VisualTemplate
+  scale: number
   onDragStart: () => void
   onDragEnd: (y: number) => void
 }
@@ -18,16 +20,34 @@ function getFontFamily(fontName?: string): string {
   return fontName
 }
 
-export function KonvaHeadlineGroup({ template, onDragStart, onDragEnd }: KonvaHeadlineGroupProps) {
+export function KonvaHeadlineGroup({
+  template,
+  scale,
+  onDragStart,
+  onDragEnd,
+}: KonvaHeadlineGroupProps) {
   if (!template.headline_enabled) return null
   return (
     <Group
       x={template.headline_margin_x}
       y={template.headline_y}
       draggable
+      dragBoundFunc={(pos) => {
+        const canvasY = pos.y / scale
+        const clampedY = Math.max(20, Math.min(800, canvasY))
+        return {
+          x: template.headline_margin_x * scale,
+          y: clampedY * scale,
+        }
+      }}
       onDragStart={onDragStart}
       onDragEnd={(e) => {
-        const newY = Math.max(40, Math.min(600, Math.round(e.target.y())))
+        const rawY =
+          e?.target && typeof e.target.y === 'function' ? e.target.y() : template.headline_y
+        const newY = Math.max(20, Math.min(800, Math.round(rawY)))
+        if (e?.target && typeof e.target.x === 'function') {
+          e.target.x(template.headline_margin_x)
+        }
         onDragEnd(newY)
       }}
     >

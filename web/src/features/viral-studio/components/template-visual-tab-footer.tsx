@@ -1,5 +1,4 @@
-import { Image as ImageIcon, Upload } from 'lucide-react'
-import { Input } from '@/components/ui/input'
+import { Image as ImageIcon } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -11,6 +10,8 @@ import {
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { Typography } from '@/components/ui/typography'
+import { TemplateFooterTextPanel } from './template-footer-text-panel'
+import { TemplateFooterUploadPanel } from './template-footer-upload-panel'
 import type { VisualTemplate } from '../data/template.types'
 
 interface TemplateVisualTabFooterProps {
@@ -26,10 +27,31 @@ export function TemplateVisualTabFooter({
 }: TemplateVisualTabFooterProps) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file && onUploadExtraImage) {
-      onUploadExtraImage(file)
+    if (file) {
+      try {
+        if (
+          typeof window !== 'undefined' &&
+          window.URL &&
+          typeof window.URL.createObjectURL === 'function'
+        ) {
+          const localUrl = window.URL.createObjectURL(file)
+          if (localUrl) {
+            onChange('extra_image_url', localUrl)
+          }
+        }
+      } catch {
+        // Fallback safely in mock/test environments
+      }
+      onChange('extra_image_path', file.name)
+      onChange('extra_image_template_type', 'custom_upload')
+      onChange('extra_image_enabled', true)
+      if (onUploadExtraImage) {
+        onUploadExtraImage(file)
+      }
     }
   }
+
+  const isCustomUpload = template.extra_image_template_type === 'custom_upload'
 
   return (
     // shadcn-ignore: layout
@@ -58,7 +80,10 @@ export function TemplateVisualTabFooter({
               value={template.extra_image_template_type}
               onValueChange={(v) => onChange('extra_image_template_type', v)}
             >
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger
+                aria-label="Tipo de Card de Rodapé"
+                className="h-8 text-xs"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -71,47 +96,90 @@ export function TemplateVisualTabFooter({
             </Select>
           </div>
 
-          {template.extra_image_template_type === 'custom_upload' && (
-            <div className="space-y-1.5">
-              <Label className="text-xs">Enviar Arquivo (PNG/JPG)</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="h-8 text-xs cursor-pointer file:cursor-pointer"
-                />
-                <Upload className="h-4 w-4 text-muted-foreground shrink-0" />
-              </div>
-            </div>
+          {isCustomUpload ? (
+            <TemplateFooterUploadPanel
+              template={template}
+              onFileChange={handleFileChange}
+            />
+          ) : (
+            <TemplateFooterTextPanel
+              template={template}
+              onChange={onChange}
+            />
           )}
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 pt-1 border-t border-border/40">
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Posição Vertical (Y)</span>
-              <span>{template.extra_image_y}px</span>
+              <Typography
+                variant="muted"
+                className="text-xs"
+              >
+                Posição Vertical (Y)
+              </Typography>
+              <Typography
+                variant="muted"
+                className="text-xs font-mono"
+              >
+                {template.extra_image_y}px
+              </Typography>
             </div>
             <Slider
               value={[template.extra_image_y]}
-              min={800}
+              min={600}
               max={1750}
               step={10}
               onValueChange={([val]) => onChange('extra_image_y', val)}
             />
           </div>
 
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Altura</span>
-              <span>{template.extra_image_height}px</span>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <Typography
+                  variant="muted"
+                  className="text-xs"
+                >
+                  Altura
+                </Typography>
+                <Typography
+                  variant="muted"
+                  className="text-xs font-mono"
+                >
+                  {template.extra_image_height}px
+                </Typography>
+              </div>
+              <Slider
+                value={[template.extra_image_height]}
+                min={80}
+                max={700}
+                step={10}
+                onValueChange={([val]) => onChange('extra_image_height', val)}
+              />
             </div>
-            <Slider
-              value={[template.extra_image_height]}
-              min={100}
-              max={700}
-              step={10}
-              onValueChange={([val]) => onChange('extra_image_height', val)}
-            />
+
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <Typography
+                  variant="muted"
+                  className="text-xs"
+                >
+                  Arredondamento
+                </Typography>
+                <Typography
+                  variant="muted"
+                  className="text-xs font-mono"
+                >
+                  {template.extra_image_radius}px
+                </Typography>
+              </div>
+              <Slider
+                value={[template.extra_image_radius]}
+                min={0}
+                max={48}
+                step={2}
+                onValueChange={([val]) => onChange('extra_image_radius', val)}
+              />
+            </div>
           </div>
         </div>
       )}

@@ -474,3 +474,74 @@ def test_upload_brand_avatar_api(clean_store_env, tmp_path):
     assert f"{b_id}_avatar" in updated_brand["avatar_path"]
 
 
+def test_generate_header_overlay_centered_brand_alignment(tmp_path):
+    """When brand_alignment is center, avatar and brand texts are centered on canvas."""
+    tmpl = VisualTemplate(
+        id="test-center-tmpl",
+        brand_alignment="center",
+        avatar_enabled=True,
+        avatar_y=60,
+        avatar_size=100,
+        brand_name_enabled=True,
+    )
+    brand = Brand(id="test-brand", name="Marca Central", handle="@central")
+    out_path = str(tmp_path / "centered_overlay.png")
+
+    meta = viral_studio_renderer.generate_header_overlay(
+        brand=brand,
+        template=tmpl,
+        headline="Título de Teste Central",
+        output_image_path=out_path,
+    )
+    assert meta["output_path"] == out_path
+    assert os.path.isfile(out_path)
+
+
+def test_generate_header_overlay_custom_footer_card_texts_and_colors(tmp_path):
+    """Custom footer title, subtitle and hex colors are accepted and rendered."""
+    tmpl = VisualTemplate(
+        id="test-footer-tmpl",
+        extra_image_enabled=True,
+        extra_image_template_type="deal",
+        extra_image_title="PROMOÇÃO EXCLUSIVA",
+        extra_image_subtitle="Clique no link antes de esgotar!",
+        extra_image_bg_color="#1E1B4B",
+        extra_image_text_color="#F43F5E",
+        extra_image_border_color="#818CF8",
+    )
+    brand = Brand(id="b", name="B", handle="@b")
+    out_path = str(tmp_path / "footer_custom_overlay.png")
+
+    meta = viral_studio_renderer.generate_header_overlay(
+        brand=brand,
+        template=tmpl,
+        headline="Veja a Promoção",
+        output_image_path=out_path,
+    )
+    assert os.path.isfile(out_path)
+
+
+def test_upload_template_extra_image_sets_custom_upload_type(clean_store_env, tmp_path):
+    """POST /api/viral-studio/templates/{id}/extra-image sets extra_image_template_type to custom_upload."""
+    client = TestClient(app)
+    # Create template
+    create_res = client.post(
+        "/api/viral-studio/templates",
+        json={"name": "Template Para Imagem", "extra_image_template_type": "deal"},
+    )
+    assert create_res.status_code == 201
+    tmpl_id = create_res.json()["id"]
+
+    fake_png = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4"
+    upload_res = client.post(
+        f"/api/viral-studio/templates/{tmpl_id}/extra-image",
+        files={"file": ("footer.png", fake_png, "image/png")},
+    )
+    assert upload_res.status_code == 200
+    data = upload_res.json()
+    assert data["extra_image_enabled"] is True
+    assert data["extra_image_template_type"] == "custom_upload"
+    assert data["extra_image_path"] is not None
+
+
+

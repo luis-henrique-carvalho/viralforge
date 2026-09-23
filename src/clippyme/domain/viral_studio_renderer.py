@@ -528,10 +528,16 @@ def generate_header_overlay(
     img = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
+    brand_alignment = str(_extract_field(template, "brand_alignment", "left"))
     avatar_enabled = bool(_extract_field(template, "avatar_enabled", True))
-    avatar_x = max(0, int(_extract_field(template, "avatar_x", 60)))
+    avatar_x_conf = _extract_field(template, "avatar_x")
     avatar_y = max(0, int(_extract_field(template, "avatar_y", 80)))
     avatar_size = max(20, int(_extract_field(template, "avatar_size", 100)))
+
+    if brand_alignment == "center":
+        avatar_x = (canvas_w - avatar_size) // 2
+    else:
+        avatar_x = max(0, int(avatar_x_conf)) if avatar_x_conf is not None else 60
 
     avatar_bottom = 0
     if avatar_enabled:
@@ -590,37 +596,56 @@ def generate_header_overlay(
     header_bottom = avatar_bottom
 
     if brand_name_enabled:
-        text_x = (avatar_x + avatar_size + 24) if avatar_enabled else avatar_x
-        name_y = avatar_y + 8 if avatar_enabled else 80
         brand_name = str(_extract_field(brand, "name", "Vale o Clique?")).strip()
-
-        max_text_w = max(100, canvas_w - text_x - 60)
-        name_font = _resolve_font(DEFAULT_BRAND_FONT, brand_name_font_size)
-
-        if brand_name:
-            display_name = brand_name
-            if (draw.textbbox((0, 0), display_name, font=name_font)[2] - draw.textbbox((0, 0), display_name, font=name_font)[0]) > max_text_w:
-                while display_name and (draw.textbbox((0, 0), f"{display_name}...", font=name_font)[2] - draw.textbbox((0, 0), f"{display_name}...", font=name_font)[0]) > max_text_w:
-                    display_name = display_name[:-1].rstrip()
-                display_name = f"{display_name}..." if display_name else "..."
-
-            draw.text((text_x, name_y), display_name, font=name_font, fill=brand_name_color)
-            header_bottom = max(avatar_bottom, name_y + brand_name_font_size)
-
         raw_handle = _extract_field(brand, "handle")
         clean_handle = str(raw_handle).strip().lstrip("@") if raw_handle is not None else ""
-        if clean_handle:
-            display_handle = f"@{clean_handle}"
-            handle_y = (name_y + brand_name_font_size + 8) if brand_name else name_y
-            handle_font = _resolve_font(DEFAULT_HANDLE_FONT, handle_font_size)
 
-            if (draw.textbbox((0, 0), display_handle, font=handle_font)[2] - draw.textbbox((0, 0), display_handle, font=handle_font)[0]) > max_text_w:
-                while clean_handle and (draw.textbbox((0, 0), f"@{clean_handle}...", font=handle_font)[2] - draw.textbbox((0, 0), f"@{clean_handle}...", font=handle_font)[0]) > max_text_w:
-                    clean_handle = clean_handle[:-1].rstrip()
-                display_handle = f"@{clean_handle}..." if clean_handle else "..."
+        name_font = _resolve_font(DEFAULT_BRAND_FONT, brand_name_font_size)
+        handle_font = _resolve_font(DEFAULT_HANDLE_FONT, handle_font_size)
 
-            draw.text((text_x, handle_y), display_handle, font=handle_font, fill=handle_color)
-            header_bottom = max(header_bottom, handle_y + handle_font_size)
+        if brand_alignment == "center":
+            name_y = (avatar_bottom + 12) if avatar_enabled else avatar_y
+            if brand_name:
+                t_bbox = draw.textbbox((0, 0), brand_name, font=name_font)
+                nw = t_bbox[2] - t_bbox[0]
+                nx = (canvas_w - nw) // 2
+                draw.text((nx - t_bbox[0], name_y - t_bbox[1]), brand_name, font=name_font, fill=brand_name_color)
+                header_bottom = max(header_bottom, name_y + (t_bbox[3] - t_bbox[1]))
+
+            if clean_handle:
+                display_handle = f"@{clean_handle}"
+                h_bbox = draw.textbbox((0, 0), display_handle, font=handle_font)
+                hw = h_bbox[2] - h_bbox[0]
+                hx = (canvas_w - hw) // 2
+                hy = (name_y + brand_name_font_size + 6) if brand_name else name_y
+                draw.text((hx - h_bbox[0], hy - h_bbox[1]), display_handle, font=handle_font, fill=handle_color)
+                header_bottom = max(header_bottom, hy + (h_bbox[3] - h_bbox[1]))
+        else:
+            text_x = (avatar_x + avatar_size + 24) if avatar_enabled else avatar_x
+            name_y = avatar_y + 8 if avatar_enabled else 80
+            max_text_w = max(100, canvas_w - text_x - 60)
+
+            if brand_name:
+                display_name = brand_name
+                if (draw.textbbox((0, 0), display_name, font=name_font)[2] - draw.textbbox((0, 0), display_name, font=name_font)[0]) > max_text_w:
+                    while display_name and (draw.textbbox((0, 0), f"{display_name}...", font=name_font)[2] - draw.textbbox((0, 0), f"{display_name}...", font=name_font)[0]) > max_text_w:
+                        display_name = display_name[:-1].rstrip()
+                    display_name = f"{display_name}..." if display_name else "..."
+
+                draw.text((text_x, name_y), display_name, font=name_font, fill=brand_name_color)
+                header_bottom = max(avatar_bottom, name_y + brand_name_font_size)
+
+            if clean_handle:
+                display_handle = f"@{clean_handle}"
+                handle_y = (name_y + brand_name_font_size + 8) if brand_name else name_y
+
+                if (draw.textbbox((0, 0), display_handle, font=handle_font)[2] - draw.textbbox((0, 0), display_handle, font=handle_font)[0]) > max_text_w:
+                    while clean_handle and (draw.textbbox((0, 0), f"@{clean_handle}...", font=handle_font)[2] - draw.textbbox((0, 0), f"@{clean_handle}...", font=handle_font)[0]) > max_text_w:
+                        clean_handle = clean_handle[:-1].rstrip()
+                    display_handle = f"@{clean_handle}..." if clean_handle else "..."
+
+                draw.text((text_x, handle_y), display_handle, font=handle_font, fill=handle_color)
+                header_bottom = max(header_bottom, handle_y + handle_font_size)
 
     # Top Badge / Niche Tag
     badge_enabled = bool(_extract_field(template, "badge_enabled", True))
@@ -769,8 +794,17 @@ def generate_header_overlay(
                 except Exception as exc:
                     logger.warning("Could not render extra image asset: %s", exc)
         else:
-            card_bg = (24, 24, 27, 220)
-            card_border = (63, 63, 70, 255)
+            custom_title = _extract_field(template, "extra_image_title")
+            custom_sub = _extract_field(template, "extra_image_subtitle")
+            bg_col_hex = str(_extract_field(template, "extra_image_bg_color", "#18181B"))
+            text_col_hex = str(_extract_field(template, "extra_image_text_color", "#FFFFFF"))
+            border_col_hex = str(_extract_field(template, "extra_image_border_color", "#3F3F46"))
+
+            card_bg = _hex_to_rgba(bg_col_hex, alpha=235)
+            card_border = _hex_to_rgba(border_col_hex)
+            card_title_col = _hex_to_rgba(text_col_hex)
+            card_sub_col = _hex_to_rgba(text_col_hex, alpha=180)
+
             draw.rounded_rectangle(
                 [extra_x, extra_y, extra_x + extra_w, extra_y + extra_h],
                 radius=extra_r,
@@ -781,17 +815,26 @@ def generate_header_overlay(
             title_font = _resolve_font(DEFAULT_HEADLINE_FONT, 28)
             body_font = _resolve_font(DEFAULT_HANDLE_FONT, 22)
 
-            if extra_type == "comment":
+            if custom_title and str(custom_title).strip():
+                c_title = str(custom_title).strip()
+            elif extra_type == "comment":
                 c_title = "O QUE VOCÊ ACHOU?"
-                c_sub = "Deixe seu comentário e compartilhe sua opinião!"
             elif extra_type == "follow":
                 c_title = "SIGA O PERFIL PARA MAIS"
-                c_sub = "Participe do debate e compartilhe com seus amigos!"
             elif extra_type == "deal":
                 c_title = "OFERTA DISPONÍVEL"
-                c_sub = "Confira o link na bio ou comente QUERO!"
             else:
                 c_title = "FATO CURIOSO"
+
+            if custom_sub and str(custom_sub).strip():
+                c_sub = str(custom_sub).strip()
+            elif extra_type == "comment":
+                c_sub = "Deixe seu comentário e compartilhe sua opinião!"
+            elif extra_type == "follow":
+                c_sub = "Participe do debate e compartilhe com seus amigos!"
+            elif extra_type == "deal":
+                c_sub = "Confira o link na bio ou comente QUERO!"
+            else:
                 c_sub = "Salve este vídeo para rever quando quiser!"
 
             t_bbox = draw.textbbox((0, 0), c_title, font=title_font)
@@ -803,13 +846,13 @@ def generate_header_overlay(
                 (extra_x + (extra_w - (t_bbox[2] - t_bbox[0])) // 2 - t_bbox[0], start_cy - t_bbox[1]),
                 c_title,
                 font=title_font,
-                fill=(255, 255, 255, 255),
+                fill=card_title_col,
             )
             draw.text(
                 (extra_x + (extra_w - (s_bbox[2] - s_bbox[0])) // 2 - s_bbox[0], start_cy + (t_bbox[3] - t_bbox[1]) + 12 - s_bbox[1]),
                 c_sub,
                 font=body_font,
-                fill=(161, 161, 170, 255),
+                fill=card_sub_col,
             )
 
     # Ensure output directory exists and save PNG

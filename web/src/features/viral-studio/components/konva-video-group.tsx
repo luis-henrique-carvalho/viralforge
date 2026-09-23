@@ -1,20 +1,28 @@
 // shadcn-ignore: konva-canvas-group
 import { Group, Rect, Text } from 'react-konva'
+import { KonvaFreeResizeHandles } from './konva-free-resize-handles'
 import type { VisualTemplate } from '../data/template.types'
+
+const CANVAS_WIDTH = 1080
+const CANVAS_HEIGHT = 1920
+const HANDLE_SIZE = 24
 
 interface KonvaVideoGroupProps {
   template: VisualTemplate
+  scale: number
   videoX: number
   videoY: number
   videoWidth: number
   videoHeight: number
   onDragStart: () => void
-  onDragEnd: (y: number) => void
+  onDragEnd: (y: number, x?: number) => void
   onResizeHeight?: (height: number) => void
+  onResizeWidth?: (scale: number) => void
 }
 
 export function KonvaVideoGroup({
   template,
+  scale,
   videoX,
   videoY,
   videoWidth,
@@ -22,9 +30,10 @@ export function KonvaVideoGroup({
   onDragStart,
   onDragEnd,
   onResizeHeight,
+  onResizeWidth,
 }: KonvaVideoGroupProps) {
-  const handleSize = 24
   const isContain = template.video_fit === 'contain'
+  const isFree = template.video_aspect === 'free'
   const containW = Math.min(videoWidth, Math.round(videoHeight * (9 / 16)))
   const containX = (videoWidth - containW) / 2
 
@@ -33,13 +42,25 @@ export function KonvaVideoGroup({
       x={videoX}
       y={videoY}
       draggable
+      dragBoundFunc={(pos) => {
+        const canvasX = pos.x / scale
+        const canvasY = pos.y / scale
+        const clampedX = Math.max(0, Math.min(CANVAS_WIDTH - videoWidth, canvasX))
+        const clampedY = Math.max(40, Math.min(CANVAS_HEIGHT - videoHeight - 50, canvasY))
+        return {
+          x: clampedX * scale,
+          y: clampedY * scale,
+        }
+      }}
       onDragStart={onDragStart}
       onDragEnd={(e) => {
-        const newY = Math.max(50, Math.min(950, Math.round(e.target.y())))
-        onDragEnd(newY)
+        const rawY = e?.target && typeof e.target.y === 'function' ? e.target.y() : videoY
+        const rawX = e?.target && typeof e.target.x === 'function' ? e.target.x() : videoX
+        const newY = Math.max(40, Math.min(CANVAS_HEIGHT - videoHeight - 50, Math.round(rawY)))
+        const newX = Math.max(0, Math.min(CANVAS_WIDTH - videoWidth, Math.round(rawX)))
+        onDragEnd(newY, newX)
       }}
     >
-      {/* Outer Container Frame */}
       <Rect
         x={0}
         y={0}
@@ -54,7 +75,6 @@ export function KonvaVideoGroup({
         shadowOpacity={template.video_shadow === 'none' ? 0 : 0.4}
       />
 
-      {/* Inner Video Area for Contain Fit */}
       {isContain && containW < videoWidth && (
         <Rect
           x={containX}
@@ -98,34 +118,37 @@ export function KonvaVideoGroup({
 
       {/* Bottom Resize Handle */}
       <Group
-        x={videoWidth / 2 - handleSize * 2}
-        y={videoHeight - handleSize / 2}
+        x={videoWidth / 2 - HANDLE_SIZE * 2}
+        y={videoHeight - HANDLE_SIZE / 2}
         draggable
-        dragBoundFunc={(pos) => ({
-          x: videoX + videoWidth / 2 - handleSize * 2,
-          y: Math.max(videoY + 400, Math.min(videoY + 1500, pos.y)),
-        })}
-        onDragStart={(e) => {
-          if (e) {
-            e.cancelBubble = true
+        dragBoundFunc={(pos) => {
+          const canvasY = pos.y / scale
+          const clampedY = Math.max(videoY + 300, Math.min(videoY + 1600, canvasY))
+          return {
+            x: (videoX + videoWidth / 2 - HANDLE_SIZE * 2) * scale,
+            y: clampedY * scale,
           }
+        }}
+        onDragStart={(e) => {
+          if (e) e.cancelBubble = true
           onDragStart()
         }}
         onDragEnd={(e) => {
-          if (e) {
-            e.cancelBubble = true
-          }
-          const targetY = e?.target ? e.target.y() : videoHeight - handleSize / 2
-          const relativeY = targetY + handleSize / 2
-          const clampedHeight = Math.max(400, Math.min(1500, Math.round(relativeY)))
+          if (e) e.cancelBubble = true
+          const targetY =
+            e?.target && typeof e.target.y === 'function'
+              ? e.target.y()
+              : videoHeight - HANDLE_SIZE / 2
+          const relativeY = targetY + HANDLE_SIZE / 2
+          const clampedHeight = Math.max(300, Math.min(1600, Math.round(relativeY)))
           onResizeHeight?.(clampedHeight)
         }}
       >
         <Rect
           x={0}
           y={0}
-          width={handleSize * 4}
-          height={handleSize}
+          width={HANDLE_SIZE * 4}
+          height={HANDLE_SIZE}
           fill="#3B82F6"
           stroke="#FFFFFF"
           strokeWidth={2}
@@ -135,13 +158,26 @@ export function KonvaVideoGroup({
           text="↕ Altura"
           x={0}
           y={4}
-          width={handleSize * 4}
+          width={HANDLE_SIZE * 4}
           align="center"
           fontSize={14}
           fontStyle="bold"
           fill="#FFFFFF"
         />
       </Group>
+
+      {isFree && (
+        <KonvaFreeResizeHandles
+          scale={scale}
+          videoX={videoX}
+          videoY={videoY}
+          videoWidth={videoWidth}
+          videoHeight={videoHeight}
+          onDragStart={onDragStart}
+          onResizeHeight={onResizeHeight}
+          onResizeWidth={onResizeWidth}
+        />
+      )}
     </Group>
   )
 }
