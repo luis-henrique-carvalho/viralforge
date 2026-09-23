@@ -14,21 +14,26 @@ try:
     GPU_BACKEND = "ROCm/HIP" if getattr(torch.version, "hip", None) else "CUDA"
     CUDA_AVAILABLE = bool(torch.cuda.is_available())
     GPU_VRAM_GB = 0.0
+    GPU_DEVICE_NAME = ""
 
     if CUDA_AVAILABLE:
         try:
             GPU_VRAM_GB = round(torch.cuda.get_device_properties(0).total_memory / (1024**3), 1)
-            print(f"✅ {GPU_BACKEND} GPU detected — {torch.cuda.get_device_name(0)} ({GPU_VRAM_GB}GB VRAM)")
+            GPU_DEVICE_NAME = torch.cuda.get_device_name(0)
+            print(f"✅ {GPU_BACKEND} GPU detected — {GPU_DEVICE_NAME} ({GPU_VRAM_GB}GB VRAM)")
         except Exception as e:
             CUDA_AVAILABLE = False
+            GPU_DEVICE_NAME = ""
             print(f"⚠️  {GPU_BACKEND} GPU detection failed: {e} — using CPU")
     else:
+        GPU_DEVICE_NAME = ""
         print(f"ℹ️  No {GPU_BACKEND} GPU detected — using CPU")
 except ImportError:
     DEVICE = "cpu"
     GPU_BACKEND = "CPU"
     CUDA_AVAILABLE = False
     GPU_VRAM_GB = 0.0
+    GPU_DEVICE_NAME = ""
     print("ℹ️  PyTorch not installed — using CPU defaults")
 
 def is_local_ai_model(ai_model: str | None) -> bool:

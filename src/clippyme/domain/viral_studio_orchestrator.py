@@ -699,18 +699,46 @@ async def publish_viral_items(
     scheduled_for: Optional[str] = None,
     timezone: Optional[str] = None,
     start_date: Optional[str] = None,
+    publisher: Optional[Any] = None,
 ) -> Dict[str, Any]:
-    """Publish approved items through the shared publish flow, once per payload."""
-    from clippyme.domain import publish_service
-    from clippyme.storage.config_store import load_zernio_config
+    """Publish approved items through the SocialPublisherPort, supporting Auto-Chaining without collision."""
+    from clippyme.domain.social_publisher_port import (
+        PublicationJob,
+        PublicationReceipt,
+        get_social_publisher,
+    )
 
-    config = load_zernio_config() or {}
+    pub = publisher or get_social_publisher()
+    target_platform = platforms[0] if platforms else {}
+    account_id = str(target_platform.get("accountId") or target_platform.get("account_id") or "default")
+    platform_name = str(target_platform.get("platform") or "tiktok").lower()
+    platform_specific = target_platform.get("platformSpecificData")
+
+    projected_slots: List[datetime] = []
+    if schedule_mode == "auto":
+        projected_slots = viral_studio_store.get_next_available_slots(
+            account_id=account_id,
+            count=len(item_ids),
+            preferred_time="18:00",
+            start_date=start_date,
+            timezone_str=timezone or "America/Sao_Paulo",
+        )
+
     results = []
-    for item_id in item_ids:
+    for idx, item_id in enumerate(item_ids):
         item = viral_studio_store.get_item_or_raise(item_id)
+        item_slot = None
+        if schedule_mode == "auto" and idx < len(projected_slots):
+            item_slot = projected_slots[idx].isoformat()
+        elif schedule_mode == "manual":
+            item_slot = scheduled_for
+
         request = {
-            "platforms": platforms, "schedule_mode": schedule_mode,
-            "scheduled_for": scheduled_for, "timezone": timezone, "start_date": start_date,
+            "platforms": platforms,
+            "schedule_mode": schedule_mode,
+            "scheduled_for": item_slot,
+            "timezone": timezone,
+            "start_date": start_date,
             "title": item.get("selected_headline") or "Achadinho",
             "caption": item.get("caption") or "",
         }
@@ -720,7 +748,7 @@ async def publish_viral_items(
             None,
         )
         if cached and cached.get("status") in {"published", "scheduled"}:
-            results.append(dict(cached["result"]))
+            results.append(dict(cached.get("result") or cached))
             continue
         if item.get("status") != "APPROVED":
             raise ValidationError(f"Item {item_id} is not approved for publication")
@@ -732,25 +760,84 @@ async def publish_viral_items(
         )
         existing = reservation["record"]
         if not reservation["reserved"] and existing.get("status") in {"published", "scheduled"}:
-            results.append(dict(existing["result"]))
+            results.append(dict(existing.get("result") or existing))
             continue
         if not reservation["reserved"] and existing.get("status") == "dispatching":
             raise ValidationError(f"Publication for item {item_id} is awaiting reconciliation")
 
         try:
-            published = await publish_service.publish_clip_flow(
-                job_id=item.get("batch_id") or "viral_studio", clip_index=0, resolved=None,
-                req={**request, "clip_path": media_path}, zernio_cfg=config,
+            from clippyme.domain import publish_service
+            is_legacy_mocked = (
+                getattr(publish_service, "publish_clip_flow", None)
+                is not getattr(publish_service, "ORIGINAL_PUBLISH_CLIP_FLOW", None)
             )
-            state = "scheduled" if schedule_mode in {"auto", "manual"} else "published"
+            if is_legacy_mocked and publisher is None:
+                from clippyme.storage.config_store import load_zernio_config
+
+                config = load_zernio_config() or {}
+                published = await publish_service.publish_clip_flow(
+                    job_id=item.get("batch_id") or "viral_studio",
+                    clip_index=0,
+                    resolved=None,
+                    req={**request, "clip_path": media_path},
+                    zernio_cfg=config,
+                )
+                state = published.get("status") or (
+                    "scheduled" if schedule_mode in {"auto", "manual"} else "published"
+                )
+                receipt = PublicationReceipt(
+                    item_id=item_id,
+                    status=state,
+                    post_id=published.get("post_id"),
+                    platform_post_id=published.get("platform_post_id") or published.get("id"),
+                    published_at=published.get("published_at"),
+                    scheduled_for=item_slot,
+                )
+            else:
+                job = PublicationJob(
+                    item_id=item_id,
+                    media_path=media_path,
+                    title=item.get("selected_headline") or "Achadinho",
+                    caption=item.get("caption") or "",
+                    platform=platform_name,
+                    account_id=account_id,
+                    scheduled_for=item_slot,
+                    publish_now=(schedule_mode == "now"),
+                    platform_specific_data=platform_specific,
+                    timezone=timezone or "America/Sao_Paulo",
+                )
+                if schedule_mode == "now":
+                    receipt = await pub.publish(job)
+                else:
+                    receipt = await pub.schedule(job)
+
+            state = receipt.status
             result = {
-                "item_id": item_id, "status": state, "post_id": published.get("post_id"),
-                "platform_post_id": published.get("platform_post_id") or published.get("id"),
-                "published_at": published.get("published_at") or datetime.now(dt_timezone.utc).isoformat(),
+                "item_id": item_id,
+                "status": state,
+                "post_id": receipt.post_id,
+                "platform_post_id": receipt.platform_post_id,
+                "published_at": receipt.published_at or (datetime.now(dt_timezone.utc).isoformat() if state == "published" else None),
+                "scheduled_for": receipt.scheduled_for or item_slot,
+                "post_url": receipt.post_url,
+                "account_id": account_id,
+                "platform": platform_name,
             }
             viral_studio_store.finish_publication(
-                item_id, key, {"key": key, "status": state, "result": result},
+                item_id,
+                key,
+                {"key": key, "status": state, "result": result, "scheduled_for": result["scheduled_for"], "account_id": account_id},
                 status="SCHEDULED" if state == "scheduled" else "PUBLISHED",
+            )
+            viral_studio_store.update_item(
+                item_id,
+                {
+                    "scheduled_for": result["scheduled_for"],
+                    "account_id": account_id,
+                    "platform": platform_name,
+                    "post_id": receipt.post_id,
+                    "post_url": receipt.post_url,
+                },
             )
             append_item_log(
                 item_id,
@@ -760,24 +847,51 @@ async def publish_viral_items(
             )
             results.append(result)
         except Exception as exc:
+            err_msg = str(exc)
             viral_studio_store.finish_publication(
-                item_id, key, {"key": key, "status": "failed", "error": str(exc)}
+                item_id, key, {"key": key, "status": "failed", "error": err_msg}
             )
-            viral_studio_store.update_item(item_id, {"error_message": str(exc)})
+            viral_studio_store.update_item(item_id, {"error_message": err_msg})
             append_item_log(
                 item_id,
                 "PUBLISH_ERROR",
-                f"Falha na publicação: {str(exc)}",
+                f"Falha na publicação: {err_msg}",
                 level="error",
-                details={"error": str(exc)},
+                details={"error": err_msg},
             )
-            results.append({"item_id": item_id, "status": "failed", "error": str(exc)})
+            results.append({"item_id": item_id, "status": "failed", "error": err_msg})
 
     return {
-        "results": results, "total": len(results),
-        "successful": sum(r["status"] in {"published", "scheduled"} for r in results),
-        "failed": sum(r["status"] == "failed" for r in results),
+        "results": results,
+        "total": len(results),
+        "successful": sum(r.get("status") in {"published", "scheduled", "publishing", "processing"} for r in results),
+        "failed": sum(r.get("status") == "failed" for r in results),
     }
+
+
+
+async def cancel_item_schedule(item_id: str, publisher: Optional[Any] = None) -> Dict[str, Any]:
+    """Cancel a scheduled item's remote post and revert its local state to APPROVED."""
+    item = viral_studio_store.get_item_or_raise(item_id)
+    post_id = item.get("post_id")
+    if not post_id and item.get("publication_records"):
+        for rec in reversed(item["publication_records"]):
+            res = rec.get("result")
+            if isinstance(res, dict) and res.get("post_id"):
+                post_id = res.get("post_id")
+                break
+
+    if post_id:
+        from clippyme.domain.social_publisher_port import get_social_publisher
+
+        pub = publisher or get_social_publisher()
+        try:
+            await pub.cancel(post_id)
+        except Exception as exc:
+            logger.warning("Publisher cancel failed for post %s on item %s: %s", post_id, item_id, exc)
+
+    return viral_studio_store.cancel_item_schedule(item_id)
+
 
 
 async def regenerate_item_copy(

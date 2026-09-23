@@ -21,6 +21,7 @@ VALID_CONFIG_KEYS = (
     "DEEPGRAM_API_KEY",
     "ELEVENLABS_API_KEY",
     "TRANSCRIPTION_PROVIDER",
+    "PUBLISHING_PROVIDER",
     "TWITCH_CLIENT_ID",
     "TWITCH_CLIENT_SECRET",
 )
@@ -118,8 +119,10 @@ def save_zernio_config(api_key: str = None, accounts: dict = None, timezone: str
         if api_key is not None:
             if api_key == "":
                 current.pop("api_key", None)
+                os.environ.pop("ZERNIO_API_KEY", None)
             else:
                 current["api_key"] = api_key
+                os.environ["ZERNIO_API_KEY"] = str(api_key)
         if accounts is not None:
             merged = current.get("accounts") or {}
             if not isinstance(merged, dict):
@@ -171,6 +174,7 @@ def load_persistent_config() -> dict:
         "DEEPGRAM_API_KEY": os.environ.get("DEEPGRAM_API_KEY", ""),
         "ELEVENLABS_API_KEY": os.environ.get("ELEVENLABS_API_KEY", ""),
         "TRANSCRIPTION_PROVIDER": os.environ.get("TRANSCRIPTION_PROVIDER", "deepgram"),
+        "PUBLISHING_PROVIDER": os.environ.get("PUBLISHING_PROVIDER", "zernio"),
         "TWITCH_CLIENT_ID": os.environ.get("TWITCH_CLIENT_ID", ""),
         "TWITCH_CLIENT_SECRET": os.environ.get("TWITCH_CLIENT_SECRET", ""),
     }

@@ -20,8 +20,9 @@ import tempfile
 import threading
 import unicodedata
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Dict, List, Optional, Union
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from clippyme.domain.errors import ConflictError, NotFoundError, ValidationError
 
@@ -943,6 +944,161 @@ def append_item_log(item_id: str, log_entry: Dict[str, Any]) -> List[Dict[str, A
                     batch["updated_at"] = _utcnow_iso()
                     _atomic_write_json(get_batches_path(), batches)
                     return logs
+        raise NotFoundError(f"Item not found: {item_id}")
+
+
+def get_next_available_slots(
+    account_id: str,
+    count: int,
+    preferred_time: str = "18:00",
+    start_date: Optional[str] = None,
+    timezone_str: str = "America/Sao_Paulo",
+) -> List[datetime]:
+    """Calculate the next available publishing slots for a specific account without collisions (Auto-Chaining).
+
+    Algorithm:
+    1. Scan stored items in SCHEDULED status matching account_id.
+    2. Extract occupied dates in the target timezone.
+    3. Determine the base date (max(start_date, today) or last occupied date + 1 day).
+    4. Project `count` consecutive daily slots at `preferred_time` skipping any occupied dates.
+    """
+    if count <= 0:
+        return []
+
+    try:
+        tz = ZoneInfo(timezone_str.strip() if timezone_str else "America/Sao_Paulo")
+    except (ZoneInfoNotFoundError, ValueError):
+        tz = ZoneInfo("America/Sao_Paulo")
+
+    try:
+        time_parts = (preferred_time or "18:00").strip().split(":")
+        pref_hour = int(time_parts[0])
+        pref_minute = int(time_parts[1]) if len(time_parts) > 1 else 0
+        pref_time = time(hour=pref_hour, minute=pref_minute)
+    except (ValueError, IndexError):
+        pref_time = time(hour=18, minute=0)
+
+    now = datetime.now(tz)
+
+    occupied_dates: set[date] = set()
+    with _STORE_LOCK:
+        batches = _load_batches_locked()
+        for batch in batches.values():
+            for item in batch.get("items", []):
+                if item.get("status") != "SCHEDULED":
+                    continue
+                # Match account_id if specified on item or in its publication records
+                item_acc = item.get("account_id")
+                records = item.get("publication_records") or []
+                matches_acc = (item_acc == account_id) or not account_id
+                if not matches_acc:
+                    for rec in records:
+                        if rec.get("account_id") == account_id:
+                            matches_acc = True
+                            break
+                if not matches_acc:
+                    continue
+
+                # Check scheduled_for on item or within records
+                scheduled_iso = item.get("scheduled_for")
+                if not scheduled_iso and records:
+                    for rec in records:
+                        if rec.get("scheduled_for"):
+                            scheduled_iso = rec.get("scheduled_for")
+                            break
+                        res = rec.get("result")
+                        if isinstance(res, dict) and res.get("scheduled_for"):
+                            scheduled_iso = res.get("scheduled_for")
+                            break
+                if not scheduled_iso:
+                    continue
+
+                try:
+                    dt = datetime.fromisoformat(str(scheduled_iso).replace("Z", "+00:00"))
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=tz)
+                    else:
+                        dt = dt.astimezone(tz)
+                    if dt.date() >= now.date():
+                        occupied_dates.add(dt.date())
+                except (ValueError, TypeError):
+                    continue
+
+    # Determine base_date (Gap Filling: start from today or specified start_date)
+    if start_date:
+        try:
+            start_date_obj = (
+                datetime.fromisoformat(start_date.replace("Z", "+00:00")).date()
+                if "T" in start_date
+                else datetime.strptime(start_date.strip(), "%Y-%m-%d").date()
+            )
+            base_date = max(start_date_obj, now.date())
+        except ValueError:
+            base_date = now.date()
+    else:
+        target_today = datetime.combine(now.date(), pref_time, tzinfo=tz)
+        if now < target_today:
+            base_date = now.date()
+        else:
+            base_date = now.date() + timedelta(days=1)
+
+
+    slots: List[datetime] = []
+    candidate_date = base_date
+    iterations = 0
+    while len(slots) < count and iterations < 365:
+        iterations += 1
+        if candidate_date not in occupied_dates:
+            slot_dt = datetime.combine(candidate_date, pref_time, tzinfo=tz)
+            if slot_dt > now:
+                slots.append(slot_dt)
+        candidate_date += timedelta(days=1)
+
+    return slots
+
+
+def cancel_item_schedule(item_id: str) -> Dict[str, Any]:
+    """Atomically cancel a scheduled item, reverting its status to APPROVED under _STORE_LOCK."""
+    if not item_id:
+        raise ValidationError("item_id is required")
+
+    with _STORE_LOCK:
+        batches = _load_batches_locked()
+        for batch in batches.values():
+            for idx, item in enumerate(batch.get("items", [])):
+                if item.get("id") == item_id or item.get("item_id") == item_id:
+                    if item.get("status") != "SCHEDULED":
+                        raise ValidationError(
+                            f"Item {item_id} is not in SCHEDULED status (current: {item.get('status')})"
+                        )
+                    item["status"] = "APPROVED"
+                    item["scheduled_for"] = None
+
+                    records = list(item.get("publication_records") or [])
+                    for rec in records:
+                        if rec.get("status") == "scheduled":
+                            rec["status"] = "cancelled"
+                            rec["cancelled_at"] = _utcnow_iso()
+                    item["publication_records"] = records
+
+                    logs = list(item.get("logs") or [])
+                    logs.append(
+                        {
+                            "type": "AUDIT",
+                            "step": "SCHEDULE_CANCELLED",
+                            "message": "Agendamento cancelado pelo usuário",
+                            "timestamp": _utcnow_iso(),
+                            "level": "info",
+                        }
+                    )
+                    item["logs"] = logs
+                    item["updated_at"] = _utcnow_iso()
+
+                    batch["items"][idx] = item
+                    batch["updated_at"] = _utcnow_iso()
+                    _atomic_write_json(get_batches_path(), batches)
+                    return dict(item)
+
         raise NotFoundError(f"Item not found: {item_id}")
 
 

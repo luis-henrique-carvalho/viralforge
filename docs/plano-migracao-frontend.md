@@ -213,77 +213,237 @@ web/
 
 ---
 
-## 5. Fases de Execução da Migração
+## 5. Fases de Execução da Migração e Status Atual
 
 ```mermaid
 flowchart LR
-    Fase0["Fase 0: Setup & Theme"] --> Fase1["Fase 1: Shell & Router"]
-    Fase1 --> Fase2["Fase 2: Viral Studio Core"]
-    Fase2 --> Fase3["Fase 3: Viral Editor"]
-    Fase3 --> Fase4["Fase 4: Discovery"]
-    Fase4 --> Fase5["Fase 5: Clips & Settings"]
-    Fase5 --> Fase6["Fase 6: Homologação & Docker"]
+    Fase0["✅ Fase 0: Setup & Theme"] --> Fase1["✅ Fase 1: Shell, Router & Testes"]
+    Fase1 --> Fase2["✅ Fase 2: Viral Studio Core"]
+    Fase2 --> Fase3["✅ Fase 3: Viral Editor (CONCLUÍDO)"]
+    Fase3 --> Fase4["✅ Fase 4: Fila & Publicação (CONCLUÍDO)"]
+    Fase4 --> Fase5["✅ Fase 5: Configurações & Provedores (CONCLUÍDO)"]
+    Fase5 -.-> Fase6["🎯 Fase 6: Templates Konva & IA Modular (V2)"]
+    Fase6 -.-> Fase7["⏳ Fase 7: Fila Global /publishing (V2)"]
+    Fase7 -.-> Fase8["⏳ Fase 8: Discovery & Pipeline Clips (V2)"]
+    Fase8 -.-> Fase9["⏳ Fase 9: Homologação & Docker (V2)"]
+
+    classDef completed fill:#059669,stroke:#10b981,color:#ffffff;
+    classDef current fill:#2563eb,stroke:#60a5fa,color:#ffffff,stroke-width:3px;
+    classDef pending fill:#374151,stroke:#4b5563,color:#9ca3af;
+
+    class Fase0,Fase1,Fase2,Fase3,Fase4,Fase5 completed;
+    class Fase6 current;
+    class Fase7,Fase8,Fase9 pending;
 ```
-
-### Fase 0: Inicialização do Projeto & Design System
-1. Inicializar o projeto `web/` com Vite 8, React 19 e TypeScript (`vite.config.ts`, `tsconfig.json`).
-2. Configurar o Tailwind CSS v4 (`@import 'tailwindcss';` e `@import 'tw-animate-css';`).
-3. Instalar o tema do TweakCN via CLI do Shadcn:
-   ```bash
-   pnpm dlx shadcn@latest add https://tweakcn.com/r/themes/cmlva2weo000104jr85nt08re
-   ```
-4. Configurar os componentes base do Shadcn (`Button`, `Card`, `Dialog`, `Input`, `Badge`, `Sonner`, etc.).
-5. Configurar `api-client.ts` com Axios e `query-client.ts` com TanStack Query v5.
-
-### Fase 1: Shell da Aplicação & Roteamento
-1. Configurar o TanStack Router com árvore de rotas automatizada (`routeTree.gen.ts`).
-2. Implementar o `_app.tsx` com a `AppSidebar` e `TopNav` (exibindo marca ViralForge e avatar `VF`).
-3. Adicionar o `Toaster` do Sonner no `__root.tsx`.
-
-### Fase 2: Viral Studio Core (Lotes e Itens)
-1. Criar `features/viral-studio/services/` com endpoints `/api/viral-studio/batches` e schemas Zod em `data/`.
-2. Criar `hooks/use-batches.ts` e `hooks/use-batch-detail.ts` com polling automático quando houver jobs em processamento.
-3. Criar a tela principal `ViralStudioView`:
-   - Listagem de lotes em cards responsivos com badges de status.
-   - Diálogo de criação de lote (`CreateBatchDialog`) com suporte a URLs e upload opcional de cookies.
-4. Criar a tela `BatchDetailView`:
-   - Grid de itens do lote com telemetria (modelo de IA, tokens, status de renderização).
-   - Ações de retentativa (`RetryItemDialog`) com personalização de modelo/prompt.
-
-### Fase 3: Viral Editor (Decomposição do Modal Monolítico)
-1. Decompor o arquivo legado de 1.000 linhas (`ViralEditModal.jsx`) em componentes atômicos:
-   - `video-preview.tsx` (player com aspect ratio 9:16).
-   - `hook-selector.tsx` (cards de seleção de ganchos virais).
-   - `copy-editor-form.tsx` (campos de texto para título, descrição, CTA e link de afiliado com validação Zod).
-   - `subtitle-styler.tsx` (seletor de estilo de legenda).
-2. Implementar `use-item-editor.ts` usando React Hook Form para edição fluida sem re-renders desnecessários.
-3. Conectar a mutação de renderização com feedback em tempo real via Sonner.
-
-### Fase 4: Descoberta Multiplataforma de Vídeos
-1. Implementar `features/discovery/` com integração ao endpoint `/api/discovery/search`.
-2. Criar barra de busca unificada por hashtag/palavra-chave e filtros por plataforma (TikTok, Instagram, YouTube).
-3. Implementar card de tendências com métricas de engajamento e botão de importação direta para lote do Viral Studio.
-
-### Fase 5: Pipeline Tradicional de Cortes & Configurações
-1. Migrar a submissão de vídeos longos para corte (`features/pipeline-clips/`).
-2. Implementar a tela de configurações (`features/settings/`):
-   - Gerenciamento de chaves de API com mascaramento seguro.
-   - Seleção de modelo local Ollama / Cloud Gemini.
-   - Upload de cookies de autenticação por plataforma.
-
-### Fase 6: Homologação, Testes & Substituição no Docker
-1. Validar a suíte de testes unitários com Vitest para todas as features.
-2. Atualizar o `docker-compose.yml` e o `Dockerfile` para apontar o build do frontend para a nova pasta `web/`.
-3. Validar a execução completa do container em ambiente de desenvolvimento e produção.
-4. Descomissionar e arquivar o diretório legado `dashboard/`.
 
 ---
 
-## 6. Critérios de Aceite & Checklist de Conclusão
+### ✅ Fase 0: Inicialização do Projeto & Design System [CONCLUÍDO]
+- [x] Inicializar o projeto `web/` com Vite 8, React 19 e TypeScript (`vite.config.ts`, `tsconfig.json`).
+- [x] Configurar o Tailwind CSS v4 (`@import 'tailwindcss';` e `@import 'tw-animate-css';`).
+- [x] Injetar o tema do TweakCN em `src/styles/index.css` e `theme.css`.
+- [x] Instalar o catálogo completo de **43 componentes do Shadcn UI** sob `src/components/ui/`.
+- [x] Configurar `api-client.ts` com Axios e `query-client.ts` com TanStack Query v5.
+- [x] Configurar ESLint 9 estrito com regras idênticas ao `engancha-web` (max 80 linhas/func, max 200 linhas/comp, `react/no-multi-comp`, `singleAttributePerLine`).
 
-- [ ] **Zero linhas de CSS global ad-hoc:** Estilização 100% via Tailwind v4 e variáveis semânticas do tema TweakCN.
-- [ ] **100% Shadcn-First:** Nenhum botão, input, modal ou badge criado manualmente fora do catálogo Shadcn.
-- [ ] **Zero `any` em TypeScript:** Todos os payloads de API e estados locais estritamente tipados via schemas Zod.
-- [ ] **Nenhum arquivo com mais de 300 linhas:** Decomposição estrita de views e subcomponentes.
-- [ ] **Cache Reativo:** Transições de tela instantâneas com TanStack Query sem refetches redundantes ou telas brancas.
-- [ ] **Paridade Funcional Completa:** 100% das funcionalidades do Viral Studio, Discovery e Configurações operando sem regressões.
+---
+
+### ✅ Fase 1: Shell da Aplicação, Roteamento & Infra de Testes [CONCLUÍDO]
+- [x] Configurar o TanStack Router com árvore de rotas automatizada (`routeTree.gen.ts`).
+- [x] Implementar o layout `_app.tsx` com `AppSidebar` (Shadcn Sidebar-01 oficial, largura ícone `4.25rem` ajustada, botões quadrados `size-10`) e `TopNav` com Breadcrumbs dinâmicos.
+- [x] Adicionar o `Toaster` do Sonner tematizado no `__root.tsx`.
+- [x] Configurar a **Pirâmide de Testes**:
+  - Vitest + JSDOM + `@vitest/coverage-v8` (threshold global 75%).
+  - MSW v2 (`src/test-utils/server.ts`) e helper de renderização (`src/test-utils/render.tsx`).
+  - Playwright (`tests/e2e/`) configurado na porta `5176`.
+  - Documentação oficial de testes criada em [`docs/estrategia-de-testes.md`](file:///home/luis/repositories/viralforge/docs/estrategia-de-testes.md).
+  - 15 testes unitários/integração passando com **94.33% de cobertura**.
+
+---
+
+### ✅ Fase 2: Viral Studio Core (Lotes, Itens, Resultados e Marcas) [CONCLUÍDO]
+- [x] **Camada de Dados & Serviços:**
+  - [x] Criar schemas Zod em `features/viral-studio/data/batch.schema.ts`, `brand.schema.ts` e tipos em `batch.types.ts`.
+  - [x] Criar client de API em `features/viral-studio/services/viral-studio.api.ts` conectando aos endpoints `/api/viral-studio/batches`, `/api/viral-studio/batches/{id}`, `/items`, `/retry`, `/approve`, `/brands` e `/templates`.
+  - [x] Declarar chaves de cache em `features/viral-studio/services/viral-studio.keys.ts`.
+- [x] **Hooks TanStack Query:**
+  - [x] Criar `use-batches.ts` (listagem de lotes com polling e KPIs derivados).
+  - [x] Criar `use-batch-detail.ts` (detalhes do lote com auto-refetch dinâmico de 2s durante jobs ativos).
+  - [x] Criar `use-create-batch.ts` (mutação com invalidação de cache e redirecionamento).
+  - [x] Criar `use-item-actions.ts` (mutações individuais e concorrentes em massa para aprovar/reprocessar).
+  - [x] Criar `use-brands.ts` (listagem e criação de perfis de marca).
+- [x] **Componentes Shadcn da Feature:**
+  - [x] `batch-kpis-grid.tsx`: Cards de métricas agregadas da esteira de produção.
+  - [x] `batch-card.tsx`: Card de apresentação de cada lote com progresso e status.
+  - [x] `batch-status-badge.tsx`: Badge semântico de status (`completed`, `processing`, `failed`, `idle`).
+  - [x] `video-preview-card.tsx`: Player 9:16 com LazyVideo, play/pause e overlay dinâmico de etapa de IA.
+  - [x] `item-card.tsx`: Card de vídeo 9:16 com preview, copy, badges e ações rápidas.
+  - [x] `item-detail-sheet.tsx`: Drawer lateral para inspeção de telemetria, logs e ganchos de IA.
+  - [x] `batch-results-header.tsx`: Header com barra de progresso e alternador de seleção múltipla.
+  - [x] `bulk-actions-bar.tsx`: Barra flutuante de ações em lote (aprovar, reprocessar, baixar).
+  - [x] `url-parser-input.tsx`: Entrada multi-URLs com validação instantânea e extração de códigos.
+  - [x] `brand-card.tsx` e `brand-form-dialog.tsx`: Cards e modal de cadastro de marcas.
+- [x] **Views & Rotas:**
+  - [x] Implementar `features/viral-studio/views/viral-studio-view.tsx` (Dashboard de lotes em `/viral-studio`).
+  - [x] Implementar `features/viral-studio/views/create-batch-view.tsx` (Ingestão dedicada em `/viral-studio/new`).
+  - [x] Implementar `features/viral-studio/views/brands-view.tsx` (Gestão de marcas em `/viral-studio/brands`).
+  - [x] Implementar `features/viral-studio/views/batch-results-view.tsx` (Página de Resultados em `/viral-studio/$id`).
+  - [x] Conectar as rotas em `src/routes/_app/viral-studio/`.
+- [x] **Testes de Integração & Mocks:**
+  - [x] Criar handlers MSW em `features/viral-studio/mocks/handlers.ts`.
+  - [x] Implementar testes com 26 arquivos de teste passando e >90% de cobertura de linhas.
+
+---
+
+### ✅ Fase 3: Viral Editor (Página Dedicada Widescreen & Decomposição Atômica) [CONCLUÍDO]
+- [x] **Pivot Arquitetural de Modal para Página Dedicada:**
+  - [x] Rota desaninhada `_app/viral-studio/$id_.items.$itemId.tsx` (`/viral-studio/$id/items/$itemId`) no TanStack Router.
+  - [x] Layout widescreen de 2 colunas com container responsivo centralizado (`max-w-6xl mx-auto`).
+  - [x] TopBar completo (`viral-editor-topbar.tsx`): retorno rápido ao lote, breadcrumbs truncáveis, badges de Marca/Template/Código, e paginação sequencial (`Vídeo X de Y` + setas `←`/`→` com atalhos `Alt + Arrow`).
+  - [x] Barra inferior fixa (`viral-editor-bottom-bar.tsx`): dirty state badge, botão Descartar, Aprovar Vídeo e Salvar Alterações.
+  - [x] Diálogo de guarda contra perdas (`unsaved-changes-dialog.tsx`): intercepta navegações com alterações pendentes (*Salvar e Continuar*, *Descartar*, *Permanecer no Vídeo*).
+- [x] **Decomposição do Legado Monolítico (`ViralEditModal.jsx` ~1.000 linhas) em Componentes Atômicos (<200 linhas):**
+  - [x] `viral-editor-preview.tsx`: Player vertical 9:16 sticky com overlay de re-renderização em progresso e trigger `POST /api/viral-studio/items/{id}/render`.
+  - [x] `viral-editor-headlines-tab.tsx`: Seletor de ganchos magnéticos da IA com badges contextuais multimodais e input manual.
+  - [x] `copy-regeneration-card.tsx`: Card de regeração de copy com seletor de LLMs locais/cloud (`use-local-ai-models.ts`) e instruções contextuais.
+  - [x] `viral-editor-caption-tab.tsx`: Edição de legenda comercial, inserção rápida de CTA da marca e cópia.
+  - [x] `viral-editor-details-tab.tsx`: Edição de código de produto (SKU), link de afiliado e URL de origem.
+  - [x] `viral-editor-observability-tab.tsx`: Hub de observabilidade multimodal estruturado em 3 sub-seções responsivas:
+    - [x] `keyframes-gallery-section.tsx` + `keyframe-lightbox-dialog.tsx`: Galeria de frames por cena 9:16 com zoom Lightbox em alta resolução.
+    - [x] `signals-audio-section.tsx`: Transcrição de áudio com detecção de fala e `<ScrollArea>`.
+    - [x] `signals-metadata-section.tsx`: Metadados do post original e métricas de engajamento (views, likes, comments, reposts) com `<ScrollArea>`.
+    - [x] `observability-telemetry-view.tsx`: 6 cards de métricas (Tokens, Custo USD, Latência, TPS, Modelo), Prompt completo e JSON bruto com cópia rápida.
+- [x] Roteador com TanStack Router em modo file-based (`src/routes/`).
+- [x] Shell base com `AppSidebar` colapsável e `TopNav` com status de rede.
+- [x] Infraestrutura de testes com Vitest, Happy-DOM, Testing Library e MSW v2 (`web/src/mocks/server.ts`).
+- [x] Testes E2E com Playwright (`web/e2e/app-shell.spec.ts`).
+
+---
+
+### ✅ Fase 2: Viral Studio Core (Lotes & Marcas) [CONCLUÍDO]
+- [x] Schemas Zod para Brands (`brand.schema.ts`) e Batches (`batch.schema.ts`).
+- [x] Hooks TanStack Query para CRUD de lotes e marcas com invalidação de cache otimista.
+- [x] Componentes: `CreateBatchDialog`, `BrandFormDialog`, `BatchCard`, `BrandCard`.
+- [x] Views `/viral-studio` e `/viral-studio/brands` com cobertura rigorosa de testes unitários.
+
+---
+
+### ✅ Fase 3: Viral Editor Widescreen & Curadoria Modular [CONCLUÍDO]
+- [x] Desacoplamento do monólito em página dedicada (`/viral-studio/$id/items/$itemId`).
+- [x] Player de vídeo 9:16 central com Safe Zones (TikTok/Reels/Shorts) e controle de velocidade.
+- [x] Hub de observabilidade com 3 abas: *Revisão & Cópia*, *Galeria de Keyframes*, *Telemetria & Logs*.
+- [x] Seletor e carrossel de ganchos sugeridos pela IA com re-renderização instantânea.
+- [x] Form management com React Hook Form + Zod (`use-item-editor.ts` + `item-editor.schema.ts`).
+- [x] Mocks MSW v2, 46 arquivos de teste e **135 testes unitários/integração passando com cobertura global >90%**.
+- [x] Build de produção Vite gerado com sucesso.
+
+---
+
+### ✅ Fase 4: Publicação Inteligente & Fila Contínua (Zernio) [CONCLUÍDO]
+> **Especificação Completa:** [`docs/publicacao-e-fila-continua.md`](publicacao-e-fila-continua.md)  
+> **ADR de Referência:** [`docs/adr/0001-ports-and-adapters-publishing.md`](adr/0001-ports-and-adapters-publishing.md)  
+> **Metodologia:** `/codebase-design` (Módulos Profundos, Costuras e Dois Adaptadores)
+
+- [x] **Backend: Ports & Adapters e Fila Contínua:**
+  - [x] Implementar a porta de domínio `SocialPublisherPort` em `clippyme.domain.social_publisher_port`.
+  - [x] Implementar `ZernioPublisherAdapter` (produção com HTTP 429 backoff) e `MockPublisherAdapter` (testes offline).
+  - [x] Implementar o algoritmo de fila contínua `get_next_available_slots(account_id, count)` sem colisão de horários no `viral_studio_store.py`.
+  - [x] Criar endpoint `GET /api/viral-studio/publishing/preview-slots` para projeção transparente de datas no modal.
+  - [x] Criar endpoint `POST /api/viral-studio/publish` disparando através da `SocialPublisherPort`.
+  - [x] Criar endpoint `POST /api/viral-studio/publishing/{item_id}/cancel` para reversão de agendamento.
+- [x] **Frontend: Modal, Ações e Indicadores:**
+  - [x] `ViralPublishDialog`: modal oficial com seletor de contas, modos "Publicar Agora" e "Fila Contínua", tabela de projeção de datas/horários e acompanhamento de disparo item a item.
+  - [x] Conectar o botão "Publicar ({count})" no `BulkActionsBar` da visão do lote (`batch-results-view.tsx`).
+  - [x] Adicionar botão de publicação rápida no `ItemCard` e no `ViralEditorBottomBar` para vídeos com status `APPROVED`.
+  - [x] Exibir pill "Agendado para DD/MM às HH:MM" com botão de ação rápida para "Cancelar Agendamento" diretamente no card do vídeo.
+  - [x] Adicionar aba "Agendados / Publicados" no `BatchFilterToolbar`.
+
+---
+
+### ✅ Fase 5: Painel de Configurações, Gestão de Provedores & Telemetria (`/settings`) [CONCLUÍDO]
+> **Especificação Completa:** [`docs/fase-5-settings-e-provedores.md`](fase-5-settings-e-provedores.md)  
+> **Vocabulário de Domínio:** [`CONTEXT.md`](../CONTEXT.md)  
+> **Padrão Visual:** Shadcn UI Settings (Sidebar de navegação vertical à esquerda + painel modular à direita)
+
+- [x] **Backend: Extensão de Configurações e Telemetria:**
+  - [x] Adicionar suporte a `PUBLISHING_PROVIDER` em `config_store.py` e resolução dinâmica em `social_publisher_port.py`.
+  - [x] Implementar endpoint `GET /api/config/hardware` expondo métricas limpas de GPU (CUDA/ROCm/CPU), VRAM, RAM e modelo dinâmico do Whisper.
+  - [x] Testes unitários para persistência atômica e leitura de hardware em `tests/test_settings_backend.py`.
+- [x] **Frontend: Arquitetura da Feature (`features/settings/`):**
+  - [x] Schemas Zod (`settings.schema.ts`) e tipos TypeScript (`settings.types.ts`).
+  - [x] Serviços de API (`settings.api.ts`) e factory de query keys (`settings.keys.ts`).
+  - [x] Hooks TanStack Query (`use-settings.ts`, `use-update-settings.ts`).
+  - [x] Componente reutilizável de campo seguro `ApiKeyInput` com revelação de senha, badge "Configurado" e botão de exclusão.
+  - [x] Componente de navegação vertical `<SettingsSidebarNav />` com ícones Lucide e indicador de aba ativa.
+  - [x] Cards modulares de configuração:
+    - [x] `PublishingProviderCard`: Seletor Zernio/Mock, chave Zernio, descoberta de contas e mapeamento de canais.
+    - [x] `AiModelsCard`: Chave Gemini, seletor de modelo padrão, URLs de Ollama/LM Studio com status online em tempo real.
+    - [x] `TranscriptionProviderCard`: Seletor Deepgram/ElevenLabs/Whisper, API keys e token HuggingFace.
+    - [x] `CookiesManagerCard`: Upload Netscape por plataforma (YouTube, TikTok, Instagram) e status de validade.
+    - [x] `HardwareStatusCard`: Cards informativos de GPU/CPU, VRAM, RAM, Whisper compute e botão de recarregar.
+    - [x] `BrandAssetsCard`: Gerenciador de Logo PNG d'água e Fontes TTF/OTF customizadas.
+  - [x] View principal `SettingsView` substituindo o placeholder pela composição Shadcn Settings.
+  - [x] Testes unitários com Vitest e React Testing Library (`settings-components.test.tsx`, `settings-view.test.tsx`).
+
+---
+
+### ⏳ Fase 6: Estúdio de Templates Universais & IA Modular (Konva 9:16) [V2 — POSTERGADO]
+> **Especificação Completa:** [`docs/viral-studio-template-architecture.md`](viral-studio-template-architecture.md)  
+> **ADR de Referência:** [`docs/adr/0002-decoupled-templates-personas-konva.md`](adr/0002-decoupled-templates-personas-konva.md)  
+> **Protótipos Validados:** [`docs/prototypes/viral-studio-template-simulation.html`](prototypes/viral-studio-template-simulation.html) e [`docs/prototypes/dynamic-generation-tasks-simulation.html`](prototypes/dynamic-generation-tasks-simulation.html)
+
+- [ ] **Backend: Schemas, Store, CopyEngine & Renderer:**
+  - [ ] Implementar `GenerationTask` e atualizar `VisualTemplate` com 35+ campos (geometria 1080x1920, altura 400-1500px, bordas, rodapé e lista de `generation_tasks`).
+  - [ ] Atualizar `AICopyData` com `custom_outputs: Dict[str, Any]` preservando retrocompatibilidade total.
+  - [ ] Inicializar os 4 templates de fábrica universais no `viral_studio_store.py` (`curiosities-viral`, `classic-affiliate`, `quick-facts-news`, `tech-review`).
+  - [ ] Refatorar `viral_studio_copy.py` (`CopyEngine`): montagem dinâmica de prompt por tarefas ativas, JSON Schema dinâmico sob demanda e desativação de manchetes em templates de vídeo limpo (*Clean Video Mode*).
+  - [ ] Refatorar `viral_studio_renderer.py`: desenhar selo em `badge_y`, headline em `headline_y`, máscara de cantos arredondados (`video_radius`), moldura colorida e sobreposição do card/imagem extra de rodapé.
+- [ ] **Frontend: TemplateStudio Workstation (`react-konva`):**
+  - [ ] Criar o modal `TemplateEditorModal.tsx` dual-pane integrado aos componentes Shadcn e `react-konva`.
+  - [ ] Implementar o canvas 1080×1920 com manipulação livre de camadas, alças verticais de altura do vídeo e guia magnética central (*Snap Guide*).
+  - [ ] Implementar a aba "Persona & Tarefas de IA" com catálogo de blocos (+ Adicionar Tarefa de IA: Headline, Legenda, Título, Rodapé, Quiz, Imagem IA) e inserção de tags dinâmicas.
+
+---
+
+### ⏳ Fase 6: Central Dedicada de Fila e Calendário (`/publishing`) [V2 — POSTERGADO]
+- [ ] `views/publishing-queue-view.tsx` + rota `_app/publishing.tsx`: Tela de gestão e calendário global da fila com filtros por rede/conta, miniatura com preview, reagendamento e cancelamento.
+- [ ] Item "Fila de Postagens" adicionado ao menu lateral `AppSidebar`.
+- [ ] Endpoint `PATCH /api/viral-studio/publishing/{item_id}/reschedule`.
+
+---
+
+### ⏳ Fase 7: Descoberta Multiplataforma de Tendências [V2 — POSTERGADO]
+- [ ] Implementar `features/discovery/` com integração ao endpoint `/api/discovery/search`.
+- [ ] Criar barra de busca unificada por hashtag/palavra-chave e filtros por plataforma (TikTok, Instagram, YouTube).
+- [ ] Implementar card de tendências com métricas de engajamento e cálculo de viral score.
+- [ ] Implementar ação de importação direta para lote do Viral Studio.
+
+---
+
+### ⏳ Fase 8: Pipeline Tradicional de Cortes & Configurações [V2 — POSTERGADO]
+- [ ] Migrar submissão de vídeos longos para cortes (`features/pipeline-clips/`).
+- [ ] Implementar a tela de configurações (`features/settings/`):
+  - [ ] Gerenciamento seguro de API keys (Gemini, Deepgram, ElevenLabs).
+  - [ ] Seletor de modelos de IA locais (Ollama) e cloud (Gemini).
+  - [ ] Upload de cookies de autenticação por plataforma.
+  - [ ] Monitor de telemetria de hardware (GPU vs CPU).
+
+---
+
+### ⏳ Fase 9: Homologação, E2E & Substituição no Docker [V2 — POSTERGADO]
+- [ ] Execução completa da suíte de testes unitários, integração e E2E Playwright.
+- [ ] Atualizar `docker-compose.yml` e `Dockerfile` para o build do novo `web/`.
+- [ ] Validar containers em desenvolvimento e produção.
+- [ ] Descomissionar e arquivar o diretório legado `dashboard/`.
+
+---
+
+## 6. Critérios de Aceite & Checklist Global de Qualidade
+
+- [x] **Zero linhas de CSS global ad-hoc:** 100% Tailwind v4 e variáveis semânticas TweakCN.
+- [x] **100% Shadcn-First:** 43 componentes oficiais instalados sob `@/components/ui/`.
+- [x] **Infraestrutura de Testes Conforme Pirâmide:** Vitest + MSW v2 + Playwright com cobertura >75%.
+- [ ] **Zero `any` em TypeScript:** Todos os contratos tipados via schemas Zod nas features.
+- [ ] **Nenhum arquivo com mais de 300 linhas:** Decomposição estrita em `views/`, `components/`, `hooks/`, `services/`.
+- [ ] **Cache Reativo TanStack Query:** Transições fluidas sem refetches redundantes ou telas brancas.
+- [ ] **Paridade Funcional Completa:** 100% das features migradas e validadas.

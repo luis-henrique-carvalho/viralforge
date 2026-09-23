@@ -84,6 +84,21 @@ def test_is_trusted_origin_rejects_none_and_empty(monkeypatch):
     assert is_trusted_origin("") is False
 
 
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:3000",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:8000",
+        "http://[::1]:5173",
+    ],
+)
+def test_is_trusted_origin_accepts_loopback_origins(origin):
+    assert is_trusted_origin(origin) is True
+
+
 # --- is_trusted_client_host ------------------------------------------------
 
 @pytest.mark.parametrize("host", ["127.0.0.1", "::1", "localhost", "LOCALHOST"])

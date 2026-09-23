@@ -290,6 +290,24 @@ class ZernioClient:
             body["tiktokSettings"] = tiktok_settings
         return self._request("POST", "/posts", json=body)
 
+    def delete_post(self, post_id: str) -> bool:
+        """DELETE /v1/posts/{id} — cancel an existing post."""
+        try:
+            self._request("DELETE", f"/posts/{post_id}")
+            return True
+        except ZernioError as exc:
+            if exc.status_code == 404:
+                return True
+            logger.warning("Zernio delete_post failed for %s: %s", post_id, exc)
+            return False
+
+    def get_post(self, post_id: str) -> Optional[dict]:
+        """GET /v1/posts/{id} — fetch status of an existing post."""
+        data = self._request("GET", f"/posts/{post_id}")
+        if isinstance(data, dict):
+            return data.get("post") or data
+        return None
+
 
 # ---------------------------------------------------------------------------
 # SmartScheduler — picks an optimal posting time

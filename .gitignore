@@ -17,6 +17,11 @@ __pycache__/
 node_modules/
 **/node_modules/
 dashboard/dist/
+web/dist/
+coverage/
+**/coverage/
+*.tsbuildinfo
+
 
 # graphify knowledge-graph output
 graphify-out/

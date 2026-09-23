@@ -133,16 +133,21 @@ docker compose -f docker-compose.yml -f docker-compose.amd.yml up --build  # AMD
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build  # NVIDIA CUDA GPU
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build  # prod frontend (nginx)
 
+# Full quality & test suite (Backend Python + Web Frontend: lint, typecheck, coverage, build)
+./scripts/verify.sh                  # All checks
+./scripts/verify.sh --backend        # Backend only (Ruff + Pytest)
+./scripts/verify.sh --web            # Web only (Typecheck + ESLint + Vitest coverage + Vite build)
+./scripts/verify.sh --e2e            # Include Playwright E2E tests
+
 # Backend host tests (fast, no CV stack) + lint
-pip install -e ".[host-tests]" && pip install pytest ruff
-pytest -m "not integration" -q
-ruff check src/clippyme tests --select E9,F63,F7,F82
+uv run --extra host-tests --with ruff ruff check src/clippyme tests --select E9,F63,F7,F82
+uv run --extra host-tests --with pytest --with pytest-mock python -m pytest -m "not integration" -q
 
 # Heavy CV/ML integration tests (Docker only)
 docker compose run --rm -u root backend sh -lc "pip install -q pytest && pytest -m integration"
 
-# Frontend (Vitest + jsdom + testing-library)
-cd dashboard && npm ci && npm test && npm run lint && npm run build
+# Web Frontend (Typecheck + ESLint + Vitest + Build)
+pnpm --dir web typecheck && pnpm --dir web lint && pnpm --dir web test:coverage && pnpm --dir web build
 ```
 
 CI (`.github/workflows/ci.yml`): backend host suite (with report-only
@@ -270,25 +275,39 @@ through verbatim (the frontend parses per-platform 429 daily limits).
   moving code.
 - **Atomic writes** for anything on disk that a crash could corrupt
   (`job_artifacts.save_job_metadata` pattern: tmp + `os.replace`, 0o600).
-- **Frontend**: `RedesignApp.jsx` owns only top-level state wiring; side
-  effects go in `hooks/`, pure logic in `lib/`, visuals in `redesign/`
-  components. UI primitives are hand-rolled in `primitives.jsx` (no shadcn
-  CLI). Component tests colocate as `*.test.jsx` (Vitest + jsdom).
-- **Security**: `job_id` regex-validated everywhere; config/state endpoints
-  require a trusted origin or private-network client; `SafeStaticFiles`
-  blocks `*_metadata.json` and `source_*` from the `/videos` mount; secrets
-  never enter the job journal; `tmp/` is gitignored and must never be
-  committed. Pre-commit secret scan: `git config core.hooksPath .githooks`.
-  With `TRUST_PROXY=1`, `client_ip` reads the **last** `X-Forwarded-For`
-  hop (the shipped nginx APPENDS via `$proxy_add_x_forwarded_for` — the
+- **Quality and Config Immutability**: NEVER modify, loosen, or bypass linter rules, TypeScript/tsconfig options, Vitest coverage thresholds, or test configs (e.g. `eslint.config.*`, `tsconfig*.json`, `vitest.config.*`, `scripts/verify.sh`) to silence errors. Fix the source code or test implementation instead.
+- **Host Test Isolation from Persistent Disk State**: Host unit tests verifying environment resolution, factory fallbacks, or default providers (e.g. `get_social_publisher`, `config_routes`) must strictly isolate from disk configurations by monkeypatching `load_persistent_config` and `load_zernio_config` to `{}` or test fixtures, preventing developer-local `data/config.json` state from leaking into assertions.
+- **Graphify-First Exploration**: ALWAYS use `graphify query "<question>"`, `graphify explain "<concept>"`, or `graphify path "<A>" "<B>"` as the primary search and navigation mechanism for codebase architecture and relationships before falling back to raw grep searches. Run `graphify update .` after code modifications.
+- **Frontend Web (web/) — 100% Shadcn-First Compliance**: Always compose UI features from official Shadcn UI primitives located in `@/components/ui/*` (`Typography`, `Button`, `Input`, `Badge`, `Card`, `Switch`, `Select`, `Dialog`, `Sheet`, `ScrollArea`, `Separator`, etc.). Never create raw HTML buttons/inputs or custom primitive widgets that duplicate Shadcn functionality, nor raw typography tags (`<h1-h6>`, `<p>`, `<blockquote>`). If a specialized UI component is truly needed that cannot be built with standard Shadcn components, you MUST explicitly request user authorization before creating it.
+  - **Canonical Typography Standard**: Always use `<Typography variant="...">` from `@/components/ui/typography.tsx`. Never pass ad-hoc inline font/color overrides (e.g. `text-xs text-muted-foreground`) when canonical variants (`variant="muted"`, `variant="small"`, `variant="destructive"`, `variant="h1-h4"`) exist.
+  - Every frontend feature must pass `./scripts/check_shadcn_usage.py` with 0 warnings.
+- **Frontend Quality & Chart Key Semantics**: Respect max 80 lines per function, max 200 lines per component, zero `any` in TypeScript, and strict TanStack Router / TanStack Query separation (`views/`, `components/`, `hooks/`, `services/`, `data/`). Chart tooltips, legends, and mapped collections must always use unique string identifiers (`key={key}`) instead of array indices or union-type properties, ensuring zero `react/no-array-index-key` warnings and strict React 19 type safety.
+- **Security & Port-Agnostic Local Loopback Origins**: `job_id` regex-validated everywhere; config/state endpoints require a trusted origin or private-network client. In `security.py`, `is_trusted_origin()` must dynamically accept any port on localhost / loopback hostnames (`localhost`, `127.0.0.1`, `::1`) via URL hostname parsing (in addition to explicit `ALLOWED_ORIGINS` env vars), preventing false-positive HTTP 403 CSRF blocks when the frontend dev server is allocated an alternate local port (e.g. 5174, 3000, 8080). `SafeStaticFiles` blocks `*_metadata.json` and `source_*` from the `/videos` mount; secrets never enter the job journal; `tmp/` is gitignored and must never be committed. Pre-commit secret scan: `git config core.hooksPath .githooks`. With `TRUST_PROXY=1`, `client_ip` reads the **last** `X-Forwarded-For` hop (the shipped nginx APPENDS via `$proxy_add_x_forwarded_for`).
 - **Viral Content Studio Rules**:
   * `viral_studio_context.py`: Extract multi-signal context (yt-dlp title/caption/tags, keyframe JPEGs downscaled to ~512px saved under `/videos/viral_studio/<batch>/<item>/keyframes/`, speech transcript, engagement metrics `view_count`, `like_count`, `comment_count`, `repost_count`). `_extract_audio_transcript` must use dynamic import to stay host-testable without cv2/torch.
   * `viral_studio_copy.py`: Multimodal copy generation supporting Gemini, LM Studio, and Ollama. Passes inline JPEG parts (`types.Part.from_bytes`) + context summary, guaranteeing zero product hallucinations. Persists full LLM telemetry (`model`, `prompt_tokens`, `candidate_tokens`, `estimated_cost_usd`, `latency_ms`, `prompt`, `raw_response`) to `viral_studio_store`. Local inference clients (LM Studio / Ollama) MUST use a >= 300s timeout to accommodate 27B+ reasoning/CoT models.
   * `job_runner.py` Failure Propagation: Subprocess exits with non-zero returncodes (including SIGSEGV 139 / GPU coredump) MUST sync terminal `FAILED` state to `viral_studio_store` and append structured `ERROR` telemetry so items never stay stuck in `ANALYZING` or `DOWNLOADING`.
   * **Frontend Observability & Model Resolution**: `ViralEditModal.jsx` provides a dedicated 3-view Observability Hub (`Sinais Extraídos`, `Telemetria da LLM`, `Linha do Tempo`). The telemetry view must resolve `item.model` or `AI_ROUTING` logs directly and display waiting dashes (`—`) for pending metrics rather than hardcoding cloud model fallbacks or zeroed stats. Model selection from `createBatch` must thread through all API/orchestrator layers without drop.
+- **Media & Video Card UI/UX Rules (Hero-First & Anti-Gap)**:
+  * **Video as Hero**: Vertical 9:16 video cards must lead with the video preview. Never nest media inside bloated `CardHeader` containers with double borders. Overlay identifiers, SKU tags, selection checkboxes, and status badges directly atop the video preview using frosted-glass badges (`bg-black/60 backdrop-blur-md border border-white/20`).
+  * **Anti-Gap Grid Alignment**: Media grids must use `items-start` to avoid forced row-stretching. Cards must avoid `justify-between` or unconstrained `flex-1` spacers that cause cavernous empty voids when sibling cards have varying content.
+  * **Uniform-Height Action Slots**: Every card lifecycle state (`APPROVED`, `READY_FOR_REVIEW`, `FAILED`, `PROCESSING`) must occupy an identical fixed-height footer slot (e.g. `h-7` or `h-8`). Never leave approved cards without a symmetrical status pill (`✓ Vídeo Aprovado`) matching the primary CTA button height of pending cards.
+- **Visual Template & TemplateStudio Rules**:
+  * `VisualTemplate` Schema: Autonomous domain aggregate combining visual geometry (1080x1920 logical space) and editorial intelligence (`generation_tasks: List[GenerationTask]`). Strictly decoupled from `Brand`. The `conversion_goal` field (`engagement` vs `affiliate`) dictates copy behavior: `engagement` forbids product codes and bio links, directing CTA to retention/comments.
+  * `viral_studio_copy.py` (`CopyEngine`): Deep module. Assembles prompts dynamically from `template.generation_tasks`, builds on-demand JSON schemas containing only active task keys, interpolates variables (`{transcript}`, `{brand_name}`, `{cta}`), runs 5-level JSON repair, and populates `AICopyData` (`headlines`, `caption`, `custom_outputs: Dict[str, Any]`). Host-testable via pure functions without GPU/network.
+  * `viral_studio_renderer.py`: Deep module. Enforces even coordinates and dimensions (`coord - (coord % 2)`) for libx264/YUV420p macroblock compatibility. Composes Pillow overlays (avatar, handle, badge at `badge_y`, headline at `headline_y`) and applies video border-radius masks and extra image/footer overlays before final FFmpeg encoding.
+  * `TemplateStudio` (`TemplateEditorModal.jsx`): Dual-pane workstation powered by `react-konva` in canonical 1080x1920 space. Features free-layer dragging, magnetic central snap guide at X=540px, video vertical height handles (400-1500px), aspect ratio presets (`1:1`, `4:5`, `16:9`), border styling, and footer image uploads. Aba 2 contains the `+ Adicionar Tarefa de IA` catalog. All canvas element readers must use defensive fallbacks (`?.value ?? default`) to prevent unhandled runtime exceptions from collapsing layers to `(0, 0)`.
+  * Canonical Prototypes: Use `docs/prototypes/viral-studio-template-simulation.html` (canvas mechanics) and `docs/prototypes/dynamic-generation-tasks-simulation.html` (AI tasks & dynamic schema) as visual and interaction benchmarks, while strictly applying the project's official theme (`tokens.css` + `app.css` / Shadcn).
 - **Docker Host UID & Reload Workflow**:
   * `docker-entrypoint.sh` dynamically synchronizes container `appuser` with the host user's UID/GID (`stat -c '%u' /app`) at boot, ensuring all state files (`0o600`) in `data/` and `output/` belong to the developer on the host machine without permission errors.
   * Because backend `uvicorn` in Docker runs without `--reload`, **always run `docker restart clippyme-backend`** after modifying backend Python files so the running uvicorn process reloads updated Pydantic schemas and route handlers.
+- **Social Publishing & Auto-Chaining (Ports & Adapters)**:
+  * `SocialPublisherPort` (`clippyme.domain.social_publisher_port`): Core domain port for social distribution (`publish`, `schedule`, `cancel`, `get_status`, `list_accounts`). No domain or route code may import provider SDKs directly.
+  * `ZernioPublisherAdapter`: Production adapter integrating with Zernio API with presigned streaming upload, SSRF checks, 429 rate-limit mapping to `ValidationError`, and log secret sanitization.
+  * `MockPublisherAdapter`: Deterministic in-memory test double for offline execution and fast host tests.
+  * Provider Resolution (`get_social_publisher`): Resolves provider via `PUBLISHING_PROVIDER` config, explicit `provider=` argument, or safe mock fallback.
+  * Intelligent Gap-Filling Scheduling (`get_next_available_slots`): Evaluates candidate dates starting from earliest possible (`now.date()`), filling intermediate cancelled slots before advancing past the tail of the queue (`occupied_dates`). Every account projection is fully isolated.
+
 
 ## API endpoints
 
@@ -332,5 +351,9 @@ injection).
   engagement-first titles the way it does (platform clickbait/engagement-bait
   policy boundary, comment-driver research, Italian register), and why the
   mechanical-CTA instruction was removed.
+- `docs/fluxos-do-sistema.md` — Mapa unificado de ponta a ponta: do discovery à ingestão, templates Konva, renderização FFmpeg, revisão e agendamento contínuo.
+- `docs/plano-migracao-frontend.md` — Arquitetura da migração frontend para React 19 + Vite 8 + TanStack Router + Shadcn (TweakCN).
+- `docs/publicacao-e-fila-continua.md` — Fila contínua auto-chaining sem colisão e arquitetura Ports & Adapters para publicação social.
+- `docs/viral-studio-template-architecture.md` — Sistema de Templates universais desacoplados, Konva 9:16 e motor dinâmico de GenerationTasks.
 - `docs/architecture-history.md` — summary of major refactors (what moved
   where and why); the pre-rewrite CLAUDE.md is in git history.

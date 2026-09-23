@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ViralForge — TemplateStudio: Sistema Modular de Tarefas de IA (GenerationTasks)</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    :root {
+      --bg-0: #09090b;
+      --bg-1: #121216;
+      --bg-2: #18181f;
+      --bg-3: #22222c;
+      --border: #272732;
+      --border-focus: #3b82f6;
+      --text-main: #f4f4f5;
+      --text-muted: #a1a1aa;
+      --text-dim: #71717a;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --accent-emerald: #10b981;
+      --accent-rose: #f43f5e;
+      --accent-amber: #f59e0b;
+      --accent-purple: #8b5cf6;
+      --card-bg: rgba(24, 24, 31, 0.95);
+    }
+    body {
+      background-color: var(--bg-0);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #2e2e3a;
+      border-radius: 9999px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: #3e3e4f;
+    }
+    .badge-tag {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.72rem;
+    }
+  </style>
+</head>
+<body class="min-h-screen antialiased flex flex-col custom-scroll select-none">
+
+  <!-- TOPBAR -->
+  <header class="h-14 border-b border-[var(--border)] bg-[var(--bg-1)] px-5 flex items-center justify-between shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-bold text-white shadow-md shadow-blue-500/20 text-sm">
+        VF
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-sm tracking-tight text-zinc-100">ViralForge Studio</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-medium">v2.4 Prototype</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">GenerationTask Engine</span>
+        </div>
+        <p class="text-[11px] text-zinc-400">Contrato de Geração de Conteúdo Dinâmico por Template</p>
+      </div>
+    </div>
+
+    <!-- Quick Template Switcher -->
+    <div class="flex items-center gap-3">
+      <span class="text-xs text-zinc-400 font-medium">Template Ativo:</span>
+      <select id="template-select" onchange="switchTemplate(this.value)" class="bg-[var(--bg-2)] border border-[var(--border)] rounded-md px-3 py-1.5 text-xs text-zinc-200 font-medium focus:outline-none focus:border-blue-500 cursor-pointer">
+        <option value="curiosities">🌟 Curiosidades Virais (Retenção & Debate)</option>
+        <option value="affiliate">🛍️ Achadinhos & Ofertas (Vendas & Bio)</option>
+        <option value="clean-news">📰 Notícias Rápidas (Vídeo Limpo sem Headline)</option>
+        <option value="tech-ai">⚡ Tech Review (Com Geração de Imagem IA)</option>
+      </select>
+      <button onclick="simulateAIGeneration()" class="px-3.5 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm shadow-blue-600/30 transition-all cursor-pointer active:scale-95">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        <span>Executar Geração de IA</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSTATION (DUAL-PANE) -->
+  <div class="flex-1 flex overflow-hidden">
+
+    <!-- LEFT PANE: TEMPLATE CONTROLS & GENERATION TASKS -->
+    <aside class="w-[560px] border-r border-[var(--border)] bg-[var(--bg-1)] flex flex-col shrink-0 custom-scroll overflow-y-auto">
+      
+      <!-- Template Metadata Header -->
+      <div class="p-5 border-b border-[var(--border)] bg-[var(--bg-2)]/50">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span id="tpl-icon" class="text-xl">🌟</span>
+            <input id="tpl-name" type="text" class="bg-transparent font-bold text-sm text-zinc-100 border-b border-transparent hover:border-zinc-700 focus:border-blue-500 focus:outline-none px-1 py-0.5" value="Curiosidades Virais 9:16">
+          </div>
+          <span id="goal-badge" class="px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wide border">
+            OBJETIVO: ENGAJAMENTO
+          </span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <div>
+            <label class="block text-zinc-400 text-[11px] mb-1 font-medium">Nicho Editorial</label>
+            <select id="tpl-niche" onchange="updateTemplateMeta()" class="w-full bg-[var(--bg-2)] border border-[var(--border)] rounded px-2.5 py-1.5 text-zinc-200 focus:border-blue-500 focus:outline-none">
+              <option value="curiosities">Curiosidades / Fatos</option>
+              <option value="affiliate">Achadinhos / Promoções</option>
+              <option value="news">Notícias / Atualidades</option>
+              <option value="tech">Tech / Gadgets</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-zinc-400 text-[11px] mb-1 font-medium">Objetivo de Conversão</label>
+            <select id="tpl-goal" onchange="updateTemplateMeta()" class="w-full bg-[var(--bg-2)] border border-[var(--border)] rounded px-2.5 py-1.5 text-zinc-200 focus:border-blue-500 focus:outline-none">
+              <option value="engagement">Engajamento (Comentários e Seguidores)</option>
+              <option value="affiliate">Afiliado (Código + Link da Bio)</option>
+              <option value="keyword_direct">Palavra-chave na DM (ManyChat)</option>
+              <option value="lead_capture">Captura de Leads (Grupo VIP)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <label class="block text-zinc-400 text-[11px] mb-1 font-medium">Persona Role da IA</label>
+          <input id="tpl-persona" type="text" class="w-full bg-[var(--bg-2)] border border-[var(--border)] rounded px-2.5 py-1.5 text-xs text-zinc-200 focus:border-blue-500 focus:outline-none" value="Roteirista investigativo e divulgador de fatos misteriosos...">
+        </div>
+      </div>
+
+      <!-- GENERATION TASKS SECTION -->
+      <div class="p-5 flex-1 flex flex-col">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h3 class="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
+              <span>Tarefas de Geração de IA</span>
+              <span id="task-count-badge" class="px-1.5 py-0.2 text-[10px] bg-blue-500/20 text-blue-400 rounded-full font-mono">4 ativas</span>
+            </h3>
+            <p class="text-[11px] text-zinc-400 mt-0.5">O que a IA deve gerar especificamente para este template</p>
+          </div>
+          <button onclick="openAddTaskModal()" class="px-2.5 py-1.5 rounded bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            <span>+ Adicionar Tarefa</span>
+          </button>
+        </div>
+
+        <!-- Task List Container -->
+        <div id="tasks-container" class="space-y-3 custom-scroll">
+          <!-- Dynamic Task Cards Rendered by JS -->
+        </div>
+
+        <!-- Mock Input Context (For Testing) -->
+        <div class="mt-6 pt-5 border-t border-[var(--border)]">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[11px] font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              <span>Contexto de Entrada do Vídeo (Amostra)</span>
+            </span>
+            <span class="text-[10px] text-zinc-500 font-mono">Vídeo ID #8842</span>
+          </div>
+          <div class="bg-[var(--bg-2)] border border-[var(--border)] rounded-md p-3 text-xs space-y-2">
+            <div>
+              <span class="text-[10px] text-zinc-400 uppercase font-semibold block mb-0.5">Fala / Transcrição Extraída:</span>
+              <p id="mock-transcript" class="text-zinc-300 text-xs italic bg-[var(--bg-0)]/60 p-2 rounded border border-[var(--border)]">
+                "Cientistas descobriram no fundo da Fossa das Marianas uma criatura fóssil viva completamente transparente que produz luz azulada própria. Esse ser consegue sobreviver a uma pressão 1000 vezes maior que a superfície sem ter ossos rígidos..."
+              </p>
+            </div>
+            <div class="flex items-center justify-between text-[11px] text-zinc-400 pt-1">
+              <span>Marca: <strong class="text-zinc-200">@fatosocultos</strong></span>
+              <span>Duração: <strong class="text-zinc-200">42s</strong></span>
+              <span>Áudio: <strong class="text-emerald-400">100% Transcrito</strong></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- RIGHT PANE: PREVIEW & SIMULATED GENERATION OUTPUTS -->
+    <main class="flex-1 bg-[var(--bg-0)] flex flex-col overflow-hidden">
+      
+      <!-- Preview Tabs Navigation -->
+      <div class="h-12 border-b border-[var(--border)] bg-[var(--bg-1)] px-6 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-1">
+          <button onclick="switchPreviewTab('canvas')" id="tab-btn-canvas" class="px-3.5 py-1.5 rounded-md text-xs font-semibold bg-[var(--bg-2)] text-blue-400 border border-blue-500/30 transition-all cursor-pointer">
+            📱 Preview no Canvas 9:16
+          </button>
+          <button onclick="switchPreviewTab('social')" id="tab-btn-social" class="px-3.5 py-1.5 rounded-md text-xs font-semibold text-zinc-400 hover:text-zinc-200 transition-all cursor-pointer">
+            📝 Saída da Postagem Social
+          </button>
+          <button onclick="switchPreviewTab('json')" id="tab-btn-json" class="px-3.5 py-1.5 rounded-md text-xs font-semibold text-zinc-400 hover:text-zinc-200 transition-all cursor-pointer">
+            ⚙️ Contrato JSON da LLM (Sob Demanda)
+          </button>
+          <button onclick="switchPreviewTab('image-pipeline')" id="tab-btn-image-pipeline" class="px-3.5 py-1.5 rounded-md text-xs font-semibold text-zinc-400 hover:text-zinc-200 transition-all cursor-pointer">
+            🎨 Pipeline de Imagem de IA
+          </button>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div id="status-pill" class="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 font-medium">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="status-text">Pronto para Geração</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content Area -->
+      <div class="flex-1 p-6 overflow-y-auto custom-scroll flex items-center justify-center">
+
+        <!-- TAB 1: CANVAS 9:16 PREVIEW -->
+        <div id="tab-canvas" class="w-full h-full flex items-center justify-center gap-8">
+          
+          <!-- Canonical 1080x1920 Simulated Canvas (Scaled) -->
+          <div class="relative w-[340px] h-[604px] bg-[#0d1117] rounded-2xl border-2 border-[var(--border)] shadow-2xl shadow-black/80 overflow-hidden flex flex-col shrink-0 transition-all" id="canvas-container">
+            
+            <!-- Layer: Top Badge (Selo) -->
+            <div id="cv-badge-layer" class="absolute top-4 left-5 z-20">
+              <span id="cv-badge-text" class="px-3 py-1 rounded-full bg-rose-600 text-white font-bold text-[11px] tracking-wider uppercase shadow-md shadow-rose-600/30">
+                VOCÊ SABIA?
+              </span>
+            </div>
+
+            <!-- Layer: Brand Header -->
+            <div id="cv-brand-layer" class="absolute top-11 left-5 z-20 flex items-center gap-2">
+              <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-[10px] border border-white/30">
+                FO
+              </div>
+              <div class="leading-tight">
+                <span id="cv-brand-name" class="block font-bold text-xs text-white">Fatos Ocultos</span>
+                <span class="block text-[9px] text-zinc-400">@fatosocultos</span>
+              </div>
+            </div>
+
+            <!-- Layer: Dynamic Headline (Top Overlay) -->
+            <div id="cv-headline-layer" class="absolute top-20 left-4 right-4 z-20 transition-all duration-300">
+              <div class="p-2.5 rounded-lg bg-black/40 backdrop-blur-sm border border-white/10">
+                <p id="cv-headline-text" class="font-extrabold text-sm text-white text-center leading-snug drop-shadow-md">
+                  A CRIATURA TRANSPARENTE DA FOSSA DAS MARIANAS QUE EMITE LUZ! 😱
+                </p>
+              </div>
+            </div>
+
+            <!-- Notice if Headline is Disabled -->
+            <div id="cv-headline-disabled-msg" class="hidden absolute top-20 left-4 right-4 z-20">
+              <div class="p-2 rounded bg-zinc-900/80 border border-dashed border-zinc-700 text-center">
+                <span class="text-[10px] text-zinc-400 font-mono">Tarefa 'canvas_headline' desativada no template. Vídeo limpo.</span>
+              </div>
+            </div>
+
+            <!-- Layer: Central Video Container -->
+            <div id="cv-video-frame" class="absolute left-4 right-4 top-36 h-[250px] bg-zinc-900 rounded-xl border-2 border-blue-500/60 overflow-hidden shadow-lg shadow-black/60 flex items-center justify-center transition-all">
+              <div class="relative w-full h-full bg-gradient-to-br from-indigo-950 via-slate-900 to-black flex flex-col items-center justify-center text-center p-4">
+                <div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-2">
+                  <svg class="w-6 h-6 text-blue-400" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </div>
+                <span class="text-xs font-semibold text-zinc-200">Vídeo 9:16 / 1:1 Enquadrado</span>
+                <span class="text-[10px] text-zinc-500 font-mono mt-0.5">1080 × 1000 px canônico</span>
+              </div>
+            </div>
+
+            <!-- Layer: Extra Image / Dynamic Card (Footer) -->
+            <div id="cv-footer-layer" class="absolute left-4 right-4 bottom-5 h-[95px] bg-zinc-900/90 backdrop-blur-md rounded-xl border border-white/15 p-3 flex items-center justify-between shadow-xl transition-all">
+              <div class="flex items-center gap-3">
+                <div id="cv-footer-icon-box" class="w-10 h-10 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center text-xl shrink-0">
+                  💬
+                </div>
+                <div class="leading-tight">
+                  <span id="cv-footer-title" class="block font-bold text-xs text-white">DEIXE SEU PALPITE</span>
+                  <p id="cv-footer-desc" class="text-[11px] text-zinc-300 line-clamp-2">Você teria coragem de descer 11.000m para ver isso? Comente!</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Notice if Footer is Disabled -->
+            <div id="cv-footer-disabled-msg" class="hidden absolute left-4 right-4 bottom-5 h-[95px] rounded-xl border border-dashed border-zinc-800 flex items-center justify-center text-center p-2">
+              <span class="text-[10px] text-zinc-500 font-mono">Espaço inferior vago (sem card/imagem ativa)</span>
+            </div>
+
+            <!-- Safe Zone Guide Overlay (Visual indicator) -->
+            <div id="cv-safezone-guide" class="absolute inset-0 pointer-events-none border border-amber-500/20 flex flex-col justify-between p-2">
+              <div class="text-[9px] text-amber-400/50 font-mono">Safe Zone Top 150px</div>
+              <div class="text-[9px] text-amber-400/50 font-mono text-right">Safe Zone Bottom 250px</div>
+            </div>
+
+          </div>
+
+          <!-- Canvas Layer Inspector -->
+          <div class="w-[360px] bg-[var(--bg-1)] border border-[var(--border)] rounded-xl p-5 shadow-lg">
+            <h4 class="text-xs font-bold text-zinc-200 uppercase tracking-wider mb-3 flex items-center justify-between">
+              <span>Camadas Ativas Conectadas à IA</span>
+              <span class="text-[10px] text-blue-400 font-mono">1080×1920</span>
+            </h4>
+            <div class="space-y-2.5 text-xs">
+              <div class="p-2.5 rounded-lg bg-[var(--bg-2)] border border-[var(--border)] flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                  <span class="font-medium text-zinc-200">Headline Superior</span>
+                </div>
+                <span id="insp-headline-status" class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-mono">Conectado (5 Opções)</span>
+              </div>
+              <div class="p-2.5 rounded-lg bg-[var(--bg-2)] border border-[var(--border)] flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                  <span class="font-medium text-zinc-200">Selo / Badge de Nicho</span>
+                </div>
+                <span id="insp-badge-status" class="px-2 py-0.5 rounded bg-zinc-700 text-zinc-300 text-[10px] font-mono">Fixo ("VOCÊ SABIA?")</span>
+              </div>
+              <div class="p-2.5 rounded-lg bg-[var(--bg-2)] border border-[var(--border)] flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                  <span class="font-medium text-zinc-200">Card / Imagem Rodapé</span>
+                </div>
+                <span id="insp-footer-status" class="px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 text-[10px] font-mono">Conectado (Texto CTA)</span>
+              </div>
+              <div class="p-2.5 rounded-lg bg-[var(--bg-2)] border border-[var(--border)] flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  <span class="font-medium text-zinc-200">Legenda da Postagem</span>
+                </div>
+                <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-mono">Conectado (Orgânico)</span>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-[var(--border)] text-[11px] text-zinc-400 space-y-2">
+              <p class="leading-relaxed">
+                💡 <strong>Comportamento Modular:</strong> Se você remover a tarefa <code class="text-zinc-200">Headline no Vídeo</code> no painel esquerdo, o canvas atualiza instantaneamente para o modo vídeo limpo e a IA deixará de gastar tokens gerando frases de manchete.
+              </p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- TAB 2: SOCIAL POST OUTPUT (CAPTION & TITLE) -->
+        <div id="tab-social" class="hidden w-full max-w-3xl space-y-4">
+          <div class="bg-[var(--bg-1)] border border-[var(--border)] rounded-xl p-5 shadow-lg">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-2">
+                <span>Título da Postagem (YouTube Shorts / Reels)</span>
+                <span class="px-2 py-0.5 rounded text-[10px] bg-blue-500/10 text-blue-400 font-mono">Tarefa 'post_title'</span>
+              </span>
+              <button onclick="copyToClipboard('out-title')" class="text-xs text-zinc-400 hover:text-zinc-200 flex items-center gap-1">
+                📋 Copiar
+              </button>
+            </div>
+            <input id="out-title" type="text" class="w-full bg-[var(--bg-2)] border border-[var(--border)] rounded-lg p-3 text-sm font-semibold text-zinc-100 focus:outline-none focus:border-blue-500" value="A criatura transparente que vive na Fossa das Marianas 😱 #shorts">
+          </div>
+
+          <div class="bg-[var(--bg-1)] border border-[var(--border)] rounded-xl p-5 shadow-lg">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-2">
+                <span>Legenda Estruturada do Post (Caption)</span>
+                <span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 font-mono">Tarefa 'post_caption'</span>
+              </span>
+              <div class="flex items-center gap-2">
+                <span id="out-goal-pill" class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+                  ✓ Sem Links / Foco em Comentários
+                </span>
+                <button onclick="copyToClipboard('out-caption')" class="text-xs text-zinc-400 hover:text-zinc-200 flex items-center gap-1">
+                  📋 Copiar
+                </button>
+              </div>
+            </div>
+            <textarea id="out-caption" rows="8" class="w-full bg-[var(--bg-2)] border border-[var(--border)] rounded-lg p-3 text-xs text-zinc-200 leading-relaxed font-sans focus:outline-none focus:border-blue-500 custom-scroll">Você teria coragem de descer a 11.000 metros de profundidade? 🌊
+
+Cientistas registraram uma criatura completamente transparente nas profundezas da Fossa das Marianas! Ela não possui ossos rígidos e emite sua própria luz azulada para desorientar predadores na escuridão eterna.
+
+💬 Qual fato sobre as profundezas do oceano mais te assusta? Deixe nos comentários e siga para mais curiosidades incríveis todos os dias!
+
+#curiosidades #fatosdesconhecidos #oceanos #ciencia #biologia #misterios</textarea>
+          </div>
+
+          <!-- Dynamic Extra Task Output (e.g. Quiz or Extra Metadata) -->
+          <div id="out-extra-task-box" class="bg-[var(--bg-1)] border border-[var(--border)] rounded-xl p-5 shadow-lg">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-2">
+                <span id="out-extra-title">Enquete / Quiz para os Comentários</span>
+                <span class="px-2 py-0.5 rounded text-[10px] bg-purple-500/10 text-purple-400 font-mono">Tarefa 'quiz_poll'</span>
+              </span>
+            </div>
+            <div id="out-extra-content" class="bg-[var(--bg-2)] border border-[var(--border)] rounded-lg p-3 text-xs text-zinc-300 space-y-2 font-mono">
+              <p class="font-sans font-semibold text-zinc-100">Pergunta: "Se você pudesse respirar debaixo d'água, você exploraria a Fossa das Marianas?"</p>
+              <div class="flex gap-3">
+                <span class="px-2.5 py-1 rounded bg-zinc-800 text-zinc-200 border border-zinc-700">A) Sim, com certeza!</span>
+                <span class="px-2.5 py-1 rounded bg-zinc-800 text-zinc-200 border border-zinc-700">B) Nem por 1 milhão de dólares!</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: ON-DEMAND JSON CONTRACT -->
+        <div id="tab-json" class="hidden w-full max-w-3xl">
+          <div class="bg-[var(--bg-1)] border border-[var(--border)] rounded-xl p-5 shadow-lg">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h4 class="text-xs font-bold text-zinc-200 uppercase tracking-wider">Contrato JSON Gerado em Tempo de Execução</h4>
+                <p class="text-[11px] text-zinc-400">O CopyEngine exige da LLM apenas as propriedades vinculadas às tarefas ativas</p>
+              </div>
+              <span class="text-[10px] px-2 py-1 bg-blue-500/10 text-blue-400 rounded font-mono border border-blue-500/20">JSON Schema Dinâmico</span>
+            </div>
+            <pre id="json-schema-code" class="bg-[var(--bg-0)] p-4 rounded-lg text-xs font-mono text-emerald-400 border border-[var(--border)] overflow-x-auto custom-scroll leading-relaxed">
+// O Schema é montado dinamicamente com base nas GenerationTasks ativas
+{
+  "selected_headline": "Opção selecionada entre as geradas",
+  "headlines": ["Opção 1", "Opção 2", "Opção 3", "Opção 4", "Opção 5"],
+  "social_title": "Título magnético para o YouTube Shorts",
+  "caption": "Legenda completa estruturada com gancho, fatos e chamada para comentários",
+  "footer_text": "Texto curto para o card de engajamento do rodapé",
+  "quiz_poll": {
+    "question": "Pergunta provocativa para estimular comentários",
+    "options": ["Opção A", "Opção B"]
+  },
+  "hashtags": ["#curiosidades", "#fatos", "#ciencia"]
+}
+            </pre>
+          </div>
+        </div>
+
+        <!-- TAB 4: IMAGE GENERATION PIPELINE -->
+        <div id="tab-image-pipeline" class="hidden w-full max-w-3xl space-y-4">
+          <div class="bg-[var(--bg-1)] border border-[var(--border)] rounded-xl p-5 shadow-lg">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h4 class="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-2">
+                  <span>Etapa 1: Prompt Gerado pela LLM</span>
+                  <span class="text-[10px] px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 font-mono">image_prompt</span>
+                </h4>
+                <p class="text-[11px] text-zinc-400">Descrição fotográfica em inglês criada a partir da transcrição para alimentar a IA de imagem</p>
+              </div>
+              <button onclick="copyToClipboard('out-img-prompt')" class="text-xs text-zinc-400 hover:text-zinc-200 flex items-center gap-1">
+                📋 Copiar Prompt
+              </button>
+            </div>
+            <textarea id="out-img-prompt" rows="3" class="w-full bg-[var(--bg-2)] border border-[var(--border)] rounded-lg p-3 text-xs text-zinc-200 font-mono focus:outline-none focus:border-purple-500">Bioluminescent transparent deep-sea creature glowing in the abyssal darkness of the Mariana Trench, macro photography, 8k resolution, cinematic underwater lighting, national geographic style, hyperrealistic.</textarea>
+          </div>
+
+          <div class="bg-[var(--bg-1)] border border-[var(--border)] rounded-xl p-5 shadow-lg">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h4 class="text-xs font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-2">
+                  <span>Etapa 2: Síntese Visual Conectada à Camada de Rodapé</span>
+                  <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono">ImageGenerationPort</span>
+                </h4>
+                <p class="text-[11px] text-zinc-400">O PNG gerado é injetado automaticamente na camada <code class="text-zinc-200">ExtraImageOverlay</code> do canvas</p>
+              </div>
+              <span class="text-xs text-zinc-400">Provedor: <strong class="text-zinc-200">Imagen 3 / Flux Pro</strong></span>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4 items-center">
+              <div class="h-44 bg-gradient-to-tr from-indigo-950 via-slate-900 to-cyan-950 rounded-xl border border-cyan-500/30 flex items-center justify-center p-4 relative overflow-hidden group">
+                <div class="w-24 h-24 rounded-full bg-cyan-400/20 blur-xl absolute"></div>
+                <div class="text-center relative z-10">
+                  <span class="text-3xl block mb-1">🌊✨</span>
+                  <span class="text-xs font-semibold text-cyan-200">Imagem de IA Sintetizada</span>
+                  <span class="text-[10px] text-zinc-400 block font-mono">1080 × 340 px PNG</span>
+                </div>
+              </div>
+              <div class="text-xs text-zinc-300 space-y-2">
+                <div class="flex items-center gap-2 text-emerald-400 font-semibold">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                  <span>Mapeado para template.extra_image_path</span>
+                </div>
+                <p class="text-zinc-400 text-[11px] leading-relaxed">
+                  A imagem gerada substitui o card estático e preenche a área inferior com uma ilustração ou sticker contextualizado exatamente no assunto do vídeo.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- MODAL: ADICIONAR TAREFA DE IA (CATÁLOGO DE BLOCOS) -->
+  <div id="add-task-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-[500px] bg-[var(--bg-1)] border border-[var(--border)] rounded-xl shadow-2xl p-6 flex flex-col space-y-4">
+      <div class="flex items-center justify-between border-b border-[var(--border)] pb-3">
+        <div>
+          <h3 class="text-sm font-bold text-zinc-100">Catálogo de Tarefas de IA (+ Adicionar)</h3>
+          <p class="text-xs text-zinc-400">Escolha o que você quer que a IA gere para este template</p>
+        </div>
+        <button onclick="closeAddTaskModal()" class="text-zinc-400 hover:text-zinc-100 text-lg cursor-pointer">&times;</button>
+      </div>
+
+      <!-- Catalog Options Grid -->
+      <div class="grid grid-cols-1 gap-2.5 max-h-[380px] overflow-y-auto custom-scroll pr-1">
+        
+        <div onclick="addTaskFromPreset('headline')" class="p-3 rounded-lg bg-[var(--bg-2)] hover:bg-[var(--bg-3)] border border-[var(--border)] hover:border-blue-500/50 cursor-pointer transition-all flex items-start justify-between group">
+          <div class="flex items-start gap-3">
+            <span class="text-lg p-2 rounded bg-blue-500/10 text-blue-400">🎯</span>
+            <div>
+              <span class="font-bold text-xs text-zinc-200 group-hover:text-blue-400 transition-colors">Headline no Vídeo</span>
+              <p class="text-[11px] text-zinc-400">Gera 5 opções de manchetes curtas para sobrepor no canvas superior</p>
+            </div>
+          </div>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-400">canvas_headline</span>
+        </div>
+
+        <div onclick="addTaskFromPreset('caption')" class="p-3 rounded-lg bg-[var(--bg-2)] hover:bg-[var(--bg-3)] border border-[var(--border)] hover:border-emerald-500/50 cursor-pointer transition-all flex items-start justify-between group">
+          <div class="flex items-start gap-3">
+            <span class="text-lg p-2 rounded bg-emerald-500/10 text-emerald-400">📝</span>
+            <div>
+              <span class="font-bold text-xs text-zinc-200 group-hover:text-emerald-400 transition-colors">Legenda Completa da Postagem</span>
+              <p class="text-[11px] text-zinc-400">Storytelling, explicação do assunto, chamada para ação e hashtags</p>
+            </div>
+          </div>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400">post_caption</span>
+        </div>
+
+        <div onclick="addTaskFromPreset('title')" class="p-3 rounded-lg bg-[var(--bg-2)] hover:bg-[var(--bg-3)] border border-[var(--border)] hover:border-indigo-500/50 cursor-pointer transition-all flex items-start justify-between group">
+          <div class="flex items-start gap-3">
+            <span class="text-lg p-2 rounded bg-indigo-500/10 text-indigo-400">📌</span>
+            <div>
+              <span class="font-bold text-xs text-zinc-200 group-hover:text-indigo-400 transition-colors">Título Curto do Post</span>
+              <p class="text-[11px] text-zinc-400">Título conciso para exibição em YouTube Shorts e Instagram Reels</p>
+            </div>
+          </div>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400">post_title</span>
+        </div>
+
+        <div onclick="addTaskFromPreset('footer_text')" class="p-3 rounded-lg bg-[var(--bg-2)] hover:bg-[var(--bg-3)] border border-[var(--border)] hover:border-amber-500/50 cursor-pointer transition-all flex items-start justify-between group">
+          <div class="flex items-start gap-3">
+            <span class="text-lg p-2 rounded bg-amber-500/10 text-amber-400">💬</span>
+            <div>
+              <span class="font-bold text-xs text-zinc-200 group-hover:text-amber-400 transition-colors">Texto Dinâmico do Rodapé</span>
+              <p class="text-[11px] text-zinc-400">Frase instigante de engajamento ou curiosidade para o card inferior</p>
+            </div>
+          </div>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-400">canvas_extra_image</span>
+        </div>
+
+        <div onclick="addTaskFromPreset('quiz')" class="p-3 rounded-lg bg-[var(--bg-2)] hover:bg-[var(--bg-3)] border border-[var(--border)] hover:border-purple-500/50 cursor-pointer transition-all flex items-start justify-between group">
+          <div class="flex items-start gap-3">
+            <span class="text-lg p-2 rounded bg-purple-500/10 text-purple-400">❓</span>
+            <div>
+              <span class="font-bold text-xs text-zinc-200 group-hover:text-purple-400 transition-colors">Enquete / Pergunta com Opções</span>
+              <p class="text-[11px] text-zinc-400">Pergunta com 2 alternativas para fixar no primeiro comentário</p>
+            </div>
+          </div>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/10 text-purple-400">custom_metadata</span>
+        </div>
+
+        <div onclick="addTaskFromPreset('image_prompt')" class="p-3 rounded-lg bg-[var(--bg-2)] hover:bg-[var(--bg-3)] border border-[var(--border)] hover:border-cyan-500/50 cursor-pointer transition-all flex items-start justify-between group">
+          <div class="flex items-start gap-3">
+            <span class="text-lg p-2 rounded bg-cyan-500/10 text-cyan-400">🎨</span>
+            <div>
+              <span class="font-bold text-xs text-zinc-200 group-hover:text-cyan-400 transition-colors">Prompt para Imagem de IA</span>
+              <p class="text-[11px] text-zinc-400">Gera um prompt descritivo para alimentar geradores como Imagen/Flux</p>
+            </div>
+          </div>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400">image_prompt</span>
+        </div>
+
+      </div>
+
+      <div class="flex justify-end pt-2 border-t border-[var(--border)]">
+        <button onclick="closeAddTaskModal()" class="px-4 py-1.5 rounded-md bg-[var(--bg-2)] hover:bg-[var(--bg-3)] text-zinc-300 text-xs font-semibold cursor-pointer">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPT LOGIC -->
+  <script>
+    // Templates Database with their discrete GenerationTasks
+    const TEMPLATES_DATA = {
+      curiosities: {
+        name: "Curiosidades Virais 9:16",
+        icon: "🌟",
+        niche: "curiosities",
+        goal: "engagement",
+        persona: "Roteirista investigativo e divulgador de mistérios e fatos desconhecidos.",
+        badgeText: "VOCÊ SABIA?",
+        badgeColor: "#e11d48",
+        tasks: [
+          {
+            id: "headline",
+            label: "Headline no Vídeo",
+            target: "canvas_headline",
+            output_type: "options_list",
+            instruction: "Crie exatamente 5 ganchos magnéticos curtos em tom interrogativo ou revelador sobre: {transcript}. Devem ter menos de 45 caracteres.",
+            is_required: true,
+            active: true
+          },
+          {
+            id: "caption",
+            label: "Legenda Completa da Postagem",
+            target: "post_caption",
+            output_type: "text",
+            instruction: "1. Gancho inicial intrigante. 2. Explicação curiosa dos fatos falados no vídeo: {transcript}. 3. Pergunta final para gerar debate nos comentários. Não inclua links.",
+            is_required: true,
+            active: true
+          },
+          {
+            id: "social_title",
+            label: "Título do Post (Shorts / Reels)",
+            target: "post_title",
+            output_type: "text",
+            instruction: "Crie um título curto de alta curiosidade com até 50 caracteres para o YouTube Shorts.",
+            is_required: false,
+            active: true
+          },
+          {
+            id: "footer_text",
+            label: "Texto Dinâmico do Card de Rodapé",
+            target: "canvas_extra_image",
+            output_type: "text",
+            instruction: "Crie uma chamada de 1 linha instigando o público a responder nos comentários com seu palpite.",
+            is_required: false,
+            active: true
+          },
+          {
+            id: "quiz_poll",
+            label: "Pergunta / Quiz para Comentários",
+            target: "custom_metadata",
+            output_type: "poll",
+            instruction: "Crie uma pergunta instigante com 2 alternativas (A e B) relacionadas ao fato curioso do vídeo.",
+            is_required: false,
+            active: true
+          }
+        ]
+      },
+      affiliate: {
+        name: "Achadinhos & Ofertas 9:16",
+        icon: "🛍️",
+        niche: "affiliate",
+        goal: "affiliate",
+        persona: "Especialista em produtos úteis, soluções domésticas e achadinhos da internet.",
+        badgeText: "ACHADINHO IMPERDÍVEL",
+        badgeColor: "#2563eb",
+        tasks: [
+          {
+            id: "headline",
+            label: "Headline no Vídeo",
+            target: "canvas_headline",
+            output_type: "options_list",
+            instruction: "Crie 5 opções de headlines focadas no benefício e na facilidade prática do produto.",
+            is_required: true,
+            active: true
+          },
+          {
+            id: "caption",
+            label: "Legenda Comercial com Código",
+            target: "post_caption",
+            output_type: "text",
+            instruction: "Destaque a utilidade prática do produto demonstrado no vídeo. É obrigatório incluir '📌 Código do Produto' e chamada para o link da bio.",
+            is_required: true,
+            active: true
+          },
+          {
+            id: "footer_text",
+            label: "Texto do Card Inferior (Oferta)",
+            target: "canvas_extra_image",
+            output_type: "text",
+            instruction: "Gere uma frase de chamada: 'Link na Bio do perfil! Peça o código nos comentários'.",
+            is_required: false,
+            active: true
+          }
+        ]
+      },
+      "clean-news": {
+        name: "Notícias Rápidas (Vídeo Limpo)",
+        icon: "📰",
+        niche: "news",
+        goal: "engagement",
+        persona: "Jornalista digital objetivo, conciso e confiável de hard news.",
+        badgeText: "URGENTE / NOTÍCIA",
+        badgeColor: "#dc2626",
+        tasks: [
+          {
+            id: "caption",
+            label: "Legenda Jornalística Completa",
+            target: "post_caption",
+            output_type: "text",
+            instruction: "Resumo jornalístico dos fatos relatados com contexto e fonte. Sem manchete no vídeo (vídeo limpo).",
+            is_required: true,
+            active: true
+          },
+          {
+            id: "social_title",
+            label: "Manchete do Post (Shorts / Reels)",
+            target: "post_title",
+            output_type: "text",
+            instruction: "Manchete factual e de alto impacto para o título da postagem.",
+            is_required: true,
+            active: true
+          }
+        ]
+      },
+      "tech-ai": {
+        name: "Tech Review & AI Future",
+        icon: "⚡",
+        niche: "tech",
+        goal: "engagement",
+        persona: "Analista de tecnologia e inovação focado em gadgets e inteligência artificial.",
+        badgeText: "TECH REVIEW",
+        badgeColor: "#0284c7",
+        tasks: [
+          {
+            id: "headline",
+            label: "Headline de Especificação",
+            target: "canvas_headline",
+            output_type: "options_list",
+            instruction: "Destaque o diferencial tecnológico mais impressionante deste dispositivo.",
+            is_required: true,
+            active: true
+          },
+          {
+            id: "caption",
+            label: "Legenda com Análise Técnica",
+            target: "post_caption",
+            output_type: "text",
+            instruction: "Explicação dos prós e contras técnicos do aparelho com chamada para debate.",
+            is_required: true,
+            active: true
+          },
+          {
+            id: "image_prompt",
+            label: "Prompt para Imagem de IA de Rodapé",
+            target: "canvas_extra_image",
+            output_type: "image_prompt",
+            instruction: "Gere um prompt em inglês para gerar uma renderização conceitual 3D do gadget no estilo cyberpunk.",
+            is_required: true,
+            active: true
+          }
+        ]
+      }
+    };
+
+    let currentTemplateKey = "curiosities";
+
+    function initApp() {
+      renderTemplate(currentTemplateKey);
+    }
+
+    function switchTemplate(key) {
+      currentTemplateKey = key;
+      renderTemplate(key);
+    }
+
+    function renderTemplate(key) {
+      const tpl = TEMPLATES_DATA[key];
+      if (!tpl) return;
+
+      document.getElementById('tpl-icon').innerText = tpl.icon;
+      document.getElementById('tpl-name').value = tpl.name;
+      document.getElementById('tpl-niche').value = tpl.niche;
+      document.getElementById('tpl-goal').value = tpl.goal;
+      document.getElementById('tpl-persona').value = tpl.persona;
+
+      // Update goal badge
+      const badge = document.getElementById('goal-badge');
+      if (tpl.goal === 'engagement') {
+        badge.innerText = "OBJETIVO: ENGAJAMENTO";
+        badge.className = "px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wide border bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+        document.getElementById('out-goal-pill').innerText = "✓ Sem Links / Foco em Comentários";
+        document.getElementById('out-goal-pill').className = "text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium";
+      } else {
+        badge.innerText = "OBJETIVO: AFILIADOS";
+        badge.className = "px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wide border bg-blue-500/10 text-blue-400 border-blue-500/20";
+        document.getElementById('out-goal-pill').innerText = "✓ Código de Produto + Link na Bio";
+        document.getElementById('out-goal-pill').className = "text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-medium";
+      }
+
+      // Update canvas badge
+      document.getElementById('cv-badge-text').innerText = tpl.badgeText;
+      document.getElementById('cv-badge-text').style.backgroundColor = tpl.badgeColor;
+
+      // Render tasks list
+      renderTasksList();
+      updateCanvasLayersSync();
+      updateJsonSchemaView();
+    }
+
+    function renderTasksList() {
+      const tpl = TEMPLATES_DATA[currentTemplateKey];
+      const container = document.getElementById('tasks-container');
+      container.innerHTML = '';
+
+      document.getElementById('task-count-badge').innerText = `${tpl.tasks.filter(t => t.active).length} ativas`;
+
+      tpl.tasks.forEach((task, index) => {
+        const card = document.createElement('div');
+        card.className = `p-3 rounded-lg border transition-all ${task.active ? 'bg-[var(--bg-2)] border-[var(--border)]' : 'bg-zinc-900/40 border-zinc-800 opacity-60'}`;
+        
+        let targetColor = 'text-blue-400 bg-blue-500/10 border-blue-500/20';
+        if (task.target === 'post_caption') targetColor = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+        if (task.target === 'custom_metadata') targetColor = 'text-purple-400 bg-purple-500/10 border-purple-500/20';
+        if (task.target === 'canvas_extra_image') targetColor = 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <input type="checkbox" ${task.active ? 'checked' : ''} onchange="toggleTaskActive(${index})" class="rounded border-zinc-700 bg-zinc-800 text-blue-600 cursor-pointer">
+              <span class="font-bold text-xs text-zinc-100">${task.label}</span>
+              ${task.is_required ? '<span class="text-[9px] text-zinc-500 uppercase font-mono">Obrigatório</span>' : ''}
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="badge-tag px-2 py-0.5 rounded border ${targetColor}">${task.target}</span>
+              <button onclick="removeTask(${index})" class="text-zinc-500 hover:text-rose-400 text-xs p-1 cursor-pointer" title="Remover">&times;</button>
+            </div>
+          </div>
+          
+          <div class="space-y-1.5">
+            <textarea rows="2" onchange="updateTaskInstruction(${index}, this.value)" class="w-full bg-[var(--bg-0)] border border-[var(--border)] rounded px-2.5 py-1.5 text-xs text-zinc-200 focus:border-blue-500 focus:outline-none custom-scroll resize-none">${task.instruction}</textarea>
+            
+            <div class="flex items-center justify-between text-[10px] text-zinc-400">
+              <div class="flex items-center gap-1">
+                <span>Inserir tag:</span>
+                <button onclick="insertTag(${index}, '{transcript}')" class="px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-mono cursor-pointer">{transcript}</button>
+                <button onclick="insertTag(${index}, '{brand_name}')" class="px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-mono cursor-pointer">{brand_name}</button>
+                <button onclick="insertTag(${index}, '{cta}')" class="px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-mono cursor-pointer">{cta}</button>
+              </div>
+              <span class="font-mono text-[9px] text-zinc-500">tipo: ${task.output_type}</span>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function toggleTaskActive(index) {
+      const tpl = TEMPLATES_DATA[currentTemplateKey];
+      tpl.tasks[index].active = !tpl.tasks[index].active;
+      renderTasksList();
+      updateCanvasLayersSync();
+      updateJsonSchemaView();
+    }
+
+    function removeTask(index) {
+      const tpl = TEMPLATES_DATA[currentTemplateKey];
+      tpl.tasks.splice(index, 1);
+      renderTasksList();
+      updateCanvasLayersSync();
+      updateJsonSchemaView();
+    }
+
+    function updateTaskInstruction(index, val) {
+      const tpl = TEMPLATES_DATA[currentTemplateKey];
+      tpl.tasks[index].instruction = val;
+      updateJsonSchemaView();
+    }
+
+    function insertTag(taskIndex, tag) {
+      const tpl = TEMPLATES_DATA[currentTemplateKey];
+      tpl.tasks[taskIndex].instruction += ` ${tag}`;
+      renderTasksList();
+      updateJsonSchemaView();
+    }
+
+    function updateCanvasLayersSync() {
+      const tpl = TEMPLATES_DATA[currentTemplateKey];
+      const hasHeadline = tpl.tasks.some(t => t.target === 'canvas_headline' && t.active);
+      const hasFooter = tpl.tasks.some(t => t.target === 'canvas_extra_image' && t.active);
+
+      // Headline toggle
+      const hlLayer = document.getElementById('cv-headline-layer');
+      const hlDisabledMsg = document.getElementById('cv-headline-disabled-msg');
+      const inspHlStatus = document.getElementById('insp-headline-status');
+      if (hasHeadline) {
+        hlLayer.classList.remove('hidden');
+        hlDisabledMsg.classList.add('hidden');
+        inspHlStatus.innerText = "Conectado (5 Opções)";
+        inspHlStatus.className = "px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-mono";
+      } else {
+        hlLayer.classList.add('hidden');
+        hlDisabledMsg.classList.remove('hidden');
+        inspHlStatus.innerText = "Desativado (Vídeo Limpo)";
+        inspHlStatus.className = "px-2 py-0.5 rounded bg-zinc-800 text-zinc-500 text-[10px] font-mono";
+      }
+
+      // Footer Card toggle
+      const ftLayer = document.getElementById('cv-footer-layer');
+      const ftDisabledMsg = document.getElementById('cv-footer-disabled-msg');
+      const inspFtStatus = document.getElementById('insp-footer-status');
+      if (hasFooter) {
+        ftLayer.classList.remove('hidden');
+        ftDisabledMsg.classList.add('hidden');
+        inspFtStatus.innerText = "Conectado";
+        inspFtStatus.className = "px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 text-[10px] font-mono";
+      } else {
+        ftLayer.classList.add('hidden');
+        ftDisabledMsg.classList.remove('hidden');
+        inspFtStatus.innerText = "Desativado (Vago)";
+        inspFtStatus.className = "px-2 py-0.5 rounded bg-zinc-800 text-zinc-500 text-[10px] font-mono";
+      }
+    }
+
+    function updateJsonSchemaView() {
+      const tpl = TEMPLATES_DATA[currentTemplateKey];
+      const activeTasks = tpl.tasks.filter(t => t.active);
+
+      const dynamicSchema = {};
+      activeTasks.forEach(task => {
+        if (task.target === 'canvas_headline') {
+          dynamicSchema["selected_headline"] = "string (manchete escolhida)";
+          dynamicSchema["headlines"] = ["string (opção 1)", "string (opção 2)", "..."];
+        } else if (task.target === 'post_caption') {
+          dynamicSchema["caption"] = "string (legenda formatada com regras de nicho)";
+          dynamicSchema["hashtags"] = ["string", "..."];
+        } else if (task.target === 'post_title') {
+          dynamicSchema["social_title"] = "string (título curto para Shorts/Reels)";
+        } else if (task.target === 'canvas_extra_image' && task.output_type === 'image_prompt') {
+          dynamicSchema["image_prompt"] = "string (descrição em inglês para sintetizador de imagem)";
+        } else if (task.target === 'custom_metadata' && task.output_type === 'poll') {
+          dynamicSchema[task.id] = {
+            "question": "string (pergunta)",
+            "options": ["string (opção A)", "string (opção B)"]
+          };
+        } else {
+          dynamicSchema[task.id] = `string (saída para ${task.target})`;
+        }
+      });
+
+      document.getElementById('json-schema-code').innerText = 
+        `// Contrato JSON gerado sob demanda para o template: "${tpl.name}"\n` +
+        JSON.stringify(dynamicSchema, null, 2);
+    }
+
+    function simulateAIGeneration() {
+      const statusText = document.getElementById('status-text');
+      const statusPill = document.getElementById('status-pill');
+      
+      statusText.innerText = "IA Gerando Conteúdo...";
+      statusPill.className = "flex items-center gap-1.5 text-xs text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-full border border-blue-500/20 font-medium";
+
+      setTimeout(() => {
+        statusText.innerText = "Conteúdo Gerado com Sucesso!";
+        statusPill.className = "flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 font-medium";
+
+        // Update preview content based on template
+        if (currentTemplateKey === 'curiosities') {
+          document.getElementById('cv-headline-text').innerText = "A CRIATURA TRANSPARENTE DA FOSSA DAS MARIANAS QUE EMITE LUZ! 😱";
+          document.getElementById('out-title').value = "A criatura transparente que vive na Fossa das Marianas 😱 #shorts";
+        } else if (currentTemplateKey === 'affiliate') {
+          document.getElementById('cv-headline-text').innerText = "QUEM TEM POUCO ESPAÇO NA COZINHA PRECISA VER ISSO! 🔥";
+          document.getElementById('out-title').value = "Achadinho prático que organiza sua bancada em segundos!";
+          document.getElementById('out-caption').value = "Olha esse achadinho que salvou o espaço da minha bancada! 😍\n\nSuper prático, resistente e cabe em qualquer cantinho.\n\n📌 Produto 1024\n👉 Link na Bio para garantir com frete grátis!\n\n#achadinhos #shopee #dicas #casa #organizacao #publi";
+        } else if (currentTemplateKey === 'clean-news') {
+          document.getElementById('out-title').value = "Cientistas confirmam nova espécie oceânica em ponto inexplorado da Terra";
+        }
+
+        setTimeout(() => {
+          statusText.innerText = "Pronto para Geração";
+        }, 3000);
+      }, 700);
+    }
+
+    function openAddTaskModal() {
+      document.getElementById('add-task-modal').classList.remove('hidden');
+    }
+
+    function closeAddTaskModal() {
+      document.getElementById('add-task-modal').classList.add('hidden');
+    }
+
+    function addTaskFromPreset(presetKey) {
+      const tpl = TEMPLATES_DATA[currentTemplateKey];
+      const presets = {
+        headline: {
+          id: `headline_${Date.now() % 1000}`,
+          label: "Headline no Vídeo",
+          target: "canvas_headline",
+          output_type: "options_list",
+          instruction: "Gere 5 opções de manchetes magnéticas sobre o tema: {transcript}.",
+          is_required: true,
+          active: true
+        },
+        caption: {
+          id: `caption_${Date.now() % 1000}`,
+          label: "Legenda Completa",
+          target: "post_caption",
+          output_type: "text",
+          instruction: "Escreva a legenda contextualizando o assunto falado no vídeo com gancho e chamada.",
+          is_required: true,
+          active: true
+        },
+        title: {
+          id: `title_${Date.now() % 1000}`,
+          label: "Título Curto do Post",
+          target: "post_title",
+          output_type: "text",
+          instruction: "Título curto de até 50 caracteres para YouTube Shorts / Reels.",
+          is_required: false,
+          active: true
+        },
+        footer_text: {
+          id: `footer_${Date.now() % 1000}`,
+          label: "Texto do Rodapé",
+          target: "canvas_extra_image",
+          output_type: "text",
+          instruction: "Frase instigante de 1 linha para preencher o card do rodapé.",
+          is_required: false,
+          active: true
+        },
+        quiz: {
+          id: `quiz_${Date.now() % 1000}`,
+          label: "Enquete / Quiz",
+          target: "custom_metadata",
+          output_type: "poll",
+          instruction: "Pergunta provocativa com alternativas A e B sobre o tema discutido.",
+          is_required: false,
+          active: true
+        },
+        image_prompt: {
+          id: `image_prompt_${Date.now() % 1000}`,
+          label: "Prompt de Imagem de IA",
+          target: "canvas_extra_image",
+          output_type: "image_prompt",
+          instruction: "Gere um prompt em inglês para gerar uma ilustração conceitual realista sobre {transcript}.",
+          is_required: true,
+          active: true
+        }
+      };
+
+      if (presets[presetKey]) {
+        tpl.tasks.push(presets[presetKey]);
+        renderTasksList();
+        updateCanvasLayersSync();
+        updateJsonSchemaView();
+        closeAddTaskModal();
+      }
+    }
+
+    function switchPreviewTab(tabId) {
+      const tabs = ['canvas', 'social', 'json', 'image-pipeline'];
+      tabs.forEach(t => {
+        const el = document.getElementById(`tab-${t}`);
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (t === tabId) {
+          el.classList.remove('hidden');
+          btn.className = "px-3.5 py-1.5 rounded-md text-xs font-semibold bg-[var(--bg-2)] text-blue-400 border border-blue-500/30 transition-all cursor-pointer";
+        } else {
+          el.classList.add('hidden');
+          btn.className = "px-3.5 py-1.5 rounded-md text-xs font-semibold text-zinc-400 hover:text-zinc-200 transition-all cursor-pointer";
+        }
+      });
+    }
+
+    function copyToClipboard(elementId) {
+      const el = document.getElementById(elementId);
+      const val = el.value || el.innerText;
+      navigator.clipboard.writeText(val).then(() => {
+        alert("Copiado para a área de transferência!");
+      });
+    }
+
+    window.onload = initApp;
+  </script>
+</body>
+</html>

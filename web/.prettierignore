@@ -1,0 +1,8 @@
+node_modules
+dist
+.output
+coverage
+graphify-out
+routeTree.gen.ts
+src/routeTree.gen.ts
+src/components/ui/

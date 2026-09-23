@@ -4,14 +4,21 @@ import ipaddress
 import os
 import time
 from typing import Dict, List, Optional, Tuple
+from urllib.parse import urlparse
 
 from fastapi import HTTPException, Request
 
 DEFAULT_ALLOWED_ORIGINS = (
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
     "http://localhost:5175",
     "http://127.0.0.1:5175",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
 )
 
 
@@ -81,7 +88,16 @@ def client_ip(request: Request) -> str:
 def is_trusted_origin(origin: Optional[str]) -> bool:
     if not origin:
         return False
-    return origin.rstrip("/") in ALLOWED_ORIGINS
+    normalized = origin.rstrip("/")
+    if normalized in ALLOWED_ORIGINS:
+        return True
+    try:
+        parsed = urlparse(normalized)
+        if parsed.scheme in ("http", "https") and parsed.hostname in ("localhost", "127.0.0.1", "::1"):
+            return True
+    except Exception:
+        pass
+    return False
 
 
 def is_trusted_client_host(client_host: Optional[str]) -> bool:

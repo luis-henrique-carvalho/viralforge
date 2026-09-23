@@ -142,7 +142,7 @@ _ALLOWED_CONFIG_KEYS = frozenset({
     "GEMINI_API_KEY", "GEMINI_MODEL", "DEFAULT_AI_MODEL", "LM_STUDIO_BASE_URL",
     "OLLAMA_BASE_URL", "YOUTUBE_COOKIES", "HF_TOKEN",
     "HUGGINGFACE_TOKEN", "DEEPGRAM_API_KEY", "ELEVENLABS_API_KEY",
-    "TRANSCRIPTION_PROVIDER", "TWITCH_CLIENT_ID", "TWITCH_CLIENT_SECRET",
+    "TRANSCRIPTION_PROVIDER", "PUBLISHING_PROVIDER", "TWITCH_CLIENT_ID", "TWITCH_CLIENT_SECRET",
 })
 
 
@@ -161,6 +161,9 @@ class ConfigUpdateRequest(BaseModel):
         provider = values.get("TRANSCRIPTION_PROVIDER")
         if provider not in (None, "", "deepgram", "elevenlabs", "whisper"):
             raise ValueError("TRANSCRIPTION_PROVIDER must be deepgram, elevenlabs or whisper")
+        publishing_provider = values.get("PUBLISHING_PROVIDER")
+        if publishing_provider not in (None, "", "zernio", "mock"):
+            raise ValueError("PUBLISHING_PROVIDER must be zernio or mock")
         model = values.get("GEMINI_MODEL")
         if model and not GEMINI_MODEL_RE.fullmatch(model):
             raise ValueError("GEMINI_MODEL is not a valid Gemini model id")
