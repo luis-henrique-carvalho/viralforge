@@ -18,7 +18,7 @@ import re
 import time
 from typing import Any, Dict, List, Optional, Union
 
-from clippyme.api.viral_studio_schemas import AICopyData, Brand, ViralItem
+from clippyme.api.viral_studio_schemas import AICopyData, Brand, ViralItem, VisualTemplate
 from clippyme.domain.errors import ClippyMeError, ValidationError
 from clippyme.pipeline.gemini_service import _redact_key
 from clippyme.storage.config_store import load_persistent_config
@@ -521,6 +521,262 @@ def _extract_field(obj: Any, field_name: str, default: Any = None) -> Any:
     return getattr(obj, field_name, default)
 
 
+def _to_dict_safe(obj: Any) -> Dict[str, Any]:
+    if isinstance(obj, dict):
+        return dict(obj)
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump()
+    if hasattr(obj, "dict"):
+        return obj.dict()
+    if hasattr(obj, "__dict__"):
+        return dict(obj.__dict__)
+    return {}
+
+
+def build_viral_copy_prompt(
+    template: Optional[Union[VisualTemplate, Dict[str, Any]]] = None,
+    brand: Optional[Union[Brand, Dict[str, Any]]] = None,
+    item: Optional[Union[ViralItem, Dict[str, Any]]] = None,
+    product_code: Optional[str] = None,
+    product_url: Optional[str] = None,
+    manual_instructions: Optional[str] = None,
+    video_context: Optional[Union[Any, Dict[str, Any]]] = None,
+) -> str:
+    """Build dynamic AI copy prompt strictly from template generation_tasks and persona. Pure function."""
+    brand_name = _extract_field(brand, "name", "Viral Studio")
+    brand_handle = _extract_field(brand, "handle", "@viralstudio")
+    default_brand_cta = _extract_field(brand, "default_cta", "Siga para mais conteúdos!")
+    brand_tone = (
+        _extract_field(brand, "tone")
+        or _extract_field(brand, "tone_of_voice")
+        or _extract_field(_extract_field(brand, "publishing_profiles", {}), "tone")
+        or "Dinâmico, envolvente e autêntico"
+    )
+
+    item_code = _extract_field(item, "product_code")
+    item_url = _extract_field(item, "product_url")
+    item_instructions = _extract_field(item, "additional_instructions") or _extract_field(item, "manual_instructions")
+
+    eff_product_code = str(product_code or item_code or "").strip()
+    eff_product_url = str(product_url or item_url or "").strip()
+    eff_instructions = str(manual_instructions or item_instructions or "").strip()
+
+    # Template metadata
+    conversion_goal = _extract_field(template, "conversion_goal", "engagement")
+    niche_type = _extract_field(template, "niche_type", "curiosities")
+    persona_role = _extract_field(template, "persona_role") or "Copywriter especialista em engajamento e retenção de vídeos virais"
+    tone_of_voice = _extract_field(template, "tone_of_voice") or brand_tone
+    t_cta = _extract_field(template, "call_to_action_template")
+    b_cta = _extract_field(brand, "default_cta")
+    if conversion_goal == "engagement":
+        template_cta = t_cta or "Siga para mais conteúdos!"
+    elif conversion_goal == "affiliate":
+        template_cta = b_cta or t_cta or "Confira os achadinhos no link da bio!"
+    else:
+        template_cta = t_cta or b_cta or "Siga para mais conteúdos!"
+    headline_enabled = bool(_extract_field(template, "headline_enabled", True))
+
+    # Context extractions
+    vc_caption = _extract_field(video_context, "original_caption", "") or ""
+    vc_transcript = _extract_field(video_context, "transcript", "") or ""
+    vc_title = _extract_field(video_context, "title", "") or ""
+    vc_tags = _extract_field(video_context, "tags", []) or []
+    vc_keyframes = _extract_field(video_context, "keyframes", []) or []
+    vc_scenes = _extract_field(video_context, "scenes_count", 0)
+
+    subs = {
+        "{transcript}": str(vc_transcript).strip() or "(conteúdo visual do vídeo)",
+        "{brand_name}": str(brand_name).strip(),
+        "{brand_handle}": str(brand_handle).strip(),
+        "{cta}": str(template_cta).strip(),
+        "{title}": str(vc_title).strip() or "(sem título original)",
+        "{caption}": str(vc_caption).strip() or "(sem legenda original)",
+        "{niche}": str(niche_type).strip(),
+        "{product_code}": eff_product_code,
+    }
+
+    # Resolve active tasks
+    raw_tasks = _extract_field(template, "generation_tasks") or []
+    tasks: List[Dict[str, Any]] = []
+    if raw_tasks:
+        for t in raw_tasks:
+            t_dict = _to_dict_safe(t)
+            # Clean Video Mode: if headline_enabled is False and target is canvas_headline, omit task
+            if not headline_enabled and t_dict.get("target") == "canvas_headline":
+                continue
+            tasks.append(t_dict)
+
+    if not tasks:
+        # Fallback default task suite depending on conversion_goal
+        if conversion_goal == "affiliate":
+            if headline_enabled:
+                tasks.append({
+                    "id": "headline",
+                    "label": "Headlines Comerciais",
+                    "target": "canvas_headline",
+                    "instruction": "Crie exatamente 5 opções de headlines curtas e magnéticas destacando o benefício do produto em {transcript}.",
+                    "output_type": "options_list",
+                })
+            tasks.append({
+                "id": "caption",
+                "label": "Legenda Comercial",
+                "target": "post_caption",
+                "instruction": "Escreva uma legenda completa em PT-BR contendo gancho, descrição, código do produto ({product_code}) e CTA: {cta}.",
+                "output_type": "text",
+            })
+            tasks.append({
+                "id": "product_name",
+                "label": "Nome do Produto",
+                "target": "custom_metadata",
+                "instruction": "Nome conciso do produto identificado.",
+                "output_type": "text",
+            })
+        else:
+            if headline_enabled:
+                tasks.append({
+                    "id": "headline",
+                    "label": "Headlines Magnéticas",
+                    "target": "canvas_headline",
+                    "instruction": "Crie exatamente 5 ganchos magnéticos para sobreposição no vídeo que instiguem curiosidade imediata sobre {transcript}.",
+                    "output_type": "options_list",
+                })
+            tasks.append({
+                "id": "caption",
+                "label": "Legenda Completa",
+                "target": "post_caption",
+                "instruction": "Escreva uma legenda completa com gancho inicial instigante, explicação envolvente e CTA: {cta}.",
+                "output_type": "text",
+            })
+            tasks.append({
+                "id": "social_title",
+                "label": "Título do Post",
+                "target": "post_title",
+                "instruction": "Crie um título curto de até 60 caracteres para o vídeo.",
+                "output_type": "text",
+            })
+
+    # Context section
+    context_lines = []
+    if vc_caption and str(vc_caption).strip():
+        context_lines.append(f"- Legenda / descrição original do post: \"{str(vc_caption).strip()}\"")
+    if vc_transcript and str(vc_transcript).strip():
+        context_lines.append(f"- Transcrição do áudio falado no vídeo: \"{str(vc_transcript).strip()}\"")
+    if vc_title and str(vc_title).strip():
+        context_lines.append(f"- Título do post original: \"{str(vc_title).strip()}\"")
+    if vc_tags and isinstance(vc_tags, list) and len(vc_tags) > 0:
+        clean_tags = [str(t) for t in vc_tags if str(t).strip()]
+        if clean_tags:
+            context_lines.append(f"- Tags / tópicos originais: {', '.join(clean_tags)}")
+    if vc_keyframes and isinstance(vc_keyframes, list) and len(vc_keyframes) > 0:
+        context_lines.append(
+            f"- Foram fornecidos {len(vc_keyframes)} frames visuais capturados das cenas do vídeo para análise visual direta."
+        )
+    elif vc_scenes and vc_scenes > 0:
+        context_lines.append(f"- O vídeo possui {vc_scenes} cena(s) identificadas.")
+
+    context_section = ""
+    if context_lines:
+        context_section = "--- CONTEXTO EXTRAÍDO DO VÍDEO ---\n" + "\n".join(context_lines) + "\n\n"
+
+    # Tasks instructions & JSON contract building
+    task_instructions = []
+    json_schema_fields = []
+    has_headline_task = False
+
+    for idx, t in enumerate(tasks, 1):
+        tid = t.get("id") or f"task_{idx}"
+        tlabel = t.get("label") or tid
+        raw_inst = t.get("instruction") or ""
+        interp_inst = raw_inst
+        for k, v in subs.items():
+            interp_inst = interp_inst.replace(k, str(v))
+
+        out_type = t.get("output_type", "text")
+        task_instructions.append(f"{idx}. {tlabel.upper()} (chave: \"{tid}\"):\n   - {interp_inst}")
+
+        if out_type == "options_list" or t.get("target") == "canvas_headline":
+            has_headline_task = True
+            json_schema_fields.append(f'  "{tid}": [\n    "Opção 1 curta e chamativa",\n    "Opção 2 ...",\n    "Opção 3 ...",\n    "Opção 4 ...",\n    "Opção 5 ..."\n  ]')
+        elif out_type == "poll":
+            json_schema_fields.append(f'  "{tid}": {{\n    "question": "Pergunta provocativa...",\n    "options": ["Opção A", "Opção B"]\n  }}')
+        else:
+            json_schema_fields.append(f'  "{tid}": "Texto gerado para {tlabel}"')
+
+    if has_headline_task:
+        json_schema_fields.append('  "selected_headline": "A melhor opção escolhida entre as opções acima"')
+
+    json_schema_fields.append('  "hashtags": ["#tag1", "#tag2", "#tag3", "#tag4"]')
+    tasks_section = "--- TAREFAS DE GERAÇÃO EXIGIDAS ---\n" + "\n".join(task_instructions) + "\n\n"
+
+    # Goal guidelines
+    if conversion_goal == "engagement":
+        goal_rules = (
+            "--- DIRETRIZES EDITORIAIS (FOCO EM ENGAJAMENTO PURO) ---\n"
+            "- O objetivo deste vídeo é 100% RETENÇÃO E ENGAJAMENTO ORGÂNICO.\n"
+            "- É ESTRITAMENTE PROIBIDO inventar códigos de produto, links de bio promocionais, cupons ou chamadas de venda/afiliados.\n"
+            "- A legenda deve explicar o tema com dados impressionantes, narrativa envolvente e terminar com perguntas provocativas para gerar debate nos comentários.\n\n"
+        )
+    elif conversion_goal == "affiliate":
+        code_str = f"Código: {eff_product_code}" if eff_product_code else ""
+        goal_rules = (
+            "--- DIRETRIZES COMERCIAIS (MARKETING DE AFILIADOS / ACHADINHOS) ---\n"
+            "- O objetivo deste vídeo é utilidade prática e CONVERSÃO COMERCIAL.\n"
+            f"- Se houver código ({code_str or 'se informado'}), inclua obrigatoriamente na legenda como '📌 Produto {eff_product_code}'.\n"
+            "- Destaque os benefícios práticos e a chamada para link na bio / comentários (ex: 'Comente QUERO que envio o link').\n"
+            "- NUNCA invente preços fictícios ou promoções que não foram fornecidas.\n\n"
+        )
+    else:
+        goal_rules = (
+            f"--- DIRETRIZES DO OBJETIVO ({conversion_goal.upper()}) ---\n"
+            f"- Foque na postura editorial: {persona_role}.\n"
+            f"- Utilize a chamada para ação (CTA): \"{template_cta}\".\n\n"
+        )
+
+    user_instructions = ""
+    if eff_instructions:
+        user_instructions = f"- Instruções adicionais do usuário: \"{eff_instructions}\"\n"
+    code_instruction = ""
+    if eff_product_code and conversion_goal == "affiliate":
+        code_instruction = f"- Código do produto: {eff_product_code}\n"
+    url_instruction = ""
+    eff_url = eff_product_url or _extract_field(brand, "default_affiliate_url")
+    if eff_url and conversion_goal == "affiliate":
+        url_instruction = f"- Link / URL de referência: {eff_url}\n"
+
+    brand_tone_field = _extract_field(brand, "tone")
+    tone_brand_line = f"- Tom de voz da marca: {brand_tone_field}\n" if brand_tone_field else ""
+
+    json_format_str = "{\n" + ",\n".join(json_schema_fields) + "\n}"
+
+    # Ensure lowercase role prefix for tone consistency
+    p_role_formatted = persona_role.strip()
+    if p_role_formatted and p_role_formatted[0].isupper():
+        p_role_formatted = p_role_formatted[0].lower() + p_role_formatted[1:]
+
+    headline_inst_summary = "5 opções de headlines" if has_headline_task else ""
+    prompt = (
+        f"Você é um {p_role_formatted}.\n"
+        f"Seu tom de voz é: {tone_of_voice}.\n"
+        f"Sua missão é criar o conteúdo textual e editorial em Português Brasileiro (PT-BR) para este vídeo no formato 9:16 (Instagram Reels / TikTok / YouTube Shorts).\n\n"
+        "--- CONTEXTO DA MARCA E TEMPLATE ---\n"
+        f"- Nome da marca: {brand_name}\n"
+        f"- Perfil / Handle: {brand_handle}\n"
+        f"- Nicho do canal: {niche_type}\n"
+        f"{tone_brand_line}"
+        f"- CTA padrão: {template_cta}\n"
+        f"{code_instruction}"
+        f"{url_instruction}"
+        f"{user_instructions}\n"
+        f"{context_section}"
+        f"{goal_rules}"
+        f"{tasks_section}"
+        "--- FORMATO DE RESPOSTA ---\n"
+        "Responda EXCLUSIVAMENTE em JSON válido, sem texto explicativo antes ou depois, seguindo esta estrutura exata:\n"
+        f"{json_format_str}\n"
+    )
+    return prompt
+
+
 def build_affiliate_copy_prompt(
     brand: Union[Brand, Dict[str, Any]],
     product_code: Optional[str] = None,
@@ -528,125 +784,16 @@ def build_affiliate_copy_prompt(
     manual_instructions: Optional[str] = None,
     video_context: Optional[Union[Any, Dict[str, Any]]] = None,
 ) -> str:
-    """Build the prompt for Gemini affiliate copy generation. Pure function.
-
-    Generates instructions in Brazilian Portuguese (PT-BR) tailored for
-    high-converting affiliate videos (Instagram Reels / TikTok / YouTube Shorts).
-    """
-    brand_name = _extract_field(brand, "name", "Achadinhos")
-    brand_handle = _extract_field(brand, "handle", "@achadinhos")
-    default_cta = _extract_field(brand, "default_cta", "Confira os achadinhos no link da bio!")
-    brand_tone = (
-        _extract_field(brand, "tone")
-        or _extract_field(brand, "tone_of_voice")
-        or _extract_field(_extract_field(brand, "publishing_profiles", {}), "tone")
-        or "Entusiasmado, curioso e direto (estilo Achadinhos viral)"
+    """Backwards-compatible wrapper delegating to build_viral_copy_prompt."""
+    from clippyme.api.viral_studio_schemas import DEFAULT_TEMPLATE
+    return build_viral_copy_prompt(
+        template=DEFAULT_TEMPLATE,
+        brand=brand,
+        product_code=product_code,
+        product_url=product_url,
+        manual_instructions=manual_instructions,
+        video_context=video_context,
     )
-
-    product_code_str = str(product_code).strip() if product_code else ""
-    default_affiliate_url = _extract_field(brand, "default_affiliate_url", "")
-    default_affiliate_url_str = str(default_affiliate_url).strip() if default_affiliate_url else ""
-    product_url_str = str(product_url).strip() if product_url else ""
-    effective_url_str = product_url_str or default_affiliate_url_str
-    instructions_str = str(manual_instructions).strip() if manual_instructions else ""
-
-    code_instruction = ""
-    if product_code_str:
-        code_instruction = (
-            f"- Código do produto: {product_code_str}. É OBRIGATÓRIO incluir na legenda de forma clara, "
-            f"exatamente como '📌 Produto {product_code_str}' (ou 'Código: {product_code_str}'). "
-            "NUNCA invente outros códigos, cupons ou descontos fictícios.\n"
-        )
-
-    url_instruction = ""
-    if effective_url_str:
-        url_instruction = f"- Link / URL de referência do produto: {effective_url_str}\n"
-
-    user_instructions = ""
-    if instructions_str:
-        user_instructions = f"- Instruções adicionais do usuário: \"{instructions_str}\"\n"
-
-    context_lines = []
-    if video_context is not None:
-        vc_original_caption = _extract_field(video_context, "original_caption", "")
-        vc_transcript = _extract_field(video_context, "transcript", "")
-        vc_title = _extract_field(video_context, "title", "")
-        vc_tags = _extract_field(video_context, "tags", [])
-        vc_keyframes = _extract_field(video_context, "keyframes", [])
-        vc_scenes = _extract_field(video_context, "scenes_count", 0)
-
-        if vc_original_caption and str(vc_original_caption).strip():
-            context_lines.append(f"- Legenda / descrição original do post: \"{str(vc_original_caption).strip()}\"")
-        if vc_transcript and str(vc_transcript).strip():
-            context_lines.append(f"- Transcrição do áudio falado no vídeo: \"{str(vc_transcript).strip()}\"")
-        if vc_title and str(vc_title).strip():
-            context_lines.append(f"- Título do post original: \"{str(vc_title).strip()}\"")
-        if vc_tags and isinstance(vc_tags, list) and len(vc_tags) > 0:
-            clean_tags = [str(t) for t in vc_tags if str(t).strip()]
-            if clean_tags:
-                context_lines.append(f"- Tags / tópicos originais: {', '.join(clean_tags)}")
-        if vc_keyframes and isinstance(vc_keyframes, list) and len(vc_keyframes) > 0:
-            context_lines.append(
-                f"- Foram fornecidos {len(vc_keyframes)} frames visuais capturados das cenas do vídeo para análise visual direta do produto."
-            )
-        elif vc_scenes and vc_scenes > 0:
-            context_lines.append(f"- O vídeo possui {vc_scenes} cena(s) identificadas.")
-
-    context_section = ""
-    if context_lines:
-        context_section = "--- CONTEXTO EXTRAÍDO DO VÍDEO ---\n" + "\n".join(context_lines) + "\n\n"
-
-    prompt = (
-        "Você é um especialista em marketing de afiliados brasileiro e copywriter de vídeos virais "
-        "para Instagram Reels, TikTok e YouTube Shorts (formato 'Achadinhos').\n"
-        "Sua missão é analisar o produto demonstrado e produzir textos comerciais de alta conversão "
-        "em Português Brasileiro (PT-BR).\n\n"
-        "--- CONTEXTO DA MARCA ---\n"
-        f"- Nome da marca: {brand_name}\n"
-        f"- Perfil / Handle: {brand_handle}\n"
-        f"- Tom de voz da marca: {brand_tone}\n"
-        f"- CTA padrão da marca: {default_cta}\n"
-        f"{code_instruction}"
-        f"{url_instruction}"
-        f"{user_instructions}\n"
-        f"{context_section}"
-        "--- REGRAS DE GERAÇÃO ---\n"
-        "1. HEADLINES:\n"
-        "   - Crie exatamente 5 opções de headlines curtas e magnéticas para sobreposição no vídeo.\n"
-        "   - Devem despertar alta curiosidade e destacar o principal benefício demonstrado.\n"
-        "   - Use português brasileiro natural, com pontuação expressiva ou emojis adequados.\n"
-        "   - Evite clichês vazios; foque no problema que o produto resolve.\n"
-        "   - Escolha a melhor opção e coloque em 'selected_headline'.\n"
-        "2. LEGENDA ESTRUTURADA (CAPTION):\n"
-        "   - Gancho inicial impactante na primeira linha.\n"
-        "   - Breve descrição do produto e facilidade de uso.\n"
-        "   - Benefício prático demonstrado.\n"
-        f"   - O código do produto ({product_code_str or 'se informado'}).\n"
-        f"   - Chamada para ação (CTA), utilizando ou adaptando: '{default_cta}'.\n"
-        "   - 4 a 7 hashtags altamente relevantes (#achadinhos, nicho do produto, #publi).\n"
-        "3. INTEGRIDADE COMERCIAL:\n"
-        "   - NUNCA invente funcionalidades milagrosas que não existem no produto.\n"
-        "   - NUNCA invente preços, porcentagens de desconto ou códigos promocionais não fornecidos.\n"
-        "   - NUNCA use chamadas como 'Comente QUERO que eu envio no direct' nem promessas de automação por direct/DM.\n"
-        "   - NUNCA use promessas enganosas, links falsos ou comissões fictícias.\n\n"
-        "--- FORMATO DE RESPOSTA ---\n"
-        "Responda EXCLUSIVAMENTE em JSON válido, sem texto antes ou depois, seguindo esta estrutura:\n"
-        "{\n"
-        '  "product": "Nome conciso do produto identificado",\n'
-        '  "product_description": "Breve descrição do produto e sua utilidade",\n'
-        '  "headlines": [\n'
-        '    "Opção 1 de headline curta e chamativa",\n'
-        '    "Opção 2 ...",\n'
-        '    "Opção 3 ...",\n'
-        '    "Opção 4 ...",\n'
-        '    "Opção 5 ..."\n'
-        "  ],\n"
-        '  "selected_headline": "A melhor opção escolhida entre as 5 acima",\n'
-        '  "caption": "Legenda completa estruturada com gancho, descrição, código, CTA e hashtags",\n'
-        '  "hashtags": ["#achadinhos", "#dicas", "#utilidades", "#publi"]\n'
-        "}\n"
-    )
-    return prompt
 
 
 def _clean_json_str(raw: str) -> str:
@@ -663,30 +810,21 @@ def _clean_json_str(raw: str) -> str:
     return cleaned
 
 
-def parse_affiliate_copy_response(
+def parse_viral_copy_response(
     raw_text: str,
-    default_cta: str = "Confira os achadinhos no link da bio!",
+    default_cta: str = "Confira os detalhes no link da bio!",
     product_code: Optional[str] = None,
+    conversion_goal: str = "engagement",
+    default_hashtags: Optional[List[str]] = None,
 ) -> AICopyData:
-    """Parse Gemini raw output into a validated AICopyData model. Pure function.
-
-    Uses a 5-level repair chain:
-    1. Strip markdown fences and whitespace.
-    2. Substring slice between first '{' and last '}'.
-    3. Strict json.loads.
-    4. Deterministic string repair (_clean_json_str).
-    5. json_repair library (if available).
-    6. Safe graceful fallback construction.
-    """
+    """Parse raw LLM output into a validated AICopyData model with 5-level repair chain."""
     if not raw_text or not raw_text.strip():
-        return _build_fallback_copy_data(default_cta, product_code)
+        return _build_fallback_copy_data(default_cta, product_code, conversion_goal, default_hashtags)
 
     text = raw_text.strip()
-    # Strip markdown fences
     text = _CODE_FENCE_OPEN.sub("", text)
     text = _CODE_FENCE_CLOSE.sub("", text).strip()
 
-    # Extract JSON between first '{' and last '}'
     start = text.find("{")
     end = text.rfind("}")
     if start != -1 and end > start:
@@ -696,7 +834,7 @@ def parse_affiliate_copy_response(
 
     parsed_obj: Optional[Dict[str, Any]] = None
 
-    # Level 1: Standard JSON parse (strict=False permits literal newlines/tabs inside strings)
+    # Level 1: Standard JSON parse
     try:
         data = json.loads(json_candidate, strict=False)
         if isinstance(data, dict):
@@ -726,26 +864,39 @@ def parse_affiliate_copy_response(
         except Exception:
             pass
 
-    # Level 4: Regex-based field extraction as final recovery attempt
+    # Level 4: Regex-based field extraction
     if parsed_obj is None:
         parsed_obj = _regex_extract_copy_fields(text)
 
-    # If all parsing attempts fail, return fallback
+    # Level 5: Safe graceful fallback construction
     if not parsed_obj:
-        return _build_fallback_copy_data(default_cta, product_code)
+        return _build_fallback_copy_data(default_cta, product_code, conversion_goal, default_hashtags)
 
-    # Validate and normalize extracted fields
-    return _normalize_parsed_dict(parsed_obj, default_cta, product_code)
+    return _normalize_parsed_dict(parsed_obj, default_cta, product_code, conversion_goal, default_hashtags)
+
+
+def parse_affiliate_copy_response(
+    raw_text: str,
+    default_cta: str = "Confira os achadinhos no link da bio!",
+    product_code: Optional[str] = None,
+) -> AICopyData:
+    """Backwards-compatible parser delegating to parse_viral_copy_response."""
+    return parse_viral_copy_response(
+        raw_text=raw_text,
+        default_cta=default_cta,
+        product_code=product_code,
+        conversion_goal="affiliate",
+    )
 
 
 def _regex_extract_copy_fields(text: str) -> Optional[Dict[str, Any]]:
     """Attempt heuristic regex extraction of fields from malformed JSON."""
     result: Dict[str, Any] = {}
-    prod_m = re.search(r'"product"\s*:\s*"([^"]+)"', text)
+    prod_m = re.search(r'"(?:product|product_name|produto)"\s*:\s*"([^"]+)"', text)
     if prod_m:
         result["product"] = prod_m.group(1)
 
-    desc_m = re.search(r'"product_description"\s*:\s*"([^"]+)"', text)
+    desc_m = re.search(r'"(?:product_description|descricao)"\s*:\s*"([^"]+)"', text)
     if desc_m:
         result["product_description"] = desc_m.group(1)
 
@@ -753,17 +904,21 @@ def _regex_extract_copy_fields(text: str) -> Optional[Dict[str, Any]]:
     if sel_h_m:
         result["selected_headline"] = sel_h_m.group(1)
 
-    caption_m = re.search(r'"caption"\s*:\s*"((?:[^"\\]|\\.)*)"', text)
+    caption_m = re.search(r'"(?:caption|legenda)"\s*:\s*"((?:[^"\\]|\\.)*)"', text)
     if caption_m:
         result["caption"] = caption_m.group(1).replace(r"\n", "\n")
 
-    headlines_m = re.search(r'"headlines"\s*:\s*\[(.*?)\]', text, re.DOTALL)
+    title_m = re.search(r'"(?:social_title|post_title|titulo)"\s*:\s*"([^"]+)"', text)
+    if title_m:
+        result["social_title"] = title_m.group(1)
+
+    headlines_m = re.search(r'"(?:headlines|headline|manchetes)"\s*:\s*\[(.*?)\]', text, re.DOTALL)
     if headlines_m:
         raw_items = re.findall(r'"([^"]+)"', headlines_m.group(1))
         if raw_items:
             result["headlines"] = raw_items
 
-    hashtags_m = re.search(r'"hashtags"\s*:\s*\[(.*?)\]', text, re.DOTALL)
+    hashtags_m = re.search(r'"(?:hashtags|tags)"\s*:\s*\[(.*?)\]', text, re.DOTALL)
     if hashtags_m:
         raw_tags = re.findall(r'"([^"]+)"', hashtags_m.group(1))
         if raw_tags:
@@ -776,13 +931,21 @@ def _normalize_parsed_dict(
     data: Dict[str, Any],
     default_cta: str,
     product_code: Optional[str] = None,
+    conversion_goal: str = "engagement",
+    default_hashtags: Optional[List[str]] = None,
 ) -> AICopyData:
     """Ensure all required AICopyData fields are clean, non-empty, and compliant."""
-    product = str(data.get("product") or "Produto em Destaque").strip()[:200]
-    product_desc = str(data.get("product_description") or "").strip()[:1000]
+    product = data.get("product") or data.get("product_name") or data.get("produto")
+    product_str = str(product).strip()[:200] if product else None
+
+    product_desc = data.get("product_description") or data.get("descricao") or ""
+    product_desc_str = str(product_desc).strip()[:1000] if product_desc else ""
+
+    social_title = data.get("social_title") or data.get("post_title") or data.get("titulo")
+    social_title_str = str(social_title).strip()[:200] if social_title else None
 
     # Normalize headlines
-    raw_headlines = data.get("headlines")
+    raw_headlines = data.get("headlines") or data.get("headline") or data.get("manchetes")
     headlines: List[str] = []
     if isinstance(raw_headlines, str):
         raw_headlines = [
@@ -801,7 +964,6 @@ def _normalize_parsed_dict(
     if not headlines:
         headlines = list(DEFAULT_FALLBACK_HEADLINES)
     elif len(headlines) < 5:
-        # Pad up to 5 with diverse fallback headlines
         for fallback_h in DEFAULT_FALLBACK_HEADLINES:
             if fallback_h not in headlines:
                 headlines.append(fallback_h)
@@ -812,7 +974,6 @@ def _normalize_parsed_dict(
     raw_selected = str(data.get("selected_headline") or "").strip()
     selected_headline = re.sub(r"^(?:[-*•–—]|\d+[\.\-\)])\s*", "", raw_selected).strip()
 
-    # Handle option index references: "Opção 2", "Opcao 3", "Option 4", "2", "Opção 3: Texto"
     option_m = re.match(
         r"^(?:op[çc][ãa]o|option)?\s*([1-9]|10)\b(?:\s*[:\-\.]\s*(.*))?$",
         raw_selected,
@@ -829,19 +990,17 @@ def _normalize_parsed_dict(
             selected_headline = headlines[0]
 
     if not selected_headline:
-        selected_headline = headlines[0]
-    elif selected_headline not in headlines:
+        selected_headline = headlines[0] if headlines else ""
+    elif selected_headline not in headlines and selected_headline:
         headlines.insert(0, selected_headline)
 
-    # Strictly clamp to 10 headlines AFTER any insertions
     headlines = headlines[:10]
     selected_headline = selected_headline[:300]
 
     # Hashtags
-    raw_hashtags = data.get("hashtags")
+    raw_hashtags = data.get("hashtags") or data.get("tags")
     hashtags: List[str] = []
     if isinstance(raw_hashtags, str):
-        # Support string format: "#achadinhos #cozinha #dicas" or comma separated
         raw_hashtags = re.findall(r"#?[\w-]+", raw_hashtags)
     if isinstance(raw_hashtags, list):
         for tag in raw_hashtags:
@@ -853,10 +1012,10 @@ def _normalize_parsed_dict(
                     if cleaned_tag not in hashtags:
                         hashtags.append(cleaned_tag)
     if not hashtags:
-        hashtags = list(DEFAULT_FALLBACK_HASHTAGS)
+        hashtags = list(default_hashtags or DEFAULT_FALLBACK_HASHTAGS)
 
     # Caption
-    raw_caption = data.get("caption")
+    raw_caption = data.get("caption") or data.get("post_caption") or data.get("legenda")
     if isinstance(raw_caption, list):
         caption = "\n\n".join(str(p).strip() for p in raw_caption if str(p).strip())
     else:
@@ -864,18 +1023,16 @@ def _normalize_parsed_dict(
 
     clean_code = str(product_code).strip() if (product_code is not None and str(product_code).strip()) else ""
     if not caption:
-        # Assemble structured caption
-        parts = [selected_headline]
-        if product_desc:
-            parts.append(product_desc)
-        if clean_code:
+        parts = [selected_headline] if selected_headline else []
+        if product_desc_str:
+            parts.append(product_desc_str)
+        if clean_code and conversion_goal == "affiliate":
             parts.append(f"📌 Produto {clean_code}")
         parts.append(default_cta)
         parts.append(" ".join(hashtags))
         caption = "\n\n".join(parts)
     else:
-        # Guarantee product code is in caption if provided
-        if clean_code:
+        if clean_code and conversion_goal == "affiliate":
             has_code = bool(
                 re.search(
                     rf"(?:produto|código|codigo|cod\.?|ref\.?)\s*:?\s*#?{re.escape(clean_code)}\b",
@@ -887,7 +1044,6 @@ def _normalize_parsed_dict(
             )
             if not has_code:
                 extra = f"📌 Produto {clean_code}"
-                # If caption ends with hashtags block, insert code before hashtags
                 tag_tail_m = re.search(r"(\n+(?:#[\w-]+\s*)+)$", caption)
                 if tag_tail_m:
                     head = caption[: tag_tail_m.start()].rstrip()
@@ -896,71 +1052,102 @@ def _normalize_parsed_dict(
                 else:
                     cand = f"{caption}\n\n{extra}"
 
-                if len(cand) <= 2200:
+                if len(cand) <= 4000:
                     caption = cand
                 else:
-                    caption = f"{cand[:2200 - len(extra) - 2]}\n\n{extra}"
+                    caption = f"{cand[:4000 - len(extra) - 2]}\n\n{extra}"
 
-    caption = caption[:2200]
+    caption = caption[:4000]
+
+    # Collect custom outputs from all remaining keys
+    known_keys = {
+        "product", "product_name", "produto", "product_description", "descricao",
+        "headlines", "headline", "manchetes", "selected_headline",
+        "caption", "post_caption", "legenda", "social_title", "post_title", "titulo",
+        "hashtags", "tags",
+    }
+    custom_outputs = {k: v for k, v in data.items() if k not in known_keys}
 
     return AICopyData(
-        product=product,
-        product_description=product_desc,
+        product=product_str,
+        product_description=product_desc_str,
         headlines=headlines,
         selected_headline=selected_headline,
         caption=caption,
         hashtags=hashtags,
+        social_title=social_title_str,
+        custom_outputs=custom_outputs,
     )
 
 
 def _build_fallback_copy_data(
     default_cta: str,
     product_code: Optional[str] = None,
+    conversion_goal: str = "engagement",
+    default_hashtags: Optional[List[str]] = None,
 ) -> AICopyData:
     """Generate safe fallback AICopyData when model output is completely missing."""
     headlines = list(DEFAULT_FALLBACK_HEADLINES)
     selected_headline = headlines[0]
-    hashtags = list(DEFAULT_FALLBACK_HASHTAGS)
+    hashtags = list(default_hashtags or DEFAULT_FALLBACK_HASHTAGS)
+
+    if conversion_goal == "affiliate":
+        parts = [
+            selected_headline,
+            "Esse achadinho vai transformar o seu espaço e facilitar muito o seu dia a dia!",
+        ]
+        clean_code = str(product_code).strip() if (product_code is not None and str(product_code).strip()) else ""
+        if clean_code:
+            parts.append(f"📌 Produto {clean_code}")
+        parts.append(default_cta)
+        parts.append(" ".join(hashtags))
+        return AICopyData(
+            product="Produto em Destaque",
+            product_description="Achadinho incrível com alta utilidade para sua rotina.",
+            headlines=headlines,
+            selected_headline=selected_headline,
+            caption="\n\n".join(parts),
+            hashtags=hashtags,
+            social_title=selected_headline,
+        )
 
     parts = [
         selected_headline,
-        "Esse achadinho vai transformar o seu espaço e facilitar muito o seu dia a dia!",
+        "Você já sabia dessa curiosidade incrível? O conhecimento transforma tudo!",
+        default_cta,
+        " ".join(hashtags),
     ]
-    clean_code = str(product_code).strip() if (product_code is not None and str(product_code).strip()) else ""
-    if clean_code:
-        parts.append(f"📌 Produto {clean_code}")
-    parts.append(default_cta)
-    parts.append(" ".join(hashtags))
-    caption = "\n\n".join(parts)
-
     return AICopyData(
-        product="Produto em Destaque",
-        product_description="Achadinho incrível com alta utilidade para sua rotina.",
+        product=None,
+        product_description="",
         headlines=headlines,
         selected_headline=selected_headline,
-        caption=caption,
+        caption="\n\n".join(parts),
         hashtags=hashtags,
+        social_title="Fato Surpreendente",
+        custom_outputs={},
     )
 
 
-async def generate_affiliate_copy(
-    brand: Union[Brand, Dict[str, Any]],
-    item: Union[ViralItem, Dict[str, Any]],
+async def generate_viral_copy(
+    template: Optional[Union[VisualTemplate, Dict[str, Any]]] = None,
+    brand: Optional[Union[Brand, Dict[str, Any]]] = None,
+    item: Optional[Union[ViralItem, Dict[str, Any]]] = None,
     video_path: Optional[str] = None,
     api_key: Optional[str] = None,
     model: Optional[str] = None,
     video_context: Optional[Union[Any, Dict[str, Any]]] = None,
+    manual_instructions: Optional[str] = None,
 ) -> AICopyData:
-    """Generate affiliate copy for a viral item with caching and model fallback.
+    """Generate viral copy for an item based on its template with model resolution and item caching."""
+    # Positional swap compatibility: if called as (brand, item)
+    if template is not None and brand is not None and item is None:
+        if isinstance(template, Brand) or (isinstance(template, dict) and "handle" in template and "video_fit" not in template):
+            item = brand  # type: ignore
+            brand = template  # type: ignore
+            template = None
 
-    - Checks item-level cache first: returns cached copy immediately if present.
-    - Resolves Gemini API key and fallback model ladder.
-    - Extracts multi-signal video context & keyframes if video is provided.
-    - Executes async content generation (multimodal with frame image parts).
-    - Parses and validates response with multi-level repair.
-    - Caches copy and ai_context_summary on item and persists to viral_studio_store.
-    """
-    # 1. Caching check: bypass Gemini if item already has ai_copy
+    # 1. Caching check: bypass LLM if item already has ai_copy
     existing_copy = _extract_field(item, "ai_copy")
     if existing_copy is not None:
         copy_obj: Optional[AICopyData] = None
@@ -972,24 +1159,23 @@ async def generate_affiliate_copy(
             except Exception:
                 pass
         if copy_obj is not None:
-            # Reconcile manual headline override and custom caption on item
             effective_selected_headline = (
                 _extract_field(item, "manual_headline")
                 or _extract_field(item, "selected_headline")
                 or copy_obj.selected_headline
             )
             clean_headline = str(effective_selected_headline or "").strip()
-            if not clean_headline:
-                clean_headline = copy_obj.headlines[0] if copy_obj.headlines else DEFAULT_FALLBACK_HEADLINES[0]
-            copy_obj.selected_headline = clean_headline[:300]
-            if clean_headline not in copy_obj.headlines:
-                copy_obj.headlines.insert(0, clean_headline[:300])
-            copy_obj.headlines = copy_obj.headlines[:10]
+            if not clean_headline and copy_obj.headlines:
+                clean_headline = copy_obj.headlines[0]
+            if clean_headline:
+                copy_obj.selected_headline = clean_headline[:300]
+                if clean_headline not in copy_obj.headlines:
+                    copy_obj.headlines.insert(0, clean_headline[:300])
+                copy_obj.headlines = copy_obj.headlines[:10]
 
             effective_caption = _extract_field(item, "caption") or copy_obj.caption
             copy_obj.caption = effective_caption
 
-            # Update in-memory item
             if isinstance(item, dict):
                 item["ai_copy"] = copy_obj.model_dump()
                 item["selected_headline"] = clean_headline
@@ -1006,12 +1192,10 @@ async def generate_affiliate_copy(
                 except Exception as e:
                     logger.debug("Could not assign fields directly to item object: %s", e)
 
-            # Persist update to store if item has an ID
             item_id = _extract_field(item, "id") or _extract_field(item, "item_id")
             if item_id:
                 try:
                     from clippyme.domain import viral_studio_store
-
                     viral_studio_store.update_item(
                         item_id,
                         {
@@ -1023,20 +1207,29 @@ async def generate_affiliate_copy(
                 except Exception as exc:
                     logger.debug("Could not persist cached copy update to store: %s", exc)
 
-            logger.info("generate_affiliate_copy: Returning cached AICopyData for item")
+            logger.info("generate_viral_copy: Returning cached AICopyData for item")
             return copy_obj
 
-    # 2. Resolve model and provider
+    # 2. Resolve template & model
+    if template is None:
+        template_id = _extract_field(item, "template_id") or _extract_field(brand, "template_id") or "classic-affiliate"
+        from clippyme.domain import viral_studio_store
+        template = viral_studio_store.get_template(template_id)
+        if not template:
+            from clippyme.api.viral_studio_schemas import DEFAULT_TEMPLATE
+            template = DEFAULT_TEMPLATE
+
     configured_model = (
         model
         or _extract_field(item, "model")
+        or _extract_field(template, "preferred_model")
         or load_persistent_config().get("DEFAULT_AI_MODEL")
         or load_persistent_config().get("GEMINI_MODEL")
         or "gemini-3.5-flash"
     )
     provider_name, model_subname = parse_model_identifier(configured_model)
 
-    # 3. Multi-Signal Video Context extraction (if video file is available and context not supplied)
+    # 3. Multi-Signal Video Context extraction
     resolved_context = video_context
     target_video_file = video_path or _extract_field(item, "source_path")
     if resolved_context is None and target_video_file and os.path.isfile(target_video_file):
@@ -1059,24 +1252,16 @@ async def generate_affiliate_copy(
         elif isinstance(resolved_context, dict):
             context_summary = resolved_context
 
-    # 4. Build prompt with context
-    product_code = _extract_field(item, "product_code")
-    product_url = _extract_field(item, "product_url")
-    instructions = (
-        _extract_field(item, "additional_instructions")
-        or _extract_field(item, "manual_instructions")
-    )
-    default_cta = _extract_field(brand, "default_cta") or "Confira os achadinhos no link da bio!"
-
-    prompt = build_affiliate_copy_prompt(
+    # 4. Build prompt
+    prompt = build_viral_copy_prompt(
+        template=template,
         brand=brand,
-        product_code=product_code,
-        product_url=product_url,
-        manual_instructions=instructions,
+        item=item,
+        manual_instructions=manual_instructions,
         video_context=resolved_context,
     )
 
-    # 5. Prepare multimodal payload with frame images if available
+    # 5. Multimodal frame images
     contents_payload: Any = prompt
     keyframes = _extract_field(resolved_context, "keyframes", [])
     if keyframes and isinstance(keyframes, list):
@@ -1092,7 +1277,7 @@ async def generate_affiliate_copy(
         except Exception as exc:
             logger.debug("Could not attach visual frame parts: %s", exc)
 
-    # 6. Execute generation via resolved provider
+    # 6. Execute generation
     if provider_name in ("lmstudio", "local", "lm_studio"):
         lm_prov = LMStudioProvider()
         raw_response_text, telemetry_data = await lm_prov.generate_copy(
@@ -1118,30 +1303,38 @@ async def generate_affiliate_copy(
             api_key=api_key,
         )
 
-    # 7. Parse and validate response
-    copy_data = parse_affiliate_copy_response(
+    # 7. Parse response
+    default_cta = _extract_field(template, "call_to_action_template") or _extract_field(brand, "default_cta") or "Siga para mais!"
+    product_code = _extract_field(item, "product_code")
+    conversion_goal = _extract_field(template, "conversion_goal", "engagement")
+    default_hashtags = _extract_field(template, "default_hashtags") or []
+
+    copy_data = parse_viral_copy_response(
         raw_text=raw_response_text,
         default_cta=default_cta,
         product_code=product_code,
+        conversion_goal=conversion_goal,
+        default_hashtags=default_hashtags,
     )
 
-    # 9. Reconcile with existing user edits (preserving custom captions/headlines)
+    copy_data.model = telemetry_data.get("model")
+    copy_data.telemetry = telemetry_data
+
+    # 8. Reconcile user overrides
     effective_selected_headline = (
         _extract_field(item, "manual_headline")
         or _extract_field(item, "selected_headline")
         or copy_data.selected_headline
     )
     clean_effective_headline = str(effective_selected_headline or "").strip()
-    if not clean_effective_headline:
-        clean_effective_headline = copy_data.selected_headline or (
-            copy_data.headlines[0] if copy_data.headlines else DEFAULT_FALLBACK_HEADLINES[0]
-        )
-    copy_data.selected_headline = clean_effective_headline[:300]
+    if clean_effective_headline:
+        copy_data.selected_headline = clean_effective_headline[:300]
+        if clean_effective_headline not in copy_data.headlines:
+            copy_data.headlines.insert(0, clean_effective_headline[:300])
+        copy_data.headlines = copy_data.headlines[:10]
+
     effective_caption = _extract_field(item, "caption") or copy_data.caption
     copy_data.caption = effective_caption
-    if clean_effective_headline not in copy_data.headlines:
-        copy_data.headlines.insert(0, clean_effective_headline[:300])
-    copy_data.headlines = copy_data.headlines[:10]
 
     keyframe_urls = getattr(resolved_context, "keyframe_urls", []) if resolved_context else []
 
@@ -1156,7 +1349,7 @@ async def generate_affiliate_copy(
             item["ai_context_summary"] = context_summary
         if video_path and not item.get("source_path"):
             item["source_path"] = video_path
-    else:
+    elif item is not None:
         try:
             item.ai_copy = copy_data
             item.selected_headline = clean_effective_headline
@@ -1171,7 +1364,7 @@ async def generate_affiliate_copy(
         except Exception as e:
             logger.debug("Could not assign ai_copy directly to item object: %s", e)
 
-    # 10. Persist to store if item has an ID
+    # 9. Persist to store if item has an ID
     item_id = _extract_field(item, "id") or _extract_field(item, "item_id")
     if item_id:
         try:
@@ -1193,10 +1386,94 @@ async def generate_affiliate_copy(
     return copy_data
 
 
+async def generate_affiliate_copy(
+    brand: Union[Brand, Dict[str, Any]],
+    item: Union[ViralItem, Dict[str, Any]],
+    api_key: Optional[str] = None,
+    manual_instructions: Optional[str] = None,
+    video_context: Optional[Union[Any, Dict[str, Any]]] = None,
+    model: Optional[str] = None,
+    video_path: Optional[str] = None,
+) -> AICopyData:
+    """Backwards-compatible commercial copy generator using DEFAULT_TEMPLATE."""
+    from clippyme.api.viral_studio_schemas import DEFAULT_TEMPLATE
+    return await generate_viral_copy(
+        template=DEFAULT_TEMPLATE,
+        brand=brand,
+        item=item,
+        api_key=api_key,
+        manual_instructions=manual_instructions,
+        video_context=video_context,
+        model=model,
+        video_path=video_path,
+    )
+
+
+async def test_copy_generation(
+    template: Union[VisualTemplate, Dict[str, Any]],
+    brand: Optional[Union[Brand, Dict[str, Any]]] = None,
+    sample_transcript: Optional[str] = None,
+    sample_title: Optional[str] = None,
+    model: Optional[str] = None,
+) -> tuple[AICopyData, Dict[str, Any]]:
+    """Test AI copy generation with a template in real-time. Pure prompt testing."""
+    sample_vc = {
+        "transcript": sample_transcript or "Você sabia que o polvo tem três corações e o sangue dele é azul? Além disso, dois corações param de bater quando ele nada!",
+        "title": sample_title or "Fatos Surpreendentes sobre Criaturas Marinhas",
+        "original_caption": "Fatos incríveis da biologia marinha que vão explodir sua mente!",
+        "tags": ["curiosidades", "ciencia", "natureza"],
+    }
+
+    prompt = build_viral_copy_prompt(
+        template=template,
+        brand=brand,
+        video_context=sample_vc,
+    )
+
+    configured_model = (
+        model
+        or _extract_field(template, "preferred_model")
+        or load_persistent_config().get("DEFAULT_AI_MODEL")
+        or load_persistent_config().get("GEMINI_MODEL")
+        or "gemini-3.5-flash"
+    )
+    provider_name, model_subname = parse_model_identifier(configured_model)
+
+    if provider_name in ("lmstudio", "local", "lm_studio"):
+        prov = LMStudioProvider()
+    elif provider_name == "ollama":
+        prov = OllamaProvider()
+    else:
+        prov = GeminiProvider()
+
+    raw_response_text, telemetry_data = await prov.generate_copy(
+        prompt=prompt,
+        model_name=model_subname,
+    )
+
+    default_cta = _extract_field(template, "call_to_action_template") or _extract_field(brand, "default_cta") or "Siga para mais!"
+    conversion_goal = _extract_field(template, "conversion_goal", "engagement")
+    default_hashtags = _extract_field(template, "default_hashtags") or []
+
+    copy_data = parse_viral_copy_response(
+        raw_text=raw_response_text,
+        default_cta=default_cta,
+        conversion_goal=conversion_goal,
+        default_hashtags=default_hashtags,
+    )
+    copy_data.model = telemetry_data.get("model")
+    copy_data.telemetry = telemetry_data
+    return copy_data, telemetry_data
+
+
 __all__ = [
+    "build_viral_copy_prompt",
     "build_affiliate_copy_prompt",
+    "parse_viral_copy_response",
     "parse_affiliate_copy_response",
+    "generate_viral_copy",
     "generate_affiliate_copy",
+    "test_copy_generation",
     "parse_model_identifier",
     "BaseAIProvider",
     "GeminiProvider",

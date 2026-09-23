@@ -7,38 +7,316 @@ import type {
   BrandCreate,
   BrandListResponse,
   BrandUpdate,
-  TemplateListResponse,
   ViralItem,
   ViralItemUpdate,
-  VisualTemplate,
 } from '../data/batch.types'
+import type {
+  TemplateCreate,
+  TemplateListResponse,
+  TemplateUpdate,
+  TestGenerationRequest,
+  TestGenerationResponse,
+  VisualTemplate,
+} from '../data/template.types'
 
 export const mockTemplates: VisualTemplate[] = [
   {
-    id: 'classic-affiliate',
-    name: 'Classic Affiliate',
+    id: 'curiosities-viral',
+    name: 'Curiosidades & Fatos Virais',
+    is_system: true,
     width: 1080,
     height: 1920,
-    background_color: '#FFFFFF',
-    avatar_enabled: true,
-    brand_name_enabled: true,
-    headline_enabled: true,
-    watermark_enabled: true,
+    background_color: '#0D1117',
     video_fit: 'contain',
+    video_aspect: '1:1',
+    video_x: null,
+    video_y: 360,
+    video_width: null,
+    video_height: 1000,
+    video_scale: 92,
+    video_radius: 20,
+    video_border_width: 2,
+    video_border_color: '#3B82F6',
+    video_shadow: 'deep',
+    avatar_enabled: true,
     avatar_x: 60,
     avatar_y: 80,
     avatar_size: 100,
+    brand_name_enabled: true,
     brand_name_font_size: 36,
-    brand_name_color: '#111111',
+    brand_name_color: '#F0F6FC',
     handle_font_size: 26,
-    handle_color: '#666666',
+    handle_color: '#8B949E',
+    headline_enabled: true,
+    headline_font: 'Montserrat-ExtraBold',
     headline_font_size: 48,
-    headline_color: '#111111',
+    headline_color: '#FFFFFF',
+    headline_y: 130,
     headline_max_lines: 3,
     headline_margin_x: 60,
     headline_margin_top: 30,
+    badge_enabled: true,
+    custom_badge_text: 'VOCÊ SABIA?',
+    custom_badge_bg_color: '#E11D48',
+    custom_badge_text_color: '#FFFFFF',
+    badge_y: 45,
+    extra_image_enabled: true,
+    extra_image_path: null,
+    extra_image_url: null,
+    extra_image_template_type: 'comment',
+    extra_image_x: null,
+    extra_image_y: 1420,
+    extra_image_height: 340,
+    extra_image_width: 92,
+    extra_image_radius: 16,
+    watermark_enabled: true,
     watermark_opacity: 0.7,
     watermark_position: 'bottom-right',
+    niche_type: 'curiosities',
+    persona_role: 'Roteirista investigativo focado em fatos curiosos e mistérios',
+    tone_of_voice: 'Intrigante, misterioso, dinâmico',
+    conversion_goal: 'engagement',
+    call_to_action_template: 'Siga para mais conteúdos!',
+    system_prompt_template: null,
+    default_hashtags: ['#curiosidades', '#fatosdesconhecidos', '#vocesabia'],
+    preferred_model: null,
+    generation_tasks: [
+      {
+        id: 'hook_headline',
+        label: 'Gancho Visual de Impacto',
+        target: 'canvas_headline',
+        instruction: 'Gere uma pergunta intrigante de no máximo 8 palavras.',
+        output_type: 'text',
+        is_required: true,
+      },
+      {
+        id: 'curiosity_badge',
+        label: 'Selo de Curiosidade',
+        target: 'canvas_badge',
+        instruction: 'Selo provocador de 2 a 3 palavras.',
+        output_type: 'text',
+        is_required: false,
+      },
+    ],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'classic-affiliate',
+    name: 'Achadinhos & Afiliados',
+    is_system: true,
+    width: 1080,
+    height: 1920,
+    background_color: '#FFFFFF',
+    video_fit: 'contain',
+    video_aspect: '1:1',
+    video_x: null,
+    video_y: 360,
+    video_width: null,
+    video_height: 1000,
+    video_scale: 92,
+    video_radius: 20,
+    video_border_width: 2,
+    video_border_color: '#E5E7EB',
+    video_shadow: 'subtle',
+    avatar_enabled: true,
+    avatar_x: 60,
+    avatar_y: 80,
+    avatar_size: 100,
+    brand_name_enabled: true,
+    brand_name_font_size: 36,
+    brand_name_color: '#111827',
+    handle_font_size: 26,
+    handle_color: '#6B7280',
+    headline_enabled: true,
+    headline_font: 'Montserrat-ExtraBold',
+    headline_font_size: 48,
+    headline_color: '#111827',
+    headline_y: 130,
+    headline_max_lines: 3,
+    headline_margin_x: 60,
+    headline_margin_top: 30,
+    badge_enabled: false,
+    custom_badge_text: null,
+    custom_badge_bg_color: '#E11D48',
+    custom_badge_text_color: '#FFFFFF',
+    badge_y: 45,
+    extra_image_enabled: false,
+    extra_image_path: null,
+    extra_image_url: null,
+    extra_image_template_type: 'deal',
+    extra_image_x: null,
+    extra_image_y: 1420,
+    extra_image_height: 340,
+    extra_image_width: 92,
+    extra_image_radius: 16,
+    watermark_enabled: true,
+    watermark_opacity: 0.7,
+    watermark_position: 'bottom-right',
+    niche_type: 'affiliate_products',
+    persona_role: 'Curador de achadinhos úteis com alto apelo de compra por impulso',
+    tone_of_voice: 'Empolgado, prático, direto',
+    conversion_goal: 'affiliate',
+    call_to_action_template: 'Confira os achadinhos no link da bio!',
+    system_prompt_template: null,
+    default_hashtags: ['#achadinhos', '#comprinhas', '#shopee', '#mercadolivre'],
+    preferred_model: null,
+    generation_tasks: [
+      {
+        id: 'affiliate_headline',
+        label: 'Headline Comercial de Impacto',
+        target: 'canvas_headline',
+        instruction: 'Gere um gancho direto focando no benefício principal.',
+        output_type: 'text',
+        is_required: true,
+      },
+    ],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'quick-facts-news',
+    name: 'Notícias Rápidas & Fatos',
+    is_system: true,
+    width: 1080,
+    height: 1920,
+    background_color: '#0F172A',
+    video_fit: 'contain',
+    video_aspect: '1:1',
+    video_x: null,
+    video_y: 360,
+    video_width: null,
+    video_height: 1000,
+    video_scale: 92,
+    video_radius: 12,
+    video_border_width: 3,
+    video_border_color: '#DC2626',
+    video_shadow: 'deep',
+    avatar_enabled: true,
+    avatar_x: 60,
+    avatar_y: 80,
+    avatar_size: 100,
+    brand_name_enabled: true,
+    brand_name_font_size: 36,
+    brand_name_color: '#F8FAFC',
+    handle_font_size: 26,
+    handle_color: '#94A3B8',
+    headline_enabled: true,
+    headline_font: 'Montserrat-ExtraBold',
+    headline_font_size: 48,
+    headline_color: '#FFFFFF',
+    headline_y: 130,
+    headline_max_lines: 3,
+    headline_margin_x: 60,
+    headline_margin_top: 30,
+    badge_enabled: true,
+    custom_badge_text: 'URGENTE',
+    custom_badge_bg_color: '#DC2626',
+    custom_badge_text_color: '#FFFFFF',
+    badge_y: 45,
+    extra_image_enabled: true,
+    extra_image_path: null,
+    extra_image_url: null,
+    extra_image_template_type: 'fact',
+    extra_image_x: null,
+    extra_image_y: 1420,
+    extra_image_height: 340,
+    extra_image_width: 92,
+    extra_image_radius: 12,
+    watermark_enabled: true,
+    watermark_opacity: 0.7,
+    watermark_position: 'bottom-right',
+    niche_type: 'news_and_trends',
+    persona_role: 'Jornalista ágil e dinâmico trazendo notícias de última hora',
+    tone_of_voice: 'Urgente, direto, factual',
+    conversion_goal: 'engagement',
+    call_to_action_template: 'Comente sua opinião e compartilhe!',
+    system_prompt_template: null,
+    default_hashtags: ['#noticias', '#urgente', '#aconteceu', '#fatos'],
+    preferred_model: null,
+    generation_tasks: [
+      {
+        id: 'news_headline',
+        label: 'Manchete Urgente',
+        target: 'canvas_headline',
+        instruction: 'Gere uma manchete de impacto factual.',
+        output_type: 'text',
+        is_required: true,
+      },
+    ],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'tech-review',
+    name: 'Review Tech & Gadgets',
+    is_system: true,
+    width: 1080,
+    height: 1920,
+    background_color: '#090D16',
+    video_fit: 'contain',
+    video_aspect: '1:1',
+    video_x: null,
+    video_y: 360,
+    video_width: null,
+    video_height: 1000,
+    video_scale: 92,
+    video_radius: 24,
+    video_border_width: 2,
+    video_border_color: '#06B6D4',
+    video_shadow: 'glow-blue',
+    avatar_enabled: true,
+    avatar_x: 60,
+    avatar_y: 80,
+    avatar_size: 100,
+    brand_name_enabled: true,
+    brand_name_font_size: 36,
+    brand_name_color: '#E0F2FE',
+    handle_font_size: 26,
+    handle_color: '#7DD3FC',
+    headline_enabled: true,
+    headline_font: 'Montserrat-ExtraBold',
+    headline_font_size: 48,
+    headline_color: '#FFFFFF',
+    headline_y: 130,
+    headline_max_lines: 3,
+    headline_margin_x: 60,
+    headline_margin_top: 30,
+    badge_enabled: true,
+    custom_badge_text: 'TECH REVIEW',
+    custom_badge_bg_color: '#0891B2',
+    custom_badge_text_color: '#FFFFFF',
+    badge_y: 45,
+    extra_image_enabled: true,
+    extra_image_path: null,
+    extra_image_url: null,
+    extra_image_template_type: 'deal',
+    extra_image_x: null,
+    extra_image_y: 1420,
+    extra_image_height: 340,
+    extra_image_width: 92,
+    extra_image_radius: 16,
+    watermark_enabled: true,
+    watermark_opacity: 0.7,
+    watermark_position: 'bottom-right',
+    niche_type: 'technology',
+    persona_role: 'Especialista em reviews de tecnologia e hardware',
+    tone_of_voice: 'Analítico, técnico porém acessível',
+    conversion_goal: 'affiliate',
+    call_to_action_template: 'Link com o melhor preço na bio!',
+    system_prompt_template: null,
+    default_hashtags: ['#tecnologia', '#tech', '#gadgets', '#setup'],
+    preferred_model: null,
+    generation_tasks: [
+      {
+        id: 'tech_headline',
+        label: 'Veredito Rápido',
+        target: 'canvas_headline',
+        instruction: 'Gere um veredito direto e chamativo sobre o produto.',
+        output_type: 'text',
+        is_required: true,
+      },
+    ],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   },
@@ -494,6 +772,216 @@ export const viralStudioHandlers = [
         headers: { 'Content-Type': 'application/json' },
       })
     }
+    return HttpResponse.json(template)
+  }),
+
+  http.post('/api/viral-studio/templates', async ({ request }) => {
+    const body = (await request.json()) as TemplateCreate
+    const newId = body.id || `custom-${Date.now()}`
+    const newTemplate: VisualTemplate = {
+      id: newId,
+      name: body.name || 'Novo Template',
+      is_system: false,
+      width: body.width ?? 1080,
+      height: body.height ?? 1920,
+      background_color: body.background_color ?? '#0D1117',
+      video_fit: body.video_fit ?? 'contain',
+      video_aspect: body.video_aspect ?? '1:1',
+      video_x: body.video_x ?? null,
+      video_y: body.video_y ?? 360,
+      video_width: body.video_width ?? null,
+      video_height: body.video_height ?? 1000,
+      video_scale: body.video_scale ?? 92,
+      video_radius: body.video_radius ?? 20,
+      video_border_width: body.video_border_width ?? 2,
+      video_border_color: body.video_border_color ?? '#3B82F6',
+      video_shadow: body.video_shadow ?? 'deep',
+      avatar_enabled: body.avatar_enabled ?? true,
+      avatar_x: body.avatar_x ?? 60,
+      avatar_y: body.avatar_y ?? 80,
+      avatar_size: body.avatar_size ?? 100,
+      brand_name_enabled: body.brand_name_enabled ?? true,
+      brand_name_font_size: body.brand_name_font_size ?? 36,
+      brand_name_color: body.brand_name_color ?? '#F0F6FC',
+      handle_font_size: body.handle_font_size ?? 26,
+      handle_color: body.handle_color ?? '#8B949E',
+      headline_enabled: body.headline_enabled ?? true,
+      headline_font: body.headline_font ?? 'Montserrat-ExtraBold',
+      headline_font_size: body.headline_font_size ?? 48,
+      headline_color: body.headline_color ?? '#FFFFFF',
+      headline_y: body.headline_y ?? 130,
+      headline_max_lines: body.headline_max_lines ?? 3,
+      headline_margin_x: body.headline_margin_x ?? 60,
+      headline_margin_top: body.headline_margin_top ?? 30,
+      badge_enabled: body.badge_enabled ?? false,
+      custom_badge_text: body.custom_badge_text ?? null,
+      custom_badge_bg_color: body.custom_badge_bg_color ?? '#E11D48',
+      custom_badge_text_color: body.custom_badge_text_color ?? '#FFFFFF',
+      badge_y: body.badge_y ?? 45,
+      extra_image_enabled: body.extra_image_enabled ?? false,
+      extra_image_path: body.extra_image_path ?? null,
+      extra_image_url: body.extra_image_url ?? null,
+      extra_image_template_type: body.extra_image_template_type ?? 'comment',
+      extra_image_x: body.extra_image_x ?? null,
+      extra_image_y: body.extra_image_y ?? 1420,
+      extra_image_height: body.extra_image_height ?? 340,
+      extra_image_width: body.extra_image_width ?? 92,
+      extra_image_radius: body.extra_image_radius ?? 16,
+      watermark_enabled: body.watermark_enabled ?? true,
+      watermark_opacity: body.watermark_opacity ?? 0.7,
+      watermark_position: body.watermark_position ?? 'bottom-right',
+      niche_type: body.niche_type ?? 'curiosities',
+      persona_role: body.persona_role ?? 'Criador de Conteúdo',
+      tone_of_voice: body.tone_of_voice ?? 'Dinâmico',
+      conversion_goal: body.conversion_goal ?? 'engagement',
+      call_to_action_template: body.call_to_action_template ?? null,
+      system_prompt_template: body.system_prompt_template ?? null,
+      default_hashtags: body.default_hashtags ?? [],
+      preferred_model: body.preferred_model ?? null,
+      generation_tasks:
+        body.generation_tasks?.map((t) => ({
+          ...t,
+          output_type: t.output_type ?? 'text',
+          is_required: t.is_required ?? true,
+        })) ?? [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    mockTemplates.push(newTemplate)
+    return HttpResponse.json(newTemplate, { status: 201 })
+  }),
+
+  http.patch('/api/viral-studio/templates/:id', async ({ params, request }) => {
+    const { id } = params
+    const body = (await request.json()) as TemplateUpdate
+    const template = mockTemplates.find((t) => t.id === id)
+    if (!template) {
+      return new HttpResponse(JSON.stringify({ detail: 'Template not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    Object.assign(template, body, { updated_at: new Date().toISOString() })
+    return HttpResponse.json(template)
+  }),
+
+  http.put('/api/viral-studio/templates/:id', async ({ params, request }) => {
+    const { id } = params
+    const body = (await request.json()) as TemplateCreate
+    const index = mockTemplates.findIndex((t) => t.id === id)
+    if (index === -1) {
+      return new HttpResponse(JSON.stringify({ detail: 'Template not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    const updated: VisualTemplate = {
+      ...mockTemplates[index],
+      ...body,
+      generation_tasks: body.generation_tasks
+        ? body.generation_tasks.map((t) => ({
+            ...t,
+            output_type: t.output_type ?? 'text',
+            is_required: t.is_required ?? true,
+          }))
+        : mockTemplates[index].generation_tasks,
+      id: id as string,
+      updated_at: new Date().toISOString(),
+    }
+    mockTemplates[index] = updated
+    return HttpResponse.json(updated)
+  }),
+
+  http.delete('/api/viral-studio/templates/:id', ({ params }) => {
+    const { id } = params
+    const index = mockTemplates.findIndex((t) => t.id === id)
+    if (index === -1) {
+      return new HttpResponse(JSON.stringify({ detail: 'Template not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    if (mockTemplates[index].is_system) {
+      return new HttpResponse(JSON.stringify({ detail: 'Cannot delete system template' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    mockTemplates.splice(index, 1)
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.post('/api/viral-studio/templates/:id/duplicate', ({ params }) => {
+    const { id } = params
+    const source = mockTemplates.find((t) => t.id === id)
+    if (!source) {
+      return new HttpResponse(JSON.stringify({ detail: 'Template not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    const duplicated: VisualTemplate = {
+      ...source,
+      id: `${source.id}-copy-${Date.now().toString().slice(-4)}`,
+      name: `${source.name} (Cópia)`,
+      is_system: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    mockTemplates.push(duplicated)
+    return HttpResponse.json(duplicated, { status: 201 })
+  }),
+
+  http.post('/api/viral-studio/templates/reset-defaults', () => {
+    return HttpResponse.json({
+      templates: mockTemplates.filter((t) => t.is_system),
+      total: mockTemplates.filter((t) => t.is_system).length,
+    })
+  }),
+
+  http.post('/api/viral-studio/templates/test-generation', async ({ request }) => {
+    const body = (await request.json()) as TestGenerationRequest
+    const sampleCopy = {
+      product: 'Produto Teste IA',
+      product_description: 'Descrição de teste gerada pela IA.',
+      headlines: [
+        'Você não vai acreditar no que este produto faz!',
+        'A inovação definitiva que você precisava!',
+        'Descubra como isso pode transformar seu dia!',
+      ],
+      selected_headline: 'Você não vai acreditar no que este produto faz!',
+      caption: 'Veja todos os detalhes e garanta o seu hoje mesmo.',
+      hashtags: ['#teste', '#viral', '#tech'],
+      custom_outputs: {
+        canvas_badge: 'TESTE VIP',
+      },
+    }
+    const response: TestGenerationResponse = {
+      copy: sampleCopy,
+      prompt: 'Prompt de teste gerado para o modelo...',
+      raw_response: JSON.stringify(sampleCopy),
+      telemetry: {
+        latency_ms: 320,
+        model: body.model || 'gemini-2.5-flash',
+        prompt_tokens: 150,
+      },
+    }
+    return HttpResponse.json(response)
+  }),
+
+  http.post('/api/viral-studio/templates/:id/extra-image', ({ params }) => {
+    const { id } = params
+    const template = mockTemplates.find((t) => t.id === id)
+    if (!template) {
+      return new HttpResponse(JSON.stringify({ detail: 'Template not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    template.extra_image_enabled = true
+    template.extra_image_path = `/data/templates/${id}_extra.png`
+    template.extra_image_url = `/data/templates/${id}_extra.png`
+    template.updated_at = new Date().toISOString()
     return HttpResponse.json(template)
   }),
 

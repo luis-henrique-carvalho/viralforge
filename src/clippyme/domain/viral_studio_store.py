@@ -185,7 +185,8 @@ DEFAULT_TEMPLATE_ID = "classic-affiliate"
 
 DEFAULT_TEMPLATE_DICT: Dict[str, Any] = {
     "id": DEFAULT_TEMPLATE_ID,
-    "name": "Classic Affiliate",
+    "name": "Achadinhos & Afiliados",
+    "is_system": True,
     "width": 1080,
     "height": 1920,
     "background_color": "#FFFFFF",
@@ -194,6 +195,16 @@ DEFAULT_TEMPLATE_DICT: Dict[str, Any] = {
     "headline_enabled": True,
     "watermark_enabled": True,
     "video_fit": "contain",
+    "video_aspect": "1:1",
+    "video_x": None,
+    "video_y": 360,
+    "video_width": None,
+    "video_height": 1000,
+    "video_scale": 92,
+    "video_radius": 16,
+    "video_border_width": 2,
+    "video_border_color": "#F97316",
+    "video_shadow": "deep",
     "avatar_x": 60,
     "avatar_y": 80,
     "avatar_size": 100,
@@ -201,13 +212,62 @@ DEFAULT_TEMPLATE_DICT: Dict[str, Any] = {
     "brand_name_color": "#111111",
     "handle_font_size": 26,
     "handle_color": "#666666",
+    "headline_font": "Montserrat-ExtraBold",
     "headline_font_size": 48,
     "headline_color": "#111111",
+    "headline_y": 130,
     "headline_max_lines": 3,
     "headline_margin_x": 60,
     "headline_margin_top": 30,
+    "badge_enabled": True,
+    "custom_badge_text": "ACHADINHO 🔥",
+    "custom_badge_bg_color": "#F97316",
+    "custom_badge_text_color": "#FFFFFF",
+    "badge_y": 45,
+    "extra_image_enabled": True,
+    "extra_image_path": None,
+    "extra_image_url": None,
+    "extra_image_template_type": "deal",
+    "extra_image_x": None,
+    "extra_image_y": 1420,
+    "extra_image_height": 340,
+    "extra_image_width": 92,
+    "extra_image_radius": 16,
     "watermark_opacity": 0.7,
     "watermark_position": "bottom-right",
+    "niche_type": "affiliate",
+    "conversion_goal": "affiliate",
+    "persona_role": "Especialista em curadoria de produtos virais e achadinhos úteis para o dia a dia",
+    "tone_of_voice": "Entusiasmado, prático, direto e persuasivo",
+    "call_to_action_template": "Comente QUERO ou clique no link da bio para garantir o seu com desconto!",
+    "default_hashtags": ["#achadinhos", "#shopee", "#utilidades", "#comprinhas", "#dicas", "#publi"],
+    "preferred_model": None,
+    "generation_tasks": [
+        {
+            "id": "headline",
+            "label": "Headline no Vídeo",
+            "target": "canvas_headline",
+            "instruction": "Crie 5 headlines curtas focando no benefício prático e na utilidade do produto demonstrado em {transcript}.",
+            "output_type": "options_list",
+            "is_required": True,
+        },
+        {
+            "id": "caption",
+            "label": "Legenda Comercial",
+            "target": "post_caption",
+            "instruction": "Escreva uma legenda de alta conversão contendo gancho, descrição da dor/solução, código do produto se houver, e CTA: {cta}.",
+            "output_type": "text",
+            "is_required": True,
+        },
+        {
+            "id": "product_name",
+            "label": "Identificação do Produto",
+            "target": "custom_metadata",
+            "instruction": "Nome conciso e categoria do produto identificado.",
+            "output_type": "text",
+            "is_required": True,
+        },
+    ],
     "created_at": "2026-09-19T00:00:00Z",
     "updated_at": "2026-09-19T00:00:00Z",
 }
@@ -484,13 +544,36 @@ def delete_brand(brand_id: str) -> bool:
 # Template Storage Operations
 # ---------------------------------------------------------------------------
 
+def _get_factory_template_dicts() -> Dict[str, Dict[str, Any]]:
+    from clippyme.api.viral_studio_schemas import FACTORY_TEMPLATES
+    return {t.id: t.model_dump() for t in FACTORY_TEMPLATES}
+
+
 def _load_templates_locked() -> Dict[str, Dict[str, Any]]:
     path = get_templates_path()
     templates = _read_json_file(path)
+    factory_dict = _get_factory_template_dicts()
     if not templates:
-        templates = {DEFAULT_TEMPLATE_ID: dict(DEFAULT_TEMPLATE_DICT)}
+        templates = {k: dict(v) for k, v in factory_dict.items()}
         _atomic_write_json(path, templates)
+    else:
+        modified = False
+        for fid, fval in factory_dict.items():
+            if fid not in templates:
+                templates[fid] = dict(fval)
+                modified = True
+            elif templates[fid].get("is_system") is None:
+                templates[fid]["is_system"] = fval.get("is_system", True)
+                modified = True
+        if modified:
+            _atomic_write_json(path, templates)
     return templates
+
+
+def ensure_default_templates() -> None:
+    """Ensure all default factory templates are populated in the store."""
+    with _STORE_LOCK:
+        _load_templates_locked()
 
 
 def list_templates() -> List[Dict[str, Any]]:
@@ -535,6 +618,7 @@ def create_template(template: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
         now = _utcnow_iso()
         data.setdefault("created_at", now)
         data["updated_at"] = now
+        data.setdefault("is_system", False)
 
         templates[tid] = data
         _atomic_write_json(get_templates_path(), templates)
@@ -590,6 +674,41 @@ def save_template(template: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
         return dict(data)
 
 
+def duplicate_template(template_id: str, new_name: Optional[str] = None) -> Dict[str, Any]:
+    if not template_id:
+        raise ValidationError("Template id is required")
+    with _STORE_LOCK:
+        templates = _load_templates_locked()
+        if template_id not in templates:
+            raise NotFoundError(f"Template not found: {template_id}")
+        source = templates[template_id]
+        new_id = f"{_slugify(source.get('name') or template_id)}-copy-{uuid.uuid4().hex[:6]}"
+        cloned = dict(source)
+        cloned["id"] = new_id
+        cloned["template_id"] = new_id
+        cloned["name"] = new_name or f"{source.get('name', 'Template')} (Cópia)"
+        cloned["is_system"] = False
+        now = _utcnow_iso()
+        cloned["created_at"] = now
+        cloned["updated_at"] = now
+        templates[new_id] = cloned
+        _atomic_write_json(get_templates_path(), templates)
+        return dict(cloned)
+
+
+def reset_default_templates() -> List[Dict[str, Any]]:
+    with _STORE_LOCK:
+        path = get_templates_path()
+        templates = _read_json_file(path)
+        factory_dict = _get_factory_template_dicts()
+        now = _utcnow_iso()
+        for fid, fval in factory_dict.items():
+            restored = dict(fval)
+            restored["updated_at"] = now
+            templates[fid] = restored
+        _atomic_write_json(path, templates)
+        return sorted(templates.values(), key=lambda t: (t.get("name") or t.get("id", "")).lower())
+
 
 def delete_template(template_id: str) -> bool:
     if not template_id:
@@ -598,6 +717,9 @@ def delete_template(template_id: str) -> bool:
         templates = _load_templates_locked()
         if template_id not in templates:
             raise NotFoundError(f"Template not found: {template_id}")
+        template = templates[template_id]
+        if template.get("is_system", False):
+            raise ValidationError("Templates de fábrica não podem ser excluídos.")
         del templates[template_id]
         _atomic_write_json(get_templates_path(), templates)
         return True

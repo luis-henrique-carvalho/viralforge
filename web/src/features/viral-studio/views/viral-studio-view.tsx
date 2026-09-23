@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { Bookmark, Layers, Plus, Sparkles } from 'lucide-react'
+import { Bookmark, LayoutTemplate, Layers, Plus, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
@@ -37,6 +37,17 @@ export function ViralStudioView() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            asChild
+            variant="outline"
+            className="gap-2"
+          >
+            <Link to="/viral-studio/templates">
+              <LayoutTemplate className="h-4 w-4" />
+              Templates
+            </Link>
+          </Button>
+
           <Button
             asChild
             variant="outline"

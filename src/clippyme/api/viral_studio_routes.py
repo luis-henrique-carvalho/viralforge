@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 from typing import List, Optional
 
-from fastapi import APIRouter, Request, Response, status
+from fastapi import APIRouter, File, HTTPException, Request, Response, UploadFile, status
 
 from clippyme.api.viral_studio_schemas import (
     BatchCreateRequest,
@@ -28,12 +28,15 @@ from clippyme.api.viral_studio_schemas import (
     TemplateListResponse,
     TemplateResponse,
     TemplateUpdate,
+    TestGenerationRequest,
+    TestGenerationResponse,
+    VisualTemplate,
     ViralItem,
     ViralItemUpdate,
     ViralPublishRequest,
     ViralPublishResponse,
 )
-from clippyme.domain import viral_studio_orchestrator, viral_studio_store
+from clippyme.domain import viral_studio_copy, viral_studio_orchestrator, viral_studio_store
 
 router = APIRouter(tags=["viral-studio"])
 
@@ -100,6 +103,89 @@ async def update_template(id: str, payload: TemplateUpdate):
     """Partially update an existing visual template."""
     template = await asyncio.to_thread(viral_studio_store.update_template, id, payload)
     return template
+
+
+@router.put("/templates/{id}", response_model=TemplateResponse)
+async def replace_template(id: str, payload: TemplateCreate):
+    """Fully replace an existing visual template."""
+    payload_dict = payload.model_dump(exclude_unset=True)
+    payload_dict["id"] = id
+    tmpl = VisualTemplate.model_validate(payload_dict)
+    saved = await asyncio.to_thread(viral_studio_store.save_template, tmpl)
+    return saved
+
+
+@router.delete("/templates/{id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_template(id: str):
+    """Delete a custom visual template (system templates are protected)."""
+    await asyncio.to_thread(viral_studio_store.delete_template, id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/templates/{id}/duplicate", response_model=TemplateResponse, status_code=status.HTTP_201_CREATED)
+async def duplicate_template(id: str):
+    """Duplicate an existing template creating a new custom copy."""
+    duplicated = await asyncio.to_thread(viral_studio_store.duplicate_template, id)
+    return duplicated
+
+
+@router.post("/templates/reset-defaults", response_model=TemplateListResponse)
+async def reset_default_templates():
+    """Reset the 4 default factory templates to their canonical definitions."""
+    templates = await asyncio.to_thread(viral_studio_store.reset_default_templates)
+    return TemplateListResponse(templates=templates, total=len(templates))
+
+
+@router.post("/templates/test-generation", response_model=TestGenerationResponse)
+async def test_template_generation(payload: TestGenerationRequest):
+    """Execute real-time test AI copy generation with a template and sample context."""
+    template = payload.template
+    if template is None and payload.template_id:
+        template = await asyncio.to_thread(viral_studio_store.get_template_or_raise, payload.template_id)
+    if template is None:
+        from clippyme.api.viral_studio_schemas import DEFAULT_TEMPLATE
+        template = DEFAULT_TEMPLATE
+
+    brand = None
+    if payload.brand_id:
+        brand = await asyncio.to_thread(viral_studio_store.get_brand, payload.brand_id)
+
+    copy_data, telemetry = await viral_studio_copy.test_copy_generation(
+        template=template,
+        brand=brand,
+        sample_transcript=payload.sample_transcript,
+        sample_title=payload.sample_title,
+        model=payload.model,
+    )
+
+    return TestGenerationResponse(
+        generated_copy=copy_data,
+        prompt=telemetry.get("prompt", ""),
+        raw_response=telemetry.get("raw_response", ""),
+        telemetry=telemetry,
+    )
+
+
+@router.post("/templates/{id}/extra-image", response_model=TemplateResponse)
+async def upload_template_extra_image(id: str, file: UploadFile = File(...)):
+    """Upload and attach a footer overlay image to a template."""
+    import os
+    template = await asyncio.to_thread(viral_studio_store.get_template_or_raise, id)
+    ext = os.path.splitext(file.filename or "")[1] or ".png"
+    upload_dir = os.path.join("data", "uploads", "templates")
+    os.makedirs(upload_dir, exist_ok=True)
+    target_path = os.path.join(upload_dir, f"{id}_extra{ext}")
+
+    content = await file.read()
+    with open(target_path, "wb") as f:
+        f.write(content)
+
+    updated = await asyncio.to_thread(
+        viral_studio_store.update_template,
+        id,
+        TemplateUpdate(extra_image_path=target_path, extra_image_enabled=True),
+    )
+    return updated
 
 
 # ---------------------------------------------------------------------------

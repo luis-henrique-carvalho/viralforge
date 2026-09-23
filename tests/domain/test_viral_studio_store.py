@@ -24,10 +24,12 @@ def test_default_seeds_initialization(tmp_store):
     assert brands[0]["name"] == "Vale o Clique?"
 
     templates = viral_studio_store.list_templates()
-    assert len(templates) == 1
-    assert templates[0]["id"] == "classic-affiliate"
-    assert templates[0]["width"] == 1080
-    assert templates[0]["height"] == 1920
+    assert len(templates) == 4
+    template_ids = {t["id"] for t in templates}
+    assert "classic-affiliate" in template_ids
+    assert "curiosities-viral" in template_ids
+    assert "quick-facts-news" in template_ids
+    assert "tech-review" in template_ids
 
 
 @pytest.mark.skipif(os.name == "nt", reason="POSIX file permissions only")
