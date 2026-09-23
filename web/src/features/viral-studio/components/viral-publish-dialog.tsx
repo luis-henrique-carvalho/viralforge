@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Loader2, Send, XCircle } from 'lucide-react'
 import {
   Dialog,
@@ -14,11 +14,12 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Typography } from '@/components/ui/typography'
 import { usePublishingAccounts, usePreviewSlots, usePublishItems } from '../hooks/use-publishing'
+import { useBrands } from '../hooks/use-brands'
 import { PublishAccountPicker } from './publish-account-picker'
 import { PublishModeSelector } from './publish-mode-selector'
 import { PublishSlotsTable } from './publish-slots-table'
 import { PublishResultsTable } from './publish-results-table'
-import type { ViralItem } from '../data/batch.types'
+import type { ViralItem, Brand } from '../data/batch.types'
 import type { PublishMode, SocialAccount, ViralPublishResult } from '../data/publishing.types'
 
 export interface ViralPublishDialogProps {
@@ -36,33 +37,77 @@ export function ViralPublishDialog({
   batchId,
   onPublished,
 }: ViralPublishDialogProps) {
-  const [selectedAccountId, setSelectedAccountId] = useState<string>('')
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([])
   const [mode, setMode] = useState<PublishMode>('auto')
   const [results, setResults] = useState<ViralPublishResult[]>([])
   const [publishError, setPublishError] = useState<string | null>(null)
 
   const { data: accounts = [], isLoading: isLoadingAccounts } = usePublishingAccounts()
-  const activeAccount =
-    accounts.find((a: SocialAccount) => a.id === selectedAccountId) || accounts[0]
+  const { data: brandsData } = useBrands()
+  const brands = brandsData?.brands ?? []
+
+  // Find brand for the items being published
+  const itemBrandId = items[0]?.brand_id
+  const currentBrand = brands.find((b: Brand) => b.id === itemBrandId)
+  const brandProfiles = useMemo(
+    () => (currentBrand?.publishing_profiles || {}) as Record<string, any>,
+    [currentBrand?.publishing_profiles],
+  )
+
+  // Auto pre-select brand linked accounts or fallback to first discovered account
+  useEffect(() => {
+    if (!isOpen || accounts.length === 0) return
+
+    const brandAccountIds = Object.values(brandProfiles)
+      .map((p: any) => p?.account_id)
+      .filter((id) => accounts.some((a: SocialAccount) => a.id === id))
+
+    if (brandAccountIds.length > 0) {
+      setSelectedAccountIds(brandAccountIds)
+    } else if (accounts[0]) {
+      setSelectedAccountIds([accounts[0].id])
+    }
+  }, [isOpen, accounts, brandProfiles])
+
+  const handleToggleAccount = (id: string) => {
+    setSelectedAccountIds((prev) => {
+      if (prev.includes(id)) {
+        // Keep at least 1 account selected if possible
+        return prev.length > 1 ? prev.filter((accId) => accId !== id) : prev
+      }
+      return [...prev, id]
+    })
+  }
+
+  const primaryAccountId = selectedAccountIds[0] || accounts[0]?.id
 
   const { data: previewData, isLoading: isLoadingPreview } = usePreviewSlots(
-    activeAccount?.id,
+    primaryAccountId,
     items.length,
   )
 
   const publishMutation = usePublishItems(batchId)
 
   const handlePublish = async () => {
-    if (!activeAccount) return
+    if (selectedAccountIds.length === 0 && accounts.length > 0) return
     setPublishError(null)
 
-    const platform = activeAccount.platform || 'tiktok'
-    const accountId = activeAccount.id || 'default'
+    const selectedAccounts = accounts.filter((a: SocialAccount) =>
+      selectedAccountIds.includes(a.id),
+    )
+
+    const platforms =
+      selectedAccounts.length > 0
+        ? selectedAccounts.map((a: SocialAccount) => ({
+            platform: a.platform || 'tiktok',
+            accountId: a.id || 'default',
+          }))
+        : [{ platform: 'tiktok', accountId: 'default' }]
 
     try {
       const res = await publishMutation.mutateAsync({
         item_ids: items.map((i) => i.id),
-        platforms: [{ platform, accountId }],
+        platforms,
         schedule_mode: mode,
       })
 
@@ -108,8 +153,9 @@ export function ViralPublishDialog({
               <PublishAccountPicker
                 accounts={accounts}
                 isLoading={isLoadingAccounts}
-                activeAccount={activeAccount}
-                onSelectAccount={setSelectedAccountId}
+                selectedAccountIds={selectedAccountIds}
+                onToggleAccount={handleToggleAccount}
+                brandProfiles={brandProfiles}
               />
 
               <PublishModeSelector

@@ -111,7 +111,7 @@ export function ViralEditorView({ batchId, itemId }: ViralEditorViewProps) {
   const currentHeadline = form.watch('selected_headline')
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-28">
       <ViralEditorTopbar
         item={item}
         batchId={batchId}

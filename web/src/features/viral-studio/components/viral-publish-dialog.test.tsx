@@ -35,6 +35,16 @@ const mockSlots: SlotProjection[] = [
 
 const mockMutateAsync = vi.fn()
 
+vi.mock('../hooks/use-brands', () => ({
+  useBrands: vi.fn(() => ({
+    data: {
+      brands: [],
+      total: 0,
+    },
+    isLoading: false,
+  })),
+}))
+
 vi.mock('../hooks/use-publishing', () => ({
   usePublishingAccounts: vi.fn(() => ({
     data: mockAccounts,

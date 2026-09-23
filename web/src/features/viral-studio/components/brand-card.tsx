@@ -1,10 +1,10 @@
-import { Edit, LayoutTemplate, MessageSquareQuote } from 'lucide-react'
+import { Edit, LayoutTemplate, MessageSquareQuote, Share2 } from 'lucide-react'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Typography } from '@/components/ui/typography'
-import type { Brand } from '../data/batch.types'
+import type { Brand, SocialChannelBinding } from '../data/batch.types'
 
 interface BrandCardProps {
   brand: Brand
@@ -12,6 +12,7 @@ interface BrandCardProps {
 }
 
 export function BrandCard({ brand, onEdit }: BrandCardProps) {
+  const profiles = (brand.publishing_profiles || {}) as Record<string, SocialChannelBinding>
   const initials =
     (brand.name || '')
       .trim()
@@ -57,6 +58,33 @@ export function BrandCard({ brand, onEdit }: BrandCardProps) {
           >
             {brand.default_cta || 'Nenhum CTA padrão configurado.'}
           </Typography>
+        </div>
+
+        <div className="space-y-1.5 pt-1">
+          <span className="text-muted-foreground flex items-center gap-1 font-medium">
+            <Share2 className="size-3.5 text-muted-foreground" />
+            Canais Vinculados:
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {Object.keys(profiles).length > 0 ? (
+              Object.entries(profiles).map(([platform, channel]: [string, any]) => (
+                <Badge
+                  key={platform}
+                  variant="secondary"
+                  className="gap-1 text-[10px] font-mono capitalize py-0.5 px-2 bg-primary/10 text-primary border border-primary/20"
+                >
+                  <span className="font-bold">{platform}:</span>
+                  <span className="truncate max-w-[120px]">
+                    {channel?.name || channel?.account_id}
+                  </span>
+                </Badge>
+              ))
+            ) : (
+              <span className="text-[11px] text-muted-foreground italic">
+                Nenhum canal vinculado
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center justify-between pt-1">

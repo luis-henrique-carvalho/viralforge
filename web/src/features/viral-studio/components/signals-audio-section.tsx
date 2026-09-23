@@ -68,7 +68,7 @@ export function SignalsAudioSection({ transcript, transcriptWords }: SignalsAudi
 
       <CardContent className="p-3 pt-1">
         {hasSpeech ? (
-          <ScrollArea className="max-h-28 rounded-md border border-border/60 bg-muted/30 p-2.5 text-xs text-foreground/90 leading-relaxed">
+          <ScrollArea className="h-28 max-h-28 w-full rounded-md border border-border/60 bg-muted/30 p-2.5 text-xs text-foreground/90 leading-relaxed">
             {transcript}
           </ScrollArea>
         ) : (

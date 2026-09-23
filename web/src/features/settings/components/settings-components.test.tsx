@@ -117,7 +117,6 @@ describe('ZernioSettingsSection Component', () => {
   it('renders inputs and triggers callbacks', async () => {
     const user = userEvent.setup()
     const setApiKey = vi.fn()
-    const setAccounts = vi.fn()
     const onDiscover = vi.fn().mockResolvedValue(undefined)
     const onClearKey = vi.fn().mockResolvedValue(undefined)
 
@@ -125,22 +124,23 @@ describe('ZernioSettingsSection Component', () => {
       <ZernioSettingsSection
         apiKey="zk_123"
         setApiKey={setApiKey}
-        accounts={{
-          tiktok: 'tt_1',
-          instagram: '',
-          youtube: '',
-        }}
-        setAccounts={setAccounts}
         timezone="America/Sao_Paulo"
         setTimezone={vi.fn()}
         onDiscover={onDiscover}
         onClearKey={onClearKey}
         isDiscovering={false}
         isConfigured={true}
+        accountsList={[
+          {
+            id: '68c5b5f63caad1aa1982b6b5',
+            platform: 'instagram',
+            name: 'valeoclique',
+          },
+        ]}
       />,
     )
 
-    expect(screen.getByLabelText(/TikTok Account ID/i)).toBeInTheDocument()
+    expect(screen.getByText(/valeoclique/i)).toBeInTheDocument()
     const discoverBtn = screen.getByRole('button', {
       name: /descobrir contas/i,
     })

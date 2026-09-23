@@ -28,7 +28,7 @@ import { publishingProviderSchema, type PublishingProviderFormData } from '../da
 import type { PublishingProvider } from '../data/settings.types'
 
 export function PublishingProviderCard() {
-  const { config, zernio } = useSettings()
+  const { config, zernio, zernioAccounts } = useSettings()
   const {
     updateConfig,
     updateZernio,
@@ -43,9 +43,9 @@ export function PublishingProviderCard() {
     defaultValues: {
       PUBLISHING_PROVIDER: config?.PUBLISHING_PROVIDER || 'zernio',
       zernioApiKey: '',
-      tiktokAccountId: zernio?.accounts?.tiktok || '',
-      instagramAccountId: zernio?.accounts?.instagram || '',
-      youtubeAccountId: zernio?.accounts?.youtube || '',
+      tiktokAccountId: '',
+      instagramAccountId: '',
+      youtubeAccountId: '',
       timezone: zernio?.timezone || 'America/Sao_Paulo',
     },
   })
@@ -58,18 +58,12 @@ export function PublishingProviderCard() {
 
   useEffect(() => {
     if (zernio) {
-      form.setValue('tiktokAccountId', zernio.accounts?.tiktok || '')
-      form.setValue('instagramAccountId', zernio.accounts?.instagram || '')
-      form.setValue('youtubeAccountId', zernio.accounts?.youtube || '')
-      form.setValue('timezone', zernio.timezone || 'America/Sao_Paulo')
+      form.setValue('timezone', zernio.timezone || 'America/Sao_Paulo', { shouldDirty: false })
     }
   }, [zernio, form])
 
   const provider = form.watch('PUBLISHING_PROVIDER')
   const zernioApiKey = form.watch('zernioApiKey') || ''
-  const tiktokAccountId = form.watch('tiktokAccountId') || ''
-  const instagramAccountId = form.watch('instagramAccountId') || ''
-  const youtubeAccountId = form.watch('youtubeAccountId') || ''
   const timezone = form.watch('timezone') || 'America/Sao_Paulo'
 
   const handleDiscoverAccounts = async () => {
@@ -77,14 +71,7 @@ export function PublishingProviderCard() {
       await updateZernio({ api_key: zernioApiKey.trim() })
       form.setValue('zernioApiKey', '')
     }
-    const res = await discoverAccounts()
-    if (res?.accounts) {
-      for (const acc of res.accounts) {
-        if (acc.platform === 'tiktok') form.setValue('tiktokAccountId', acc.id)
-        if (acc.platform === 'instagram') form.setValue('instagramAccountId', acc.id)
-        if (acc.platform === 'youtube') form.setValue('youtubeAccountId', acc.id)
-      }
-    }
+    await discoverAccounts()
   }
 
   const onSubmit = form.handleSubmit(async (data) => {
@@ -92,14 +79,8 @@ export function PublishingProviderCard() {
     if (data.PUBLISHING_PROVIDER === 'zernio') {
       const payload: {
         api_key?: string
-        accounts: Record<string, string>
         timezone: string
       } = {
-        accounts: {
-          tiktok: (data.tiktokAccountId || '').trim(),
-          instagram: (data.instagramAccountId || '').trim(),
-          youtube: (data.youtubeAccountId || '').trim(),
-        },
         timezone: (data.timezone || '').trim() || 'America/Sao_Paulo',
       }
       if (data.zernioApiKey && data.zernioApiKey.trim()) {
@@ -168,16 +149,6 @@ export function PublishingProviderCard() {
             <ZernioSettingsSection
               apiKey={zernioApiKey}
               setApiKey={(val) => form.setValue('zernioApiKey', val)}
-              accounts={{
-                tiktok: tiktokAccountId,
-                instagram: instagramAccountId,
-                youtube: youtubeAccountId,
-              }}
-              setAccounts={(accs) => {
-                form.setValue('tiktokAccountId', accs.tiktok)
-                form.setValue('instagramAccountId', accs.instagram)
-                form.setValue('youtubeAccountId', accs.youtube)
-              }}
               timezone={timezone}
               setTimezone={(val) => form.setValue('timezone', val)}
               onDiscover={handleDiscoverAccounts}
@@ -188,6 +159,7 @@ export function PublishingProviderCard() {
               isDiscovering={isDiscoveringAccounts}
               isConfigured={Boolean(zernio?.configured)}
               maskedKey={zernio?.api_key_masked}
+              accountsList={zernioAccounts}
             />
           )}
         </CardContent>

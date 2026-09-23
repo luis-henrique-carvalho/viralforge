@@ -69,6 +69,14 @@ def _validate_hex(v: str, field_name: str = "Color") -> str:
 # Brand Schemas
 # ============================================================================
 
+class SocialChannelBinding(BaseModel):
+    account_id: str = Field(..., min_length=1, max_length=128)
+    name: Optional[str] = Field(None, max_length=128)
+    platform: str = Field(..., max_length=64)
+    avatar_url: Optional[str] = Field(None, max_length=1024)
+    handle: Optional[str] = Field(None, max_length=128)
+
+
 class BrandBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     handle: str = Field(..., min_length=1, max_length=60)

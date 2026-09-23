@@ -103,18 +103,24 @@ class ZernioPublisherAdapter(SocialPublisherPort):
             post_obj = response.get("post") if isinstance(response, dict) else None
             if isinstance(post_obj, dict):
                 post_id = post_obj.get("_id") or post_obj.get("id")
-                status = post_obj.get("status", "published" if publish_now else "scheduled")
+                raw_status = str(post_obj.get("status", "published" if publish_now else "scheduled")).lower()
                 post_url = post_obj.get("url") or post_obj.get("postUrl")
             elif isinstance(response, dict):
                 post_id = response.get("_id") or response.get("id")
-                status = response.get("status", "published" if publish_now else "scheduled")
+                raw_status = str(response.get("status", "published" if publish_now else "scheduled")).lower()
                 post_url = response.get("url") or response.get("postUrl")
             else:
                 post_id = None
-                status = "published" if publish_now else "scheduled"
+                raw_status = "published" if publish_now else "scheduled"
                 post_url = None
 
+            if publish_now:
+                status = "published" if raw_status in ("published", "publishing", "processing", "success", "queued") else raw_status
+            else:
+                status = "scheduled" if raw_status in ("scheduled", "queued", "pending") else raw_status
+
             now_iso = datetime.now(timezone.utc).isoformat()
+
             return PublicationReceipt(
                 item_id=job.item_id,
                 status=status,
@@ -197,7 +203,16 @@ class ZernioPublisherAdapter(SocialPublisherPort):
                     acc_id = acc.get("id") or acc.get("_id") or acc.get("accountId")
                     platform = acc.get("platform") or "unknown"
                     name = acc.get("name") or acc.get("username") or acc.get("handle") or str(acc_id)
-                    avatar = acc.get("avatar") or acc.get("avatarUrl") or acc.get("profilePicture")
+                    avatar = (
+                        acc.get("avatar_url")
+                        or acc.get("avatarUrl")
+                        or acc.get("avatar")
+                        or acc.get("profilePicture")
+                        or acc.get("profile_picture")
+                        or acc.get("profilePictureUrl")
+                        or acc.get("picture")
+                        or acc.get("image")
+                    )
                     if acc_id:
                         channels.append(
                             SocialChannel(

@@ -129,7 +129,7 @@ export function SignalsMetadataSection({ metadata }: SignalsMetadataSectionProps
             <span className="font-semibold text-muted-foreground block text-[11px]">
               Descrição Original:
             </span>
-            <ScrollArea className="max-h-20 rounded-md border border-border/60 bg-muted/30 p-2 text-xs text-foreground/85 leading-relaxed">
+            <ScrollArea className="h-24 max-h-24 w-full rounded-md border border-border/60 bg-muted/30 p-2 text-xs text-foreground/85 leading-relaxed">
               {metadata.caption}
             </ScrollArea>
           </div>

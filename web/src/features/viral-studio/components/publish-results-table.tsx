@@ -74,7 +74,9 @@ export function PublishResultsTable({ items, results }: PublishResultsTableProps
                       >
                         <Clock className="size-3" /> Agendado
                       </Badge>
-                    ) : res?.status === 'published' ? (
+                    ) : res?.status === 'published' ||
+                      res?.status === 'publishing' ||
+                      res?.status === 'processing' ? (
                       <Badge
                         variant="outline"
                         className="text-emerald-600 border-emerald-300 gap-1"

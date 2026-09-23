@@ -9,23 +9,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { Form } from '@/components/ui/form'
 import { Button } from '@/components/ui/button'
-import { brandFormSchema } from '../data/brand.schema'
+import { BrandFormFields } from './brand-form-fields'
+import { BrandSocialProfilesSection } from './brand-social-profiles-section'
+import { brandFormSchema, type BrandFormData } from '../data/brand.schema'
 import { useCreateBrand, useUpdateBrand } from '../hooks/use-brands'
-import type { Brand } from '../data/batch.types'
-import type { z } from 'zod'
-
-type BrandFormData = z.infer<typeof brandFormSchema>
+import { usePublishingAccounts } from '../hooks/use-publishing'
+import type { Brand, SocialChannelBinding } from '../data/batch.types'
 
 interface BrandFormDialogProps {
   isOpen: boolean
@@ -37,6 +28,7 @@ export function BrandFormDialog({ isOpen, onClose, brandToEdit }: BrandFormDialo
   const isEditing = Boolean(brandToEdit)
   const createMutation = useCreateBrand()
   const updateMutation = useUpdateBrand()
+  const { data: accounts = [], isLoading: isLoadingAccounts } = usePublishingAccounts()
 
   const form = useForm<BrandFormData>({
     resolver: zodResolver(brandFormSchema),
@@ -46,6 +38,7 @@ export function BrandFormDialog({ isOpen, onClose, brandToEdit }: BrandFormDialo
       default_cta: 'Confira os achadinhos no link da bio!',
       default_affiliate_url: '',
       template_id: 'classic-affiliate',
+      publishing_profiles: {},
     },
   })
 
@@ -57,6 +50,7 @@ export function BrandFormDialog({ isOpen, onClose, brandToEdit }: BrandFormDialo
         default_cta: brandToEdit.default_cta,
         default_affiliate_url: brandToEdit.default_affiliate_url || '',
         template_id: brandToEdit.template_id || 'classic-affiliate',
+        publishing_profiles: brandToEdit.publishing_profiles || {},
       })
     } else {
       form.reset({
@@ -65,9 +59,34 @@ export function BrandFormDialog({ isOpen, onClose, brandToEdit }: BrandFormDialo
         default_cta: 'Confira os achadinhos no link da bio!',
         default_affiliate_url: '',
         template_id: 'classic-affiliate',
+        publishing_profiles: {},
       })
     }
   }, [brandToEdit, form])
+
+  const currentProfiles = (form.watch('publishing_profiles') || {}) as Record<
+    string,
+    SocialChannelBinding
+  >
+
+  const handleSelectChannel = (platform: 'instagram' | 'tiktok' | 'youtube', accountId: string) => {
+    const updated = { ...currentProfiles }
+    if (!accountId || accountId === 'none') {
+      delete updated[platform]
+    } else {
+      const found = accounts.find((a) => a.id === accountId)
+      if (found) {
+        updated[platform] = {
+          account_id: found.id,
+          name: found.name,
+          platform: found.platform,
+          avatar_url: found.avatar_url || null,
+          handle: found.name,
+        }
+      }
+    }
+    form.setValue('publishing_profiles', updated, { shouldDirty: true })
+  }
 
   const onSubmit = async (values: BrandFormData) => {
     if (isEditing && brandToEdit) {
@@ -78,7 +97,7 @@ export function BrandFormDialog({ isOpen, onClose, brandToEdit }: BrandFormDialo
     } else {
       await createMutation.mutateAsync({
         ...values,
-        publishing_profiles: {},
+        publishing_profiles: values.publishing_profiles || {},
       })
     }
     onClose()
@@ -106,91 +125,13 @@ export function BrandFormDialog({ isOpen, onClose, brandToEdit }: BrandFormDialo
             onSubmit={form.handleSubmit(onSubmit)}
             className="space-y-4 py-2"
           >
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome da Marca</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Ex: Vale o Clique?"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <BrandFormFields control={form.control} />
 
-            <FormField
-              control={form.control}
-              name="handle"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Handle (@)</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="@valeoclique"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="default_cta"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>CTA Padrão</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Confira os achadinhos no link da bio!"
-                      rows={2}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="default_affiliate_url"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Link de Afiliado Padrão (Opcional)</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="https://amzn.to/exemplo"
-                      {...field}
-                      value={field.value || ''}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="template_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Template Visual Padrão</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="classic-affiliate"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+            <BrandSocialProfilesSection
+              currentProfiles={currentProfiles}
+              accounts={accounts}
+              isLoading={isLoadingAccounts}
+              onSelectChannel={handleSelectChannel}
             />
 
             <DialogFooter className="pt-4">

@@ -864,9 +864,10 @@ async def publish_viral_items(
     return {
         "results": results,
         "total": len(results),
-        "successful": sum(r.get("status") in {"published", "scheduled"} for r in results),
+        "successful": sum(r.get("status") in {"published", "scheduled", "publishing", "processing"} for r in results),
         "failed": sum(r.get("status") == "failed" for r in results),
     }
+
 
 
 async def cancel_item_schedule(item_id: str, publisher: Optional[Any] = None) -> Dict[str, Any]:

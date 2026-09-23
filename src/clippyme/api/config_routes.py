@@ -577,7 +577,37 @@ async def list_zernio_accounts(request: Request):
     from clippyme.integrations.social_publisher import ZernioClient, ZernioError
     try:
         client = ZernioClient(api_key)
-        accounts = await asyncio.to_thread(client.list_accounts)
+        raw_accounts = await asyncio.to_thread(client.list_accounts)
+        accounts = []
+        for acc in raw_accounts:
+            if isinstance(acc, dict):
+                acc_id = str(acc.get("id") or acc.get("_id") or acc.get("accountId") or "")
+                platform = str(acc.get("platform") or "unknown").lower()
+                name = str(acc.get("name") or acc.get("username") or acc.get("displayName") or acc.get("handle") or acc_id)
+                avatar = (
+                    acc.get("avatar_url")
+                    or acc.get("avatarUrl")
+                    or acc.get("avatar")
+                    or acc.get("profilePicture")
+                    or acc.get("profile_picture")
+                    or acc.get("profilePictureUrl")
+                    or acc.get("picture")
+                    or acc.get("image")
+                )
+                accounts.append({
+                    "id": acc_id,
+                    "_id": acc_id,
+                    "accountId": acc_id,
+                    "platform": platform,
+                    "name": name,
+                    "username": acc.get("username") or name,
+                    "displayName": acc.get("displayName") or name,
+                    "avatar_url": str(avatar) if avatar else None,
+                    "avatarUrl": str(avatar) if avatar else None,
+                })
+            else:
+                accounts.append(acc)
     except ZernioError as e:
         raise HTTPException(status_code=502, detail=f"Zernio API error: {e}")
     return {"accounts": accounts}
+

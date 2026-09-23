@@ -38,6 +38,12 @@ export function useSettings() {
     queryFn: settingsApi.fetchLogoStatus,
   })
 
+  const zernioAccountsQuery = useQuery({
+    queryKey: settingsKeys.zernioAccounts(),
+    queryFn: settingsApi.discoverZernioAccounts,
+    enabled: Boolean(zernioQuery.data?.configured),
+  })
+
   const isLoading =
     configQuery.isLoading ||
     hardwareQuery.isLoading ||
@@ -52,6 +58,7 @@ export function useSettings() {
       configQuery.refetch(),
       hardwareQuery.refetch(),
       zernioQuery.refetch(),
+      zernioAccountsQuery.refetch(),
       cookiesQuery.refetch(),
       localModelsQuery.refetch(),
       fontsQuery.refetch(),
@@ -63,6 +70,7 @@ export function useSettings() {
     config: configQuery.data,
     hardware: hardwareQuery.data,
     zernio: zernioQuery.data,
+    zernioAccounts: zernioAccountsQuery.data?.accounts ?? [],
     cookies: cookiesQuery.data,
     localModels: localModelsQuery.data,
     fonts: fontsQuery.data?.fonts ?? [],
@@ -70,6 +78,7 @@ export function useSettings() {
     configQuery,
     hardwareQuery,
     zernioQuery,
+    zernioAccountsQuery,
     cookiesQuery,
     localModelsQuery,
     fontsQuery,
