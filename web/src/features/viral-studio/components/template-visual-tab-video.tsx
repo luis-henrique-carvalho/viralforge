@@ -61,6 +61,24 @@ export function TemplateVisualTabVideo({ template, onChange }: TemplateVisualTab
             step={10}
             onValueChange={([val]) => onChange('video_y', val)}
           />
+          <div className="grid grid-cols-3 gap-1.5 pt-1">
+            {[
+              { label: 'Topo 260px', y: 260 },
+              { label: 'Centro 380px', y: 380 },
+              { label: 'Baixo 550px', y: 550 },
+            ].map((preset) => (
+              <Button
+                key={preset.y}
+                type="button"
+                size="sm"
+                variant={template.video_y === preset.y ? 'secondary' : 'outline'}
+                onClick={() => onChange('video_y', preset.y)}
+                className="h-6 text-[11px] px-1"
+              >
+                {preset.label}
+              </Button>
+            ))}
+          </div>
         </div>
 
         <div className="space-y-1.5">

@@ -10,6 +10,7 @@ interface KonvaVideoGroupProps {
   videoHeight: number
   onDragStart: () => void
   onDragEnd: (y: number) => void
+  onResizeHeight?: (height: number) => void
 }
 
 export function KonvaVideoGroup({
@@ -20,7 +21,10 @@ export function KonvaVideoGroup({
   videoHeight,
   onDragStart,
   onDragEnd,
+  onResizeHeight,
 }: KonvaVideoGroupProps) {
+  const handleSize = 24
+
   return (
     <Group
       x={videoX}
@@ -56,7 +60,7 @@ export function KonvaVideoGroup({
         fill="#94A3B8"
       />
       <Text
-        text="[Arraste para mover / Ajuste a altura nos controles]"
+        text="[Arraste para mover / Use as alças para redimensionar a altura]"
         x={0}
         y={videoHeight / 2 + 20}
         width={videoWidth}
@@ -64,6 +68,53 @@ export function KonvaVideoGroup({
         fontSize={18}
         fill="#64748B"
       />
+
+      {/* Bottom Resize Handle */}
+      <Group
+        x={videoWidth / 2 - handleSize * 2}
+        y={videoHeight - handleSize / 2}
+        draggable
+        dragBoundFunc={(pos) => ({
+          x: videoX + videoWidth / 2 - handleSize * 2,
+          y: Math.max(videoY + 400, Math.min(videoY + 1500, pos.y)),
+        })}
+        onDragStart={(e) => {
+          if (e) {
+            e.cancelBubble = true
+          }
+          onDragStart()
+        }}
+        onDragEnd={(e) => {
+          if (e) {
+            e.cancelBubble = true
+          }
+          const targetY = e?.target ? e.target.y() : videoHeight - handleSize / 2
+          const relativeY = targetY + handleSize / 2
+          const clampedHeight = Math.max(400, Math.min(1500, Math.round(relativeY)))
+          onResizeHeight?.(clampedHeight)
+        }}
+      >
+        <Rect
+          x={0}
+          y={0}
+          width={handleSize * 4}
+          height={handleSize}
+          fill="#3B82F6"
+          stroke="#FFFFFF"
+          strokeWidth={2}
+          cornerRadius={4}
+        />
+        <Text
+          text="↕ Altura"
+          x={0}
+          y={4}
+          width={handleSize * 4}
+          align="center"
+          fontSize={14}
+          fontStyle="bold"
+          fill="#FFFFFF"
+        />
+      </Group>
     </Group>
   )
 }

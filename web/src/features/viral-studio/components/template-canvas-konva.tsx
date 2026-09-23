@@ -93,6 +93,10 @@ export function TemplateCanvasKonva({
             setIsDragging(false)
             onChange('video_y', y)
           }}
+          onResizeHeight={(height) => {
+            setIsDragging(false)
+            onChange('video_height', height)
+          }}
         />
 
         <KonvaExtraFooterGroup

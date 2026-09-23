@@ -10,6 +10,16 @@ import { toast } from 'sonner'
 import { TimelineLogItem } from './timeline-log-item'
 import type { ViralItem } from '../data/batch.types'
 
+function isErrorLog(log: Record<string, unknown>): boolean {
+  return (
+    String(log.level || '').toLowerCase() === 'error' ||
+    Boolean(log.error) ||
+    String(log.stage || '')
+      .toLowerCase()
+      .includes('fail')
+  )
+}
+
 interface TimelineViewProps {
   item: ViralItem
   className?: string
@@ -26,12 +36,7 @@ export function ObservabilityTimelineView({ item, className }: TimelineViewProps
 
   const filteredLogs = useMemo(() => {
     return rawLogs.filter((log) => {
-      const isError =
-        String(log.level || '').toLowerCase() === 'error' ||
-        Boolean(log.error) ||
-        String(log.stage || '')
-          .toLowerCase()
-          .includes('fail')
+      const isError = isErrorLog(log)
 
       if (filterMode === 'errors' && !isError) {
         return false
@@ -50,14 +55,7 @@ export function ObservabilityTimelineView({ item, className }: TimelineViewProps
   }, [rawLogs, filterMode, searchQuery])
 
   const errorCount = useMemo(() => {
-    return rawLogs.filter(
-      (log) =>
-        String(log.level || '').toLowerCase() === 'error' ||
-        Boolean(log.error) ||
-        String(log.stage || '')
-          .toLowerCase()
-          .includes('fail'),
-    ).length
+    return rawLogs.filter(isErrorLog).length
   }, [rawLogs])
 
   const handleCopyLogs = () => {

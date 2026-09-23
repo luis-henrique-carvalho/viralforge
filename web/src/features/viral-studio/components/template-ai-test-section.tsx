@@ -132,9 +132,12 @@ export function TemplateAiTestSection({ template }: TemplateAiTestSectionProps) 
                 >
                   Legenda Formatada:
                 </Typography>
-                <div className="rounded border border-border/50 bg-muted/30 p-2 text-xs whitespace-pre-wrap text-muted-foreground">
+                <Typography
+                  variant="muted"
+                  className="rounded border border-border/50 bg-muted/30 p-2 whitespace-pre-wrap block text-xs"
+                >
                   {caption}
-                </div>
+                </Typography>
               </div>
             )}
           </CardContent>
@@ -142,6 +145,7 @@ export function TemplateAiTestSection({ template }: TemplateAiTestSectionProps) 
       )}
 
       {testMutation.isError && (
+        // shadcn-ignore: layout
         <div className="flex items-center gap-2 rounded border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>Erro: {testMutation.error.message}</span>

@@ -31,14 +31,16 @@ export function BrandSocialProfilesSection({
 
   return (
     <div className="space-y-2 pt-1">
-      <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+      <div className="flex items-center gap-1.5">
         <Share2 className="size-3.5 text-primary" />
-        <span>Canais de Publicação Vinculados (Zernio)</span>
+        <Typography
+          variant="small"
+          className="font-semibold"
+        >
+          Canais de Publicação Vinculados (Zernio)
+        </Typography>
       </div>
-      <Typography
-        variant="muted"
-        className="text-[11px] block"
-      >
+      <Typography variant="muted">
         Vincule as contas desta marca para pré-seleção automática no momento de publicar.
       </Typography>
 

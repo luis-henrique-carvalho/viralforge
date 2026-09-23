@@ -154,6 +154,7 @@ export function TemplateStudioView({ templateId }: TemplateStudioViewProps) {
       {/* Dual-Pane Workstation */}
       <div className="grid flex-1 grid-cols-1 lg:grid-cols-12 gap-6 overflow-hidden">
         {/* Left Pane: Controls */}
+        {/* shadcn-ignore: layout */}
         <div className="flex flex-col lg:col-span-6 xl:col-span-5 rounded-xl border border-border bg-card overflow-hidden">
           <Tabs
             value={activeTab}
