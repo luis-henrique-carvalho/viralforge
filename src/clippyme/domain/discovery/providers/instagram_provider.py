@@ -18,6 +18,69 @@ from ..scoring import calculate_virality_score, calculate_engagement_rate, calcu
 logger = logging.getLogger("clippyme.discovery.instagram")
 
 
+def _map_instagram_media_dict(media: Dict[str, Any], now: int) -> Optional[DiscoveryItem]:
+    """Pure mapper translating Instagram media node into DiscoveryItem."""
+    if not media or not isinstance(media, dict):
+        return None
+
+    code = media.get("code") or media.get("shortcode")
+    if not code:
+        return None
+
+    post_id = str(media.get("id") or code)
+    is_video = bool(media.get("is_video") or media.get("media_type") == 2 or media.get("product_type") == "clips")
+    if not is_video:
+        return None
+
+    caption_node = media.get("caption") or {}
+    caption_text = caption_node.get("text", "") if isinstance(caption_node, dict) else str(caption_node)
+    title = caption_text[:120] if caption_text else f"Instagram Reel {code}"
+
+    user = media.get("user") or {}
+    author_name = user.get("full_name") or user.get("username") or "Instagram Creator"
+    author_handle = f"@{user.get('username')}" if user.get("username") else "@instagram"
+    author_avatar = user.get("profile_pic_url")
+
+    views = int(media.get("play_count") or media.get("view_count") or 0)
+    likes = int(media.get("like_count") or 0)
+    comments = int(media.get("comment_count") or 0)
+    taken_at = media.get("taken_at")
+
+    image_versions = media.get("image_versions2", {}).get("candidates", [])
+    thumbnail_url = image_versions[0].get("url") if image_versions else media.get("display_url")
+
+    virality = calculate_virality_score(
+        platform=PlatformType.INSTAGRAM,
+        views=views,
+        likes=likes,
+        comments=comments,
+        published_timestamp=taken_at,
+        current_timestamp=now,
+    )
+    er = calculate_engagement_rate(PlatformType.INSTAGRAM, views, likes, comments)
+    velocity = calculate_view_velocity(views, taken_at, now)
+
+    return DiscoveryItem(
+        id=post_id,
+        platform=PlatformType.INSTAGRAM,
+        url=f"https://www.instagram.com/reel/{code}/",
+        title=title,
+        description=caption_text,
+        author_name=author_name,
+        author_handle=author_handle,
+        author_avatar_url=author_avatar,
+        published_timestamp=taken_at,
+        thumbnail_url=thumbnail_url,
+        view_count=views,
+        like_count=likes,
+        comment_count=comments,
+        virality_score=virality,
+        engagement_rate=er,
+        view_velocity=velocity,
+        raw_metadata={"code": code, "media_type": media.get("media_type")},
+    )
+
+
 class InstagramProvider(DiscoveryProvider):
     """Provedor de busca e descoberta de Reels e posts do Instagram."""
 
@@ -82,7 +145,6 @@ class InstagramProvider(DiscoveryProvider):
         clean_tag = query.strip().lstrip("#").replace(" ", "")
         items: List[DiscoveryItem] = []
 
-        # 1. Tenta buscar informações de hashtag / top posts
         tag_url = f"https://www.instagram.com/api/v1/tags/web_info/?tag_name={urllib.parse.quote(clean_tag)}"
         data = self._make_request(tag_url)
         
@@ -99,73 +161,11 @@ class InstagramProvider(DiscoveryProvider):
             medias = layout_content.get("medias", []) or layout_content.get("fill_items", [])
             for m_wrapper in medias:
                 media = m_wrapper.get("media", m_wrapper)
-                if not media:
-                    continue
-
-                code = media.get("code") or media.get("shortcode")
-                if not code:
-                    continue
-
-                post_id = str(media.get("id") or code)
-                is_video = bool(media.get("is_video") or media.get("media_type") == 2 or media.get("product_type") == "clips")
-                if not is_video:
-                    continue  # Foca em vídeos / Reels
-
-                caption_node = media.get("caption") or {}
-                caption_text = caption_node.get("text", "") if isinstance(caption_node, dict) else str(caption_node)
-                title = caption_text[:120] if caption_text else f"Instagram Reel {code}"
-
-                user = media.get("user") or {}
-                author_name = user.get("full_name") or user.get("username") or "Instagram Creator"
-                author_handle = f"@{user.get('username')}" if user.get("username") else "@instagram"
-                author_avatar = user.get("profile_pic_url")
-
-                views = int(media.get("play_count") or media.get("view_count") or 0)
-                likes = int(media.get("like_count") or 0)
-                comments = int(media.get("comment_count") or 0)
-                taken_at = media.get("taken_at")
-                
-                # Thumbnails
-                image_versions = media.get("image_versions2", {}).get("candidates", [])
-                thumbnail_url = image_versions[0].get("url") if image_versions else media.get("display_url")
-
-                url = f"https://www.instagram.com/reel/{code}/"
-
-                virality = calculate_virality_score(
-                    platform=PlatformType.INSTAGRAM,
-                    views=views,
-                    likes=likes,
-                    comments=comments,
-                    published_timestamp=taken_at,
-                    current_timestamp=now,
-                )
-                er = calculate_engagement_rate(PlatformType.INSTAGRAM, views, likes, comments)
-                velocity = calculate_view_velocity(views, taken_at, now)
-
-                item = DiscoveryItem(
-                    id=post_id,
-                    platform=PlatformType.INSTAGRAM,
-                    url=url,
-                    title=title,
-                    description=caption_text,
-                    author_name=author_name,
-                    author_handle=author_handle,
-                    author_avatar_url=author_avatar,
-                    published_timestamp=taken_at,
-                    thumbnail_url=thumbnail_url,
-                    view_count=views,
-                    like_count=likes,
-                    comment_count=comments,
-                    virality_score=virality,
-                    engagement_rate=er,
-                    view_velocity=velocity,
-                    raw_metadata={"code": code, "media_type": media.get("media_type")},
-                )
-                items.append(item)
-                if len(items) >= limit:
-                    break
-            if len(items) >= limit:
-                break
+                item = _map_instagram_media_dict(media, now)
+                if item:
+                    items.append(item)
+                    if len(items) >= limit:
+                        return items
 
         return items
 
@@ -178,145 +178,86 @@ class InstagramProvider(DiscoveryProvider):
 
         try:
             import yt_dlp
+            from clippyme.domain.cookie_resolver import resolve_platform_cookies
+
             ydl_opts = {
                 "extract_flat": True,
                 "quiet": True,
                 "no_warnings": True,
                 "skip_download": True,
-                "playlistend": limit,
+                "playlist_items": f"1-{limit}",
             }
-            from clippyme.domain.cookie_resolver import resolve_platform_cookies
             cookies_path = resolve_platform_cookies("instagram")
             if cookies_path:
                 ydl_opts["cookiefile"] = cookies_path
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
-                if info and "entries" in info:
-                    for entry in info["entries"]:
-                        if not entry:
-                            continue
-                        post_id = entry.get("id") or ""
-                        post_url = entry.get("url") or f"https://www.instagram.com/p/{post_id}/"
-                        title = entry.get("title") or f"Instagram Post {post_id}"
-                        uploader = entry.get("uploader") or entry.get("channel") or "Instagram Creator"
-                        views = int(entry.get("view_count") or 0)
-                        likes = int(entry.get("like_count") or 0)
-                        comments = int(entry.get("comment_count") or 0)
-                        timestamp = entry.get("timestamp")
-                        thumbnail = entry.get("thumbnail") or (entry.get("thumbnails", [{}])[0].get("url") if entry.get("thumbnails") else None)
+                entries = info.get("entries") or []
 
-                        virality = calculate_virality_score(
-                            platform=PlatformType.INSTAGRAM,
-                            views=views,
-                            likes=likes,
-                            comments=comments,
-                            published_timestamp=timestamp,
-                            current_timestamp=now,
-                        )
+                for entry in entries:
+                    if not entry or not isinstance(entry, dict):
+                        continue
+                    video_id = entry.get("id")
+                    if not video_id:
+                        continue
 
-                        item = DiscoveryItem(
-                            id=post_id or str(len(items) + 1),
-                            platform=PlatformType.INSTAGRAM,
-                            url=post_url,
-                            title=title[:120],
-                            description=title,
-                            author_name=uploader,
-                            author_handle=f"@{uploader}",
-                            published_timestamp=timestamp,
-                            thumbnail_url=thumbnail,
-                            view_count=views,
-                            like_count=likes,
-                            comment_count=comments,
-                            virality_score=virality,
-                            engagement_rate=calculate_engagement_rate(PlatformType.INSTAGRAM, views, likes, comments),
-                            view_velocity=calculate_view_velocity(views, timestamp, now),
-                        )
-                        items.append(item)
-                        if len(items) >= limit:
-                            break
+                    title = entry.get("title") or entry.get("description", "")[:120] or f"Instagram Reel {video_id}"
+                    uploader = entry.get("uploader") or entry.get("channel") or "Instagram Creator"
+                    views = int(entry.get("view_count") or 0)
+                    likes = int(entry.get("like_count") or 0)
+                    comments = int(entry.get("comment_count") or 0)
+                    timestamp = entry.get("timestamp")
+                    thumbnail = entry.get("thumbnail")
+
+                    item = DiscoveryItem(
+                        id=video_id,
+                        platform=PlatformType.INSTAGRAM,
+                        url=f"https://www.instagram.com/reel/{video_id}/",
+                        title=title,
+                        description=entry.get("description", ""),
+                        author_name=uploader,
+                        author_handle=f"@{uploader}" if not str(uploader).startswith("@") else str(uploader),
+                        published_timestamp=timestamp,
+                        duration_seconds=entry.get("duration"),
+                        thumbnail_url=thumbnail,
+                        view_count=views,
+                        like_count=likes,
+                        comment_count=comments,
+                        virality_score=calculate_virality_score(
+                            PlatformType.INSTAGRAM, views, likes, comments, timestamp, now
+                        ),
+                        engagement_rate=calculate_engagement_rate(PlatformType.INSTAGRAM, views, likes, comments),
+                        view_velocity=calculate_view_velocity(views, timestamp, now),
+                        raw_metadata={"id": video_id, "url": entry.get("url")},
+                    )
+                    items.append(item)
+                    if len(items) >= limit:
+                        break
+
         except Exception as exc:
-            logger.warning("Erro no fallback do Instagram com yt-dlp: %s", exc)
+            logger.debug("Instagram yt-dlp tag explore fallback failed: %s", exc)
 
         return items
 
-    def _search_via_index(self, query: str, limit: int = 20) -> List[DiscoveryItem]:
-        """Busca Reels públicos via indexador web e hidrata os metadados."""
-        items: List[DiscoveryItem] = []
-        try:
-            search_query = f"instagram.com/reel {query.strip().lstrip('#')}"
-            data = urllib.parse.urlencode({"q": search_query}).encode("utf-8")
-            req = urllib.request.Request(
-                "https://html.duckduckgo.com/html/",
-                data=data,
-                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"},
-            )
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                html = resp.read().decode("utf-8", errors="ignore")
-            unq = urllib.parse.unquote(html)
-            codes = list(dict.fromkeys(re.findall(r"instagram\.com/reel/([A-Za-z0-9_-]+)", unq)))[:limit]
+    def _search_sync(self, query: str, limit: int = 20) -> List[DiscoveryItem]:
+        items = self._search_web_internal(query, limit=limit)
+        if len(items) < 3:
+            ytdlp_items = self._search_via_ytdlp(query, limit=limit)
+            seen_ids = {i.id for i in items}
+            for yi in ytdlp_items:
+                if yi.id not in seen_ids:
+                    items.append(yi)
+                    seen_ids.add(yi.id)
+                    if len(items) >= limit:
+                        break
 
-            if codes:
-                now = int(time.time())
-                import yt_dlp
-                ydl_opts = {"extract_flat": True, "quiet": True, "skip_download": True, "no_warnings": True}
-                from clippyme.domain.cookie_resolver import resolve_platform_cookies
-                cookies_path = resolve_platform_cookies("instagram")
-                if cookies_path:
-                    ydl_opts["cookiefile"] = cookies_path
-
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    for code in codes:
-                        url = f"https://www.instagram.com/reel/{code}/"
-                        try:
-                            info = ydl.extract_info(url, download=False)
-                            if info:
-                                title = info.get("title") or f"Instagram Reel {code}"
-                                uploader = info.get("uploader") or info.get("channel") or "Instagram Creator"
-                                views = int(info.get("view_count") or 0)
-                                likes = int(info.get("like_count") or 0)
-                                comments = int(info.get("comment_count") or 0)
-                                thumb = info.get("thumbnail")
-                                score = calculate_virality_score(PlatformType.INSTAGRAM, views, likes, comments, current_timestamp=now)
-                                item = DiscoveryItem(
-                                    id=code,
-                                    platform=PlatformType.INSTAGRAM,
-                                    url=url,
-                                    title=title[:120],
-                                    description=title,
-                                    author_name=uploader,
-                                    author_handle=f"@{uploader}",
-                                    thumbnail_url=thumb,
-                                    view_count=views,
-                                    like_count=likes,
-                                    comment_count=comments,
-                                    virality_score=score,
-                                    engagement_rate=calculate_engagement_rate(PlatformType.INSTAGRAM, views, likes, comments),
-                                    view_velocity=calculate_view_velocity(views, None, now),
-                                )
-                                items.append(item)
-                                if len(items) >= limit:
-                                    break
-                        except Exception:
-                            continue
-        except Exception as exc:
-            logger.debug("Falha na busca indexada do Instagram: %s", exc)
-        return items
+        items.sort(key=lambda x: (x.virality_score, x.view_count), reverse=True)
+        return items[:limit]
 
     async def search(self, filter_params: DiscoveryFilter) -> List[DiscoveryItem]:
         loop = asyncio.get_running_loop()
-        # 1. Tenta via requisições Web internas (caso haja cookies configurados)
-        items = await loop.run_in_executor(None, self._search_web_internal, filter_params.query, filter_params.limit)
-        
-        # 2. Se não encontrou, tenta busca indexada pública
-        if not items:
-            items = await loop.run_in_executor(None, self._search_via_index, filter_params.query, filter_params.limit)
-
-        # 3. Fallback final via tag yt-dlp
-        if not items:
-            items = await loop.run_in_executor(None, self._search_via_ytdlp, filter_params.query, filter_params.limit)
-            
-        return items
+        return await loop.run_in_executor(None, self._search_sync, filter_params.query, filter_params.limit)
 
     async def health_check(self) -> bool:
         return True

@@ -1,12 +1,11 @@
 import { useState, useMemo } from 'react'
-import { CheckSquare, Compass, Flame, Sparkles } from 'lucide-react'
+import { Compass } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Typography } from '@/components/ui/typography'
 import { DiscoverySearchBar } from '../components/discovery-search-bar'
 import { DiscoveryFilterBar } from '../components/discovery-filter-bar'
-import { DiscoveryVideoCard } from '../components/discovery-video-card'
+import { DiscoveryResultsSection } from '../components/discovery-results-section'
+import { DiscoveryInitialState } from '../components/discovery-initial-state'
 import { DiscoveryImportDrawer } from '../components/discovery-import-drawer'
 import { DiscoverySkeletonGrid } from '../components/discovery-skeleton-grid'
 import { DiscoveryFloatingBar } from '../components/discovery-floating-bar'
@@ -96,19 +95,15 @@ export function DiscoveryView() {
   }, [items, durationFilter, minViews, sortBy])
 
   const handleToggleSelect = (item: DiscoveryItem) => {
-    setSelectedItems((prev) => {
-      const exists = prev.some((i) => i.id === item.id)
-      if (exists) return prev.filter((i) => i.id !== item.id)
-      return [...prev, item]
-    })
+    setSelectedItems((prev) =>
+      prev.some((i) => i.id === item.id) ? prev.filter((i) => i.id !== item.id) : [...prev, item],
+    )
   }
 
   const handleSelectAll = () => {
-    if (selectedItems.length === filteredAndSortedItems.length) {
-      setSelectedItems([])
-    } else {
-      setSelectedItems([...filteredAndSortedItems])
-    }
+    setSelectedItems(
+      selectedItems.length === filteredAndSortedItems.length ? [] : [...filteredAndSortedItems],
+    )
   }
 
   return (
@@ -160,72 +155,16 @@ export function DiscoveryView() {
       {searchMutation.isPending && <DiscoverySkeletonGrid />}
 
       {!searchMutation.isPending && searchResults && (
-        <>
-          <div className="flex items-center justify-between">
-            <Typography
-              variant="small"
-              className="font-semibold text-muted-foreground flex items-center gap-1.5"
-            >
-              <Flame className="size-4 text-primary" />
-              {filteredAndSortedItems.length} vídeo{filteredAndSortedItems.length !== 1 ? 's' : ''}{' '}
-              minerado{filteredAndSortedItems.length !== 1 ? 's' : ''} para &ldquo;
-              {searchResults.query}&rdquo;
-            </Typography>
-
-            {filteredAndSortedItems.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs gap-1.5"
-                onClick={handleSelectAll}
-              >
-                <CheckSquare className="size-3.5" />
-                {selectedItems.length === filteredAndSortedItems.length
-                  ? 'Desmarcar Todos'
-                  : 'Selecionar Todos'}
-              </Button>
-            )}
-          </div>
-
-          {filteredAndSortedItems.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 items-start">
-              {filteredAndSortedItems.map((item) => (
-                <DiscoveryVideoCard
-                  key={item.id}
-                  item={item}
-                  isSelected={selectedItems.some((i) => i.id === item.id)}
-                  onToggleSelect={handleToggleSelect}
-                />
-              ))}
-            </div>
-          ) : (
-            <Card className="p-12 text-center border-dashed border-border/80 bg-card/30">
-              <Typography variant="h3">Nenhum vídeo encontrado</Typography>
-              <Typography variant="muted">
-                Tente ajustar os filtros ou buscar por outros termos ou hashtags.
-              </Typography>
-            </Card>
-          )}
-        </>
+        <DiscoveryResultsSection
+          items={filteredAndSortedItems}
+          selectedItems={selectedItems}
+          query={searchResults.query}
+          onToggleSelect={handleToggleSelect}
+          onSelectAll={handleSelectAll}
+        />
       )}
 
-      {!searchMutation.isPending && !searchResults && (
-        <Card className="border-dashed border-border/80 bg-card/30 p-12 text-center space-y-4">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary text-primary">
-            <Sparkles className="size-7" />
-          </div>
-          <div className="space-y-1">
-            <Typography variant="h3">Mineração Inteligente de Conteúdo</Typography>
-            <Typography
-              variant="muted"
-              className="max-w-md mx-auto"
-            >
-              Pesquise qualquer palavra-chave para extrair os vídeos mais virais do TikTok,
-              Instagram Reels e YouTube Shorts.
-            </Typography>
-          </div>
-        </Card>
-      )}
+      {!searchMutation.isPending && !searchResults && <DiscoveryInitialState />}
 
       <DiscoveryFloatingBar
         selectedCount={selectedItems.length}
