@@ -37,7 +37,7 @@ describe('CreateBatchView Integration', () => {
 
     // Wait for brands to load
     await waitFor(() => {
-      expect(screen.getByText(/Perfil da Marca/i)).toBeInTheDocument()
+      expect(screen.getByText(/Pool de Marcas/i)).toBeInTheDocument()
     })
 
     const input = screen.getByPlaceholderText(/Cole a URL do vídeo/i)

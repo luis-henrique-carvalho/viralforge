@@ -24,6 +24,18 @@ _Avoid_: PublishResult, ZernioResponse, PostConfirmation
 The domain service responsible for channel discovery, continuous auto-chaining slot calculations, provider dispatch routing, and automated fallback execution.
 _Avoid_: PublisherService, DispatchManager, ZernioRouter
 
+**BrandSyndication**:
+The publishing pattern where a single ViralItem assigned to a Brand is dispatched to all active SocialChannels connected to that brand across platforms (TikTok, Instagram, YouTube Shorts), generating a PublicationJob per connected platform.
+_Avoid_: MultiPosting, CrossPlatformBlast, AccountSplitting
+
+**OmnichannelPublishing**:
+Simultaneous distribution of a video item across distinct social platforms (TikTok, Instagram, YouTube) bound to the same Brand, maintaining synchronized slot schedules and receipts per platform.
+_Avoid_: MultiNetworkPush, CrossFeedPosting
+
+**PublicationFailureIsolation**:
+The domain resilience guarantee that each SocialChannel's publication receipt is tracked independently, allowing a partial failure (e.g. TikTok 429 rate limit) to be retried selectively without duplicate dispatches to successfully published platforms (Instagram, YouTube).
+_Avoid_: AllOrNothingPublishing, BatchRollback
+
 **SocialPublisherPort**:
 The domain port (in Ports & Adapters architecture) defining the unified contract for publishing, scheduling, and cancelling outbound video publications across any external provider.
 _Avoid_: PublisherInterface, SocialGateway, DriverPort
@@ -31,8 +43,16 @@ _Avoid_: PublisherInterface, SocialGateway, DriverPort
 ## Viral Studio Pipeline
 
 **ViralBatch**:
-A grouped operational ingestion of raw source URLs or video files processed together under a common Brand and VisualTemplate.
+A grouped operational ingestion of raw source URLs or video files processed together under a common VisualTemplate, with items associated to either a single Brand or distributed across a BrandPool.
 _Avoid_: BatchJob, IngestionRun, VideoCollection
+
+**BrandPool**:
+A designated set of Brands selected at batch creation time across which incoming video items are distributed for multi-account video rendering and publishing.
+_Avoid_: AccountGroup, ProfileCluster, TargetPool
+
+**MultiBrandDistribution**:
+The algorithmic assignment (such as Round-Robin or Sequential blocks) of video items to different Brands prior to pipeline execution, ensuring each video is rendered with its assigned Brand's visual identity (@handle, avatar, brand name).
+_Avoid_: AccountSharding, VideoSplitting, ChannelPartitioning
 
 **ViralItem**:
 An individual video item within a batch, tracking its lifecycle from download, keyframe extraction, transcript generation, AI copy, rendering, approval, to publication.

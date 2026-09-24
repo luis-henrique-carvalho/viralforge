@@ -13,10 +13,11 @@ from clippyme.domain.discovery import (
 )
 
 logger = logging.getLogger("clippyme.api.discovery")
-router = APIRouter(prefix="/api/discover", tags=["discovery"])
+router = APIRouter(tags=["discovery"])
 
 
-@router.get("/platforms")
+@router.get("/api/discover/platforms")
+@router.get("/api/discovery/platforms")
 async def get_available_platforms() -> Dict[str, Any]:
     """Retorna a lista de plataformas suportadas para busca de vídeos virais."""
     return {
@@ -46,7 +47,8 @@ async def get_available_platforms() -> Dict[str, Any]:
     }
 
 
-@router.post("/search", response_model=DiscoveryResult)
+@router.post("/api/discover/search", response_model=DiscoveryResult)
+@router.post("/api/discovery/search", response_model=DiscoveryResult)
 async def search_viral_videos(filter_params: DiscoveryFilter) -> DiscoveryResult:
     """
     Pesquisa vídeos virais por palavra-chave/hashtag em uma plataforma suportada,

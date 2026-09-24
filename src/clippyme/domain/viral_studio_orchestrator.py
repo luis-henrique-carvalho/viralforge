@@ -705,7 +705,7 @@ async def publish_viral_items(
     start_date: Optional[str] = None,
     publisher: Optional[Any] = None,
 ) -> Dict[str, Any]:
-    """Publish approved items through the SocialPublisherPort, supporting Auto-Chaining without collision."""
+    """Publish approved items through the SocialPublisherPort, supporting BrandSyndication and Auto-Chaining."""
     from clippyme.domain.social_publisher_port import (
         PublicationJob,
         PublicationReceipt,
@@ -713,148 +713,240 @@ async def publish_viral_items(
     )
 
     pub = publisher or get_social_publisher()
-    target_platform = platforms[0] if platforms else {}
-    account_id = str(target_platform.get("accountId") or target_platform.get("account_id") or "default")
-    platform_name = str(target_platform.get("platform") or "tiktok").lower()
-    platform_specific = target_platform.get("platformSpecificData")
-
-    projected_slots: List[datetime] = []
-    if schedule_mode == "auto":
-        projected_slots = viral_studio_store.get_next_available_slots(
-            account_id=account_id,
-            count=len(item_ids),
-            preferred_time="18:00",
-            start_date=start_date,
-            timezone_str=timezone or "America/Sao_Paulo",
-        )
-
     results = []
+
     for idx, item_id in enumerate(item_ids):
         item = viral_studio_store.get_item_or_raise(item_id)
+        brand_id = item.get("brand_id")
+        brand = viral_studio_store.get_brand(brand_id) if brand_id else None
+
+        # Resolve target platforms for this item: explicit platforms or brand's connected profiles
+        item_platforms: List[Dict[str, Any]] = []
+        if platforms and len(platforms) > 0:
+            item_platforms = platforms
+        elif brand and isinstance(brand.get("publishing_profiles"), dict) and len(brand["publishing_profiles"]) > 0:
+            for plat_key, prof in brand["publishing_profiles"].items():
+                if isinstance(prof, dict):
+                    item_platforms.append({
+                        "platform": prof.get("platform") or plat_key,
+                        "accountId": prof.get("account_id") or prof.get("accountId") or str(prof),
+                        "platformSpecificData": prof.get("platformSpecificData"),
+                    })
+                elif prof:
+                    item_platforms.append({
+                        "platform": plat_key,
+                        "accountId": str(prof),
+                    })
+        else:
+            item_platforms = [{"platform": "tiktok", "accountId": "default"}]
+
+        # Synchronized launch slot across all channels of the brand for this video
+        primary_acc = str(item_platforms[0].get("accountId") or item_platforms[0].get("account_id") or "default")
         item_slot = None
-        if schedule_mode == "auto" and idx < len(projected_slots):
-            item_slot = projected_slots[idx].isoformat()
+        if schedule_mode == "auto":
+            slots = viral_studio_store.get_next_available_slots(
+                account_id=primary_acc,
+                count=len(item_ids),
+                preferred_time="18:00",
+                start_date=start_date,
+                timezone_str=timezone or "America/Sao_Paulo",
+            )
+            if idx < len(slots):
+                item_slot = slots[idx].isoformat()
         elif schedule_mode == "manual":
             item_slot = scheduled_for
 
-        request = {
-            "platforms": platforms,
-            "schedule_mode": schedule_mode,
-            "scheduled_for": item_slot,
-            "timezone": timezone,
-            "start_date": start_date,
-            "title": item.get("selected_headline") or "Achadinho",
-            "caption": item.get("caption") or "",
-        }
-        key = hashlib.sha256(json.dumps(request, sort_keys=True, default=str).encode()).hexdigest()
-        cached = next(
-            (record for record in item.get("publication_records") or [] if record.get("key") == key),
-            None,
-        )
-        if cached and cached.get("status") in {"published", "scheduled"}:
-            results.append(dict(cached.get("result") or cached))
+        # Check if all platforms are already cached/published
+        all_cached_results = []
+        for target_platform in item_platforms:
+            account_id = str(target_platform.get("accountId") or target_platform.get("account_id") or "default")
+            platform_name = str(target_platform.get("platform") or "tiktok").lower()
+            request_spec = {
+                "item_id": item_id,
+                "platform": platform_name,
+                "account_id": account_id,
+                "schedule_mode": schedule_mode,
+                "scheduled_for": item_slot,
+                "timezone": timezone,
+                "start_date": start_date,
+                "title": item.get("selected_headline") or "Achadinho",
+                "caption": item.get("caption") or "",
+            }
+            key = hashlib.sha256(json.dumps(request_spec, sort_keys=True, default=str).encode()).hexdigest()
+            cached = next(
+                (
+                    record for record in item.get("publication_records") or []
+                    if record.get("key") == key or (record.get("platform") == platform_name and record.get("account_id") == account_id and record.get("status") in {"published", "scheduled"})
+                ),
+                None,
+            )
+            if cached and cached.get("status") in {"published", "scheduled"}:
+                all_cached_results.append(dict(cached.get("result") or cached))
+
+        if len(all_cached_results) == len(item_platforms) and len(all_cached_results) > 0:
+            results.extend(all_cached_results)
             continue
+
         if item.get("status") != "APPROVED":
             raise ValidationError(f"Item {item_id} is not approved for publication")
         media_path = item.get("rendered_path")
         if not media_path or not os.path.isfile(media_path) or os.path.getsize(media_path) == 0:
             raise NotFoundError(f"Rendered video file not found for item {item_id}")
-        reservation = viral_studio_store.reserve_publication(
-            item_id, key, datetime.now(dt_timezone.utc).isoformat()
-        )
-        existing = reservation["record"]
-        if not reservation["reserved"] and existing.get("status") in {"published", "scheduled"}:
-            results.append(dict(existing.get("result") or existing))
-            continue
-        if not reservation["reserved"] and existing.get("status") == "dispatching":
-            raise ValidationError(f"Publication for item {item_id} is awaiting reconciliation")
 
-        try:
-            from clippyme.domain import publish_service
-            is_legacy_mocked = (
-                getattr(publish_service, "publish_clip_flow", None)
-                is not getattr(publish_service, "ORIGINAL_PUBLISH_CLIP_FLOW", None)
-            )
-            if is_legacy_mocked and publisher is None:
-                from clippyme.storage.config_store import load_zernio_config
+        item_successes = []
+        item_failures = []
 
-                config = load_zernio_config() or {}
-                published = await publish_service.publish_clip_flow(
-                    job_id=item.get("batch_id") or "viral_studio",
-                    clip_index=0,
-                    resolved=None,
-                    req={**request, "clip_path": media_path},
-                    zernio_cfg=config,
-                )
-                state = published.get("status") or (
-                    "scheduled" if schedule_mode in {"auto", "manual"} else "published"
-                )
-                receipt = PublicationReceipt(
-                    item_id=item_id,
-                    status=state,
-                    post_id=published.get("post_id"),
-                    platform_post_id=published.get("platform_post_id") or published.get("id"),
-                    published_at=published.get("published_at"),
-                    scheduled_for=item_slot,
-                )
-            else:
-                job = PublicationJob(
-                    item_id=item_id,
-                    media_path=media_path,
-                    title=item.get("selected_headline") or "Achadinho",
-                    caption=item.get("caption") or "",
-                    platform=platform_name,
-                    account_id=account_id,
-                    scheduled_for=item_slot,
-                    publish_now=(schedule_mode == "now"),
-                    platform_specific_data=platform_specific,
-                    timezone=timezone or "America/Sao_Paulo",
-                )
-                if schedule_mode == "now":
-                    receipt = await pub.publish(job)
-                else:
-                    receipt = await pub.schedule(job)
+        for target_platform in item_platforms:
+            account_id = str(target_platform.get("accountId") or target_platform.get("account_id") or "default")
+            platform_name = str(target_platform.get("platform") or "tiktok").lower()
+            platform_specific = target_platform.get("platformSpecificData")
 
-            state = receipt.status
-            result = {
+            request_spec = {
                 "item_id": item_id,
-                "status": state,
-                "post_id": receipt.post_id,
-                "platform_post_id": receipt.platform_post_id,
-                "published_at": receipt.published_at or (datetime.now(dt_timezone.utc).isoformat() if state == "published" else None),
-                "scheduled_for": receipt.scheduled_for or item_slot,
-                "post_url": receipt.post_url,
-                "account_id": account_id,
                 "platform": platform_name,
+                "account_id": account_id,
+                "schedule_mode": schedule_mode,
+                "scheduled_for": item_slot,
+                "timezone": timezone,
+                "start_date": start_date,
+                "title": item.get("selected_headline") or "Achadinho",
+                "caption": item.get("caption") or "",
             }
-            viral_studio_store.finish_publication(
-                item_id,
-                key,
-                {"key": key, "status": state, "result": result, "scheduled_for": result["scheduled_for"], "account_id": account_id},
-                status="SCHEDULED" if state == "scheduled" else "PUBLISHED",
+            key = hashlib.sha256(json.dumps(request_spec, sort_keys=True, default=str).encode()).hexdigest()
+
+            # Refresh current item state from store for each platform
+            current_item = viral_studio_store.get_item_or_raise(item_id)
+            cached = next(
+                (
+                    record for record in current_item.get("publication_records") or []
+                    if (record.get("key") == key or (record.get("platform") == platform_name and record.get("account_id") == account_id and record.get("status") in {"published", "scheduled"}))
+                ),
+                None,
             )
+            if cached and cached.get("status") in {"published", "scheduled"}:
+                cached_res = dict(cached.get("result") or cached)
+                results.append(cached_res)
+                item_successes.append(cached_res)
+                continue
+
+            reservation = viral_studio_store.reserve_publication(
+                item_id, key, datetime.now(dt_timezone.utc).isoformat()
+            )
+            existing = reservation["record"]
+            if not reservation["reserved"] and existing.get("status") in {"published", "scheduled"}:
+                existing_res = dict(existing.get("result") or existing)
+                results.append(existing_res)
+                item_successes.append(existing_res)
+                continue
+            if not reservation["reserved"] and existing.get("status") == "dispatching":
+                raise ValidationError(f"Publication for item {item_id} on {platform_name} is awaiting reconciliation")
+
+            try:
+                from clippyme.domain import publish_service
+                is_legacy_mocked = (
+                    getattr(publish_service, "publish_clip_flow", None)
+                    is not getattr(publish_service, "ORIGINAL_PUBLISH_CLIP_FLOW", None)
+                )
+                if is_legacy_mocked and publisher is None:
+                    from clippyme.storage.config_store import load_zernio_config
+
+                    config = load_zernio_config() or {}
+                    published = await publish_service.publish_clip_flow(
+                        job_id=item.get("batch_id") or "viral_studio",
+                        clip_index=0,
+                        resolved=None,
+                        req={**request_spec, "clip_path": media_path},
+                        zernio_cfg=config,
+                    )
+                    state = published.get("status") or (
+                        "scheduled" if schedule_mode in {"auto", "manual"} else "published"
+                    )
+                    receipt = PublicationReceipt(
+                        item_id=item_id,
+                        status=state,
+                        post_id=published.get("post_id"),
+                        platform_post_id=published.get("platform_post_id") or published.get("id"),
+                        published_at=published.get("published_at"),
+                        scheduled_for=item_slot,
+                    )
+                else:
+                    job = PublicationJob(
+                        item_id=item_id,
+                        media_path=media_path,
+                        title=item.get("selected_headline") or "Achadinho",
+                        caption=item.get("caption") or "",
+                        platform=platform_name,
+                        account_id=account_id,
+                        scheduled_for=item_slot,
+                        publish_now=(schedule_mode == "now"),
+                        platform_specific_data=platform_specific,
+                        timezone=timezone or "America/Sao_Paulo",
+                    )
+                    if schedule_mode == "now":
+                        receipt = await pub.publish(job)
+                    else:
+                        receipt = await pub.schedule(job)
+
+                state = receipt.status
+                result = {
+                    "item_id": item_id,
+                    "status": state,
+                    "post_id": receipt.post_id,
+                    "platform_post_id": receipt.platform_post_id,
+                    "published_at": receipt.published_at or (datetime.now(dt_timezone.utc).isoformat() if state == "published" else None),
+                    "scheduled_for": receipt.scheduled_for or item_slot,
+                    "post_url": receipt.post_url,
+                    "account_id": account_id,
+                    "platform": platform_name,
+                }
+                viral_studio_store.finish_publication(
+                    item_id,
+                    key,
+                    {"key": key, "status": state, "result": result, "scheduled_for": result["scheduled_for"], "account_id": account_id, "platform": platform_name},
+                    status="SCHEDULED" if state == "scheduled" else "PUBLISHED",
+                )
+                results.append(result)
+                item_successes.append(result)
+            except Exception as exc:
+                err_msg = str(exc)
+                fail_res = {
+                    "item_id": item_id,
+                    "status": "failed",
+                    "error": err_msg,
+                    "account_id": account_id,
+                    "platform": platform_name,
+                }
+                viral_studio_store.finish_publication(
+                    item_id, key, {"key": key, "status": "failed", "error": err_msg, "account_id": account_id, "platform": platform_name}
+                )
+                results.append(fail_res)
+                item_failures.append(fail_res)
+
+        # Update item aggregate status based on syndication results
+        if item_successes:
+            state = item_successes[0]["status"]
+            final_status = "SCHEDULED" if state == "scheduled" else "PUBLISHED"
+            err_notice = f"Falha em {len(item_failures)} rede(s)" if item_failures else None
             viral_studio_store.update_item(
                 item_id,
                 {
-                    "scheduled_for": result["scheduled_for"],
-                    "account_id": account_id,
-                    "platform": platform_name,
-                    "post_id": receipt.post_id,
-                    "post_url": receipt.post_url,
+                    "status": final_status,
+                    "scheduled_for": item_successes[0].get("scheduled_for"),
+                    "account_id": item_successes[0].get("account_id"),
+                    "platform": item_successes[0].get("platform"),
+                    "post_id": item_successes[0].get("post_id"),
+                    "post_url": item_successes[0].get("post_url"),
+                    "error_message": err_notice,
                 },
             )
             append_item_log(
                 item_id,
-                "PUBLISHED" if state == "published" else "SCHEDULED",
-                f"Item {'publicado' if state == 'published' else 'agendado'} com sucesso na rede social",
-                details=result,
+                final_status,
+                f"Item {'publicado' if final_status == 'PUBLISHED' else 'agendado'} ({len(item_successes)} rede(s))",
+                details={"successes": len(item_successes), "failures": len(item_failures)},
             )
-            results.append(result)
-        except Exception as exc:
-            err_msg = str(exc)
-            viral_studio_store.finish_publication(
-                item_id, key, {"key": key, "status": "failed", "error": err_msg}
-            )
+        elif item_failures:
+            err_msg = item_failures[0].get("error") or "Falha no envio"
             viral_studio_store.update_item(item_id, {"error_message": err_msg})
             append_item_log(
                 item_id,
@@ -863,7 +955,6 @@ async def publish_viral_items(
                 level="error",
                 details={"error": err_msg},
             )
-            results.append({"item_id": item_id, "status": "failed", "error": err_msg})
 
     return {
         "results": results,

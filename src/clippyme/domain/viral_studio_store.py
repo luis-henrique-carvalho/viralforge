@@ -782,9 +782,20 @@ def get_batch_or_raise(batch_id: str) -> Dict[str, Any]:
 
 def create_batch(batch: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
     data = _to_dict(batch)
-    brand_id = data.get("brand_id")
-    if not brand_id or not str(brand_id).strip():
-        raise ValidationError("brand_id is required")
+    raw_brand_id = data.get("brand_id")
+    raw_brand_ids = data.get("brand_ids")
+    brand_ids: List[str] = []
+    if raw_brand_ids and isinstance(raw_brand_ids, list):
+        brand_ids = [str(b).strip() for b in raw_brand_ids if b and str(b).strip()]
+    if not brand_ids and raw_brand_id and str(raw_brand_id).strip():
+        brand_ids = [str(raw_brand_id).strip()]
+
+    if not brand_ids:
+        raise ValidationError("brand_id or brand_ids is required")
+
+    strategy = str(data.get("distribution_strategy") or "round_robin").lower()
+    if strategy not in ("round_robin", "sequential"):
+        strategy = "round_robin"
 
     raw_items = data.get("items")
     if not raw_items or not isinstance(raw_items, list) or len(raw_items) == 0:
@@ -792,8 +803,9 @@ def create_batch(batch: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
 
     with _STORE_LOCK:
         brands = _load_brands_locked()
-        if brand_id not in brands:
-            raise NotFoundError(f"Brand not found: {brand_id}")
+        for bid in brand_ids:
+            if bid not in brands:
+                raise NotFoundError(f"Brand not found: {bid}")
 
         batch_id = data.get("batch_id") or data.get("id")
         if not batch_id or not str(batch_id).strip():
@@ -806,12 +818,16 @@ def create_batch(batch: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
 
         data["batch_id"] = batch_id
         data["id"] = batch_id
+        data["brand_ids"] = brand_ids
+        data["distribution_strategy"] = strategy
+        primary_brand_id = raw_brand_id if raw_brand_id and raw_brand_id in brands else brand_ids[0]
+        data["brand_id"] = primary_brand_id
 
         batches = _load_batches_locked()
         if batch_id in batches:
             raise ConflictError(f"Batch already exists: {batch_id}")
 
-        brand = brands[brand_id]
+        brand = brands[primary_brand_id]
         template_id = data.get("template_id") or brand.get("template_id") or DEFAULT_TEMPLATE_ID
         templates = _load_templates_locked()
         if template_id not in templates:
@@ -829,9 +845,13 @@ def create_batch(batch: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
         data["updated_at"] = now
         data["status"] = data.get("status") or "PENDING"
 
+        total_items_count = len(raw_items)
+        num_brands = len(brand_ids)
+        block_size = max(1, (total_items_count + num_brands - 1) // num_brands)
+
         seen_item_ids = set()
         processed_items = []
-        for raw_item in raw_items:
+        for idx, raw_item in enumerate(raw_items):
             if not isinstance(raw_item, dict) and not hasattr(raw_item, "__dict__"):
                 raise ValidationError("Each item in items must be an object/dictionary")
             item = _to_dict(raw_item)
@@ -846,10 +866,23 @@ def create_batch(batch: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
                     raise ValidationError(f"Invalid item_id: {clean_item_id!r}")
                 item_id = clean_item_id
             seen_item_ids.add(item_id)
+
+            # Algorithmic Brand Assignment
+            if item.get("brand_id"):
+                explicit_bid = str(item.get("brand_id")).strip()
+                if explicit_bid not in brands:
+                    raise NotFoundError(f"Brand not found for item: {explicit_bid}")
+                item_brand_id = explicit_bid
+            elif strategy == "round_robin":
+                item_brand_id = brand_ids[idx % num_brands]
+            else:
+                brand_idx = min(idx // block_size, num_brands - 1)
+                item_brand_id = brand_ids[brand_idx]
+
             item["id"] = item_id
             item["item_id"] = item_id
             item["batch_id"] = batch_id
-            item["brand_id"] = brand_id
+            item["brand_id"] = item_brand_id
             item["template_id"] = item.get("template_id") or template_id
             item_model = item.get("model") or data.get("model")
             item["model"] = str(item_model).strip() if item_model and str(item_model).strip() else None

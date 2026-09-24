@@ -622,38 +622,67 @@ export const viralStudioHandlers = [
   http.post('/api/viral-studio/batches', async ({ request }) => {
     const body = (await request.json()) as BatchCreateRequest
     const newBatchId = `batch-${Date.now()}`
-    const newItems: ViralItem[] = body.items.map((item, index) => ({
-      id: `item-${Date.now()}-${index}`,
-      batch_id: newBatchId,
-      brand_id: body.brand_id,
-      model: body.model || 'gemini-2.5-flash',
-      source_url: item.source_url,
-      product_code: item.product_code || null,
-      product_url: item.product_url || null,
-      manual_headline: item.manual_headline || null,
-      additional_instructions: item.additional_instructions || null,
-      selected_headline: item.manual_headline || null,
-      caption: null,
-      ai_copy: null,
-      status: 'PENDING',
-      source_path: null,
-      rendered_path: null,
-      error_message: null,
-      job_id: `job-${index}`,
-      source_metadata: null,
-      ai_context_summary: null,
-      ai_telemetry: null,
-      keyframe_urls: [],
-      logs: [],
-      publication_records: [],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }))
+    const effectiveBrandIds =
+      body.brand_ids && body.brand_ids.length > 0
+        ? body.brand_ids
+        : [body.brand_id || 'vale-o-clique']
+    const mainBrandId = effectiveBrandIds[0]
+
+    const newItems: ViralItem[] = body.items.map((item, index) => {
+      let assignedBrandId = mainBrandId
+      if (body.distribution_strategy === 'sequential' && effectiveBrandIds.length > 1) {
+        const total = body.items.length
+        const k = effectiveBrandIds.length
+        const blockSize = Math.floor(total / k)
+        const remainder = total % k
+        let cumulative = 0
+        for (let b = 0; b < k; b++) {
+          const currentSize = blockSize + (b < remainder ? 1 : 0)
+          if (index < cumulative + currentSize) {
+            assignedBrandId = effectiveBrandIds[b]
+            break
+          }
+          cumulative += currentSize
+        }
+      } else if (effectiveBrandIds.length > 1) {
+        assignedBrandId = effectiveBrandIds[index % effectiveBrandIds.length]
+      }
+
+      return {
+        id: `item-${Date.now()}-${index}`,
+        batch_id: newBatchId,
+        brand_id: assignedBrandId,
+        model: body.model || 'gemini-2.5-flash',
+        source_url: item.source_url,
+        product_code: item.product_code || null,
+        product_url: item.product_url || null,
+        manual_headline: item.manual_headline || null,
+        additional_instructions: item.additional_instructions || null,
+        selected_headline: item.manual_headline || null,
+        caption: null,
+        ai_copy: null,
+        status: 'PENDING',
+        source_path: null,
+        rendered_path: null,
+        error_message: null,
+        job_id: `job-${index}`,
+        source_metadata: null,
+        ai_context_summary: null,
+        ai_telemetry: null,
+        keyframe_urls: [],
+        logs: [],
+        publication_records: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+    })
 
     const newBatch: BatchResponse = {
       id: newBatchId,
       batch_id: newBatchId,
-      brand_id: body.brand_id,
+      brand_id: mainBrandId,
+      brand_ids: body.brand_ids,
+      distribution_strategy: body.distribution_strategy,
       template_id: body.template_id || 'classic-affiliate',
       model: body.model || 'gemini-2.5-flash',
       status: 'PENDING',

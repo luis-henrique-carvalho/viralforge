@@ -748,19 +748,47 @@ class ViralItemInput(BaseModel):
         return validate_affiliate_url(v)
 
 
+from typing import Literal
+from clippyme.domain.discovery.schemas import (
+    DiscoveryFilter,
+    DiscoveryItem,
+    DiscoveryResult,
+    PlatformType as DiscoveryPlatformType,
+    SortOrder as DiscoverySortOrder,
+)
+
+
 class BatchCreateRequest(BaseModel):
-    brand_id: str = Field(..., min_length=1, max_length=64)
+    brand_id: Optional[str] = Field(None, max_length=64)
+    brand_ids: Optional[List[str]] = Field(None, max_length=64)
+    distribution_strategy: Literal["round_robin", "sequential"] = "round_robin"
     template_id: Optional[str] = Field(None, max_length=64)
     model: Optional[str] = Field(None, max_length=128)
     items: List[ViralItemInput] = Field(..., min_length=1, max_length=100)
 
-    @field_validator("brand_id")
+    @model_validator(mode="before")
     @classmethod
-    def _clean_brand_id(cls, v: str) -> str:
-        v = (v or "").strip()
-        if not v:
-            raise ValueError("brand_id must not be blank")
-        return v
+    def _normalize_brands(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            raw_brand_id = values.get("brand_id")
+            raw_brand_ids = values.get("brand_ids")
+
+            cleaned_brand_ids: List[str] = []
+            if raw_brand_ids and isinstance(raw_brand_ids, list):
+                cleaned_brand_ids = [str(b).strip() for b in raw_brand_ids if b and str(b).strip()]
+
+            if not cleaned_brand_ids and raw_brand_id and str(raw_brand_id).strip():
+                cleaned_brand_ids = [str(raw_brand_id).strip()]
+
+            if not cleaned_brand_ids:
+                raise ValueError("At least one brand must be specified (via brand_id or brand_ids)")
+
+            values["brand_ids"] = cleaned_brand_ids
+            if not values.get("brand_id") or not str(values.get("brand_id")).strip():
+                values["brand_id"] = cleaned_brand_ids[0]
+            else:
+                values["brand_id"] = str(values["brand_id"]).strip()
+        return values
 
     @field_validator("template_id")
     @classmethod
@@ -810,6 +838,8 @@ class BatchResponse(BaseModel):
     id: str
     batch_id: str
     brand_id: str
+    brand_ids: Optional[List[str]] = None
+    distribution_strategy: Optional[str] = "round_robin"
     template_id: Optional[str] = None
     model: Optional[str] = None
     status: str = "PENDING"
@@ -930,6 +960,8 @@ class ViralPublishResult(BaseModel):
     published_at: Optional[str] = None
     scheduled_for: Optional[str] = None
     post_url: Optional[str] = None
+    account_id: Optional[str] = None
+    platform: Optional[str] = None
     error: Optional[str] = None
 
 
