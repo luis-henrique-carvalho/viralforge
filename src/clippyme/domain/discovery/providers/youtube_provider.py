@@ -86,6 +86,12 @@ def _collect_youtube_entries(ydl: Any, clean: str, tag: str) -> List[Dict[str, A
                 seen_ids.add(vid)
                 candidates.append(e)
 
+    try:
+        info_views = ydl.extract_info(url_views, download=False)
+        _append_entries(info_views.get("entries") or [])
+    except Exception as views_err:
+        logger.debug("YouTube sort by views search fallback: %s", views_err)
+
     if len(clean.split()) <= 2:
         try:
             info_tag = ydl.extract_info(url_hashtag, download=False)
@@ -94,17 +100,17 @@ def _collect_youtube_entries(ydl: Any, clean: str, tag: str) -> List[Dict[str, A
             logger.debug("YouTube hashtag search fallback: %s", tag_err)
 
     try:
-        info_views = ydl.extract_info(url_views, download=False)
-        _append_entries(info_views.get("entries") or [])
-    except Exception as views_err:
-        logger.debug("YouTube sort by views search fallback: %s", views_err)
+        info_spec = ydl.extract_info(f"ytsearch50:{clean} shorts", download=False)
+        _append_entries(info_spec.get("entries") or [])
+    except Exception as spec_err:
+        logger.debug("YouTube ytsearch shorts fallback: %s", spec_err)
 
-    if len(candidates) < 10:
+    if len(candidates) < 40:
         try:
-            info_spec = ydl.extract_info(f"ytsearch50:{clean} shorts", download=False)
-            _append_entries(info_spec.get("entries") or [])
-        except Exception as spec_err:
-            logger.debug("YouTube ytsearch fallback: %s", spec_err)
+            info_hash = ydl.extract_info(f"ytsearch50:{clean} #shorts", download=False)
+            _append_entries(info_hash.get("entries") or [])
+        except Exception as hash_err:
+            logger.debug("YouTube ytsearch #shorts fallback: %s", hash_err)
 
     return candidates
 

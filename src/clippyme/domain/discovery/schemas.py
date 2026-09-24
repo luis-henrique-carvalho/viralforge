@@ -23,7 +23,7 @@ class DiscoveryFilter(BaseModel):
     platform: PlatformType = Field(default=PlatformType.INSTAGRAM, description="Plataforma de busca")
     limit: int = Field(default=20, ge=1, le=100, description="Quantidade máxima de resultados")
     min_views: Optional[int] = Field(default=None, ge=0, description="Filtro de visualizações mínimas")
-    max_age_days: Optional[int] = Field(default=30, ge=1, le=365, description="Idade máxima do post em dias")
+    max_age_days: Optional[int] = Field(default=None, ge=1, le=365, description="Idade máxima do post em dias")
     min_duration_seconds: Optional[int] = Field(default=None, ge=0, le=3600, description="Duração mínima em segundos")
     max_duration_seconds: Optional[int] = Field(default=None, ge=1, le=3600, description="Duração máxima em segundos")
     sort_by: SortOrder = Field(default=SortOrder.VIRALITY_SCORE, description="Critério de ordenação")

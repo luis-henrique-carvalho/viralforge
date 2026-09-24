@@ -241,10 +241,24 @@ class InstagramProvider(DiscoveryProvider):
         return items
 
     def _search_sync(self, query: str, limit: int = 20) -> List[DiscoveryItem]:
-        items = self._search_web_internal(query, limit=limit)
-        if len(items) < 3:
+        clean_tag = query.strip().lstrip("#").replace(" ", "")
+        items = self._search_web_internal(clean_tag, limit=limit)
+        seen_ids = {i.id for i in items}
+
+        # Se precisar de mais vídeos, tenta tags relacionadas
+        if len(items) < limit:
+            variants = [f"{clean_tag}brasil", f"reels{clean_tag}", f"{clean_tag}viral"]
+            for var in variants:
+                if len(items) >= limit:
+                    break
+                var_items = self._search_web_internal(var, limit=limit - len(items))
+                for vi in var_items:
+                    if vi.id not in seen_ids:
+                        seen_ids.add(vi.id)
+                        items.append(vi)
+
+        if len(items) < limit:
             ytdlp_items = self._search_via_ytdlp(query, limit=limit)
-            seen_ids = {i.id for i in items}
             for yi in ytdlp_items:
                 if yi.id not in seen_ids:
                     items.append(yi)

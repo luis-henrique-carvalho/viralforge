@@ -166,6 +166,7 @@ FROM runtime-${GPU_RUNTIME} AS final
 
 WORKDIR /app
 ENV PYTHONUNBUFFERED=1
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
 # /app/data/bin is the writable location where auto_editor_updater.py drops
 # fresh auto-editor binaries at runtime. Prepend it so it shadows the
 # system-wide install in /usr/local/bin when a newer version is available.
@@ -208,7 +209,11 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     fi && \
     if [ "$ENABLE_WHISPER_DIARIZE" = "1" ]; then \
         pip install 'pyannote.audio>=3.1'; \
-    fi
+    fi && \
+    pip install "playwright>=1.40.0" && \
+    PLAYWRIGHT_BROWSERS_PATH=/opt/playwright playwright install chromium && \
+    PLAYWRIGHT_BROWSERS_PATH=/opt/playwright playwright install-deps chromium && \
+    chmod -R 777 /opt/playwright
 
 # NOTE: do NOT `pip install --upgrade yt-dlp` here — that would un-pin yt-dlp
 # from requirements.lock and pull whatever the latest unreviewed release is at

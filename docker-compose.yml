@@ -124,6 +124,7 @@ services:
       - HF_HOME=/app/data/cache/huggingface
       - MPLCONFIGDIR=/app/data/cache/matplotlib
       - TORCH_HOME=/app/data/cache/torch
+      - PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
     volumes:
       - .:/app
       - /app/__pycache__

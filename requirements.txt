@@ -54,6 +54,7 @@ json-repair>=0.30
 # pinned above). Also enables yt-dlp's curl_cffi impersonation (auto-detected
 # when installed — defense-in-depth against YouTube bot detection).
 curl-cffi>=0.15,<1.0
+playwright>=1.40.0
 # Optional: speaker diarization via pyannote.audio. main.py:_diarize_with_pyannote
 # imports it lazily and skips with a soft warning if absent, so it is intentionally
 # NOT installed by default (it pulls torchaudio + a gated HF model download).
