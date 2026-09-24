@@ -726,6 +726,17 @@ class AICopyData(BaseModel):
     telemetry: Dict[str, Any] = Field(default_factory=dict)
 
 
+from typing import Literal
+from clippyme.domain.discovery.schemas import (
+    DiscoveryFilter,
+    DiscoveryItem,
+    DiscoveryResult,
+    ImportProvenance,
+    PlatformType as DiscoveryPlatformType,
+    SortOrder as DiscoverySortOrder,
+)
+
+
 class ViralItemInput(BaseModel):
     source_url: str = Field(..., max_length=2048)
     product_code: Optional[str] = Field(None, max_length=64)
@@ -733,6 +744,7 @@ class ViralItemInput(BaseModel):
     manual_headline: Optional[str] = Field(None, max_length=300)
     additional_instructions: Optional[str] = Field(None, max_length=1000)
     model: Optional[str] = Field(None, max_length=128)
+    provenance: Optional[ImportProvenance] = None
 
     @field_validator("source_url")
     @classmethod
@@ -746,16 +758,6 @@ class ViralItemInput(BaseModel):
     @classmethod
     def _check_product_url(cls, v: Optional[str]) -> Optional[str]:
         return validate_affiliate_url(v)
-
-
-from typing import Literal
-from clippyme.domain.discovery.schemas import (
-    DiscoveryFilter,
-    DiscoveryItem,
-    DiscoveryResult,
-    PlatformType as DiscoveryPlatformType,
-    SortOrder as DiscoverySortOrder,
-)
 
 
 class BatchCreateRequest(BaseModel):
@@ -812,6 +814,7 @@ class ViralItem(BaseModel):
     selected_headline: Optional[str] = None
     caption: Optional[str] = None
     ai_copy: Optional[AICopyData] = None
+    provenance: Optional[ImportProvenance] = None
     status: ViralItemStatus = ViralItemStatus.PENDING
     source_path: Optional[str] = None
     rendered_path: Optional[str] = None

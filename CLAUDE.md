@@ -17,7 +17,9 @@ Python backend is src-layout under `src/clippyme/` (`pip install -e .`):
 - `api/` — `app.py` (thin FastAPI layer: job-lifecycle routes, middleware,
   static mounts, lifespan), `config_routes.py` (the config-family `APIRouter`:
   keys/cookies/fonts/logo/zernio/models — routes that touch no job runtime
-  state, `include_router`ed by app.py), `schemas.py` (Pydantic request models),
+  state, `include_router`ed by app.py), `discovery_routes.py` (multi-platform
+  video discovery: legacy sync search + asynchronous `DiscoveryWorker` queue,
+  cancellation and saved search history), `schemas.py` (Pydantic request models),
   `security.py` (trusted-origin/rate limit/API-token gates).
 - `domain/` — endpoint logic. `clip_resolve.py` (shared `resolve_clip()`: job
   dir → latest metadata → clip entry → path, used by every per-clip endpoint),
@@ -70,6 +72,11 @@ Python backend is src-layout under `src/clippyme/` (`pip install -e .`):
   `viral_studio_download.py` (yt-dlp intake preserving source provenance, manifest, and engagement metrics),
   `viral_studio_orchestrator.py` (step logging `append_item_log` and batch lifecycle orchestration),
   `viral_studio_store.py` (atomic crash-safe JSON store with `_STORE_LOCK` and 0o600 permissions),
+  `discovery/` — multi-platform video discovery: `service.py` (search and scoring orchestrator),
+  `store.py` (atomic crash-safe store in `data/discovery/{id}.json` with lightweight `searches_index.json`
+  and batch URL cross-referencing for `already_imported`), `worker.py` (`DiscoveryWorker`: `asyncio.Queue`,
+  global `Semaphore(2)` + isolated per-platform locks `_platform_locks`, in-flight task cancellation with immediate
+  semaphore return, startup recovery), `schemas.py` (`DiscoverySearch`, `DiscoverySearchStatus`, `ImportProvenance`),
   `errors.py` (domain exceptions mapped to HTTP by one app-level handler).
 - `pipeline/` — `orchestrator.py` (**the entrypoint queued jobs actually run**:
   preflight → checkpointed `main.py` stages → per-render output QA; owns
@@ -309,6 +316,12 @@ through verbatim (the frontend parses per-platform 429 daily limits).
   * `MockPublisherAdapter`: Deterministic in-memory test double for offline execution and fast host tests.
   * Provider Resolution (`get_social_publisher`): Resolves provider via `PUBLISHING_PROVIDER` config, explicit `provider=` argument, or safe mock fallback.
   * Intelligent Gap-Filling Scheduling (`get_next_available_slots`): Evaluates candidate dates starting from earliest possible (`now.date()`), filling intermediate cancelled slots before advancing past the tail of the queue (`occupied_dates`). Every account projection is fully isolated.
+- **Asynchronous Discovery & Mining Worker (`DiscoveryWorker`)**:
+  * `POST /api/discovery/searches` responds immediately with HTTP 202 Accepted (`QUEUED`).
+  * `DiscoveryWorker` runs on the event loop in `lifespan` with bounded concurrency via two-level controls: global `asyncio.Semaphore(2)` + isolated per-platform locks (`_platform_locks[platform]`), preventing IP bans, captchas, and bot detection on TikTok/Instagram.
+  * In-Flight Cancellation: `POST /api/discovery/searches/{id}/cancel` cancels active `asyncio.Task`, aborts scraper execution, immediately releases the concurrency semaphore, and persists status `CANCELLED`.
+  * Thin Handlers Invariant: aggregate instantiation and queuing MUST be encapsulated in `DiscoveryWorker.create_and_enqueue(filter_params)` and `DiscoverySearch.to_summary()`, keeping route handlers under 15 lines (`validate -> call domain -> return JSON`).
+  * Atomic Persistence & Deduplication: Searches persist crash-safely in `data/discovery/{search_id}.json` with `searches_index.json` for lightweight history lookups. `mark_imported_status()` cross-references item URLs with existing batch stores to display `Já no Lote #X` in the UI.
 
 
 ## API endpoints
@@ -324,6 +337,11 @@ through verbatim (the frontend parses per-platform 429 daily limits).
 | POST | `/api/edit-ai/{job_id}/{clip_index}` | NL instruction → Gemini → `drop_ranges` |
 | POST | `/api/reframe/{job_id}/{clip_index}` | Switch reframe mode post-hoc |
 | POST | `/api/publish/{job_id}/{clip_index}` | Upload + schedule via Zernio |
+| POST | `/api/discovery/searches` | Disparar busca de vídeos assíncrona (HTTP 202) |
+| POST | `/api/discovery/searches/{id}/cancel` | Cancelar busca em andamento ou na fila |
+| GET | `/api/discovery/searches` | Listar histórico de buscas mineradas |
+| GET | `/api/discovery/searches/{id}` | Consultar resultados e vídeos da busca |
+| DELETE | `/api/discovery/searches/{id}` | Excluir busca persistida e histórico |
 | GET/POST/DELETE | `/api/config*` | Keys, cookies, logo, fonts, Zernio (trusted clients) |
 | GET | `/api/history` · POST `/api/history/{id}/restore` · DELETE `/api/history/{id}` | Past jobs |
 
@@ -357,5 +375,7 @@ injection).
 - `docs/plano-migracao-frontend.md` — Arquitetura da migração frontend para React 19 + Vite 8 + TanStack Router + Shadcn (TweakCN).
 - `docs/publicacao-e-fila-continua.md` — Fila contínua auto-chaining sem colisão e arquitetura Ports & Adapters para publicação social.
 - `docs/viral-studio-template-architecture.md` — Sistema de Templates universais desacoplados, Konva 9:16 e motor dinâmico de GenerationTasks.
+- `docs/descoberta-assincrona-e-mineracao.md` — Especificação técnica completa da Descoberta Assíncrona, DiscoveryWorker, cancelamento e histórico persistente.
+- `docs/adr/0004-asynchronous-discovery-mining-and-search-persistence.md` — Arquitetura de Descoberta Assíncrona com DiscoveryWorker, persistência em disco e cancelamento em voo.
 - `docs/architecture-history.md` — summary of major refactors (what moved
   where and why); the pre-rewrite CLAUDE.md is in git history.

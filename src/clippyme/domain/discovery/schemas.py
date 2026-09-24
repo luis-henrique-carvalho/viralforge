@@ -18,6 +18,22 @@ class SortOrder(str, Enum):
     ENGAGEMENT_RATE = "engagement_rate"
 
 
+class DiscoverySearchStatus(str, Enum):
+    QUEUED = "QUEUED"
+    SEARCHING = "SEARCHING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+
+
+class ImportProvenance(BaseModel):
+    search_id: str = Field(..., description="ID da busca de descoberta de origem")
+    platform: PlatformType = Field(..., description="Plataforma de onde o vídeo foi minerado")
+    query: str = Field(..., description="Termo ou hashtag pesquisada")
+    discovered_item_id: Optional[str] = Field(default=None, description="ID do item retornado na descoberta")
+    virality_score: float = Field(default=0.0, description="Score viral no momento da mineração")
+
+
 class DiscoveryFilter(BaseModel):
     query: str = Field(..., min_length=1, max_length=200, description="Palavra-chave, hashtag ou termo de busca")
     platform: PlatformType = Field(default=PlatformType.INSTAGRAM, description="Plataforma de busca")
@@ -55,7 +71,50 @@ class DiscoveryItem(BaseModel):
     engagement_rate: float = Field(default=0.0, description="Taxa de engajamento calculada")
     view_velocity: float = Field(default=0.0, description="Visualizações por hora")
     
+    # Status de importação
+    already_imported: bool = Field(default=False, description="Indica se o vídeo já foi importado para algum lote")
+    imported_batch_id: Optional[str] = Field(default=None, description="ID do lote para o qual o vídeo foi importado")
+    
     raw_metadata: Dict[str, Any] = Field(default_factory=dict, description="Metadados brutos da plataforma")
+
+
+class DiscoverySearchSummary(BaseModel):
+    id: str = Field(..., description="ID único da busca assíncrona")
+    platform: PlatformType = Field(..., description="Plataforma de busca")
+    query: str = Field(..., description="Termo ou hashtag pesquisada")
+    status: DiscoverySearchStatus = Field(default=DiscoverySearchStatus.QUEUED, description="Status do ciclo de vida da busca")
+    total_found: int = Field(default=0, description="Total de itens minerados")
+    created_at: str = Field(..., description="Timestamp ISO da criação")
+    completed_at: Optional[str] = Field(default=None, description="Timestamp ISO da conclusão ou cancelamento")
+    error_message: Optional[str] = Field(default=None, description="Mensagem de erro em caso de falha")
+
+
+class DiscoverySearch(BaseModel):
+    id: str = Field(..., description="ID único da busca assíncrona")
+    platform: PlatformType = Field(..., description="Plataforma de busca")
+    query: str = Field(..., description="Termo ou hashtag pesquisada")
+    filter_params: DiscoveryFilter = Field(..., description="Parâmetros completos do filtro")
+    status: DiscoverySearchStatus = Field(default=DiscoverySearchStatus.QUEUED, description="Status da busca")
+    total_found: int = Field(default=0, description="Total de itens encontrados")
+    items: List[DiscoveryItem] = Field(default_factory=list, description="Lista de vídeos minerados")
+    created_at: str = Field(..., description="Timestamp ISO de criação")
+    started_at: Optional[str] = Field(default=None, description="Timestamp ISO de início da execução")
+    completed_at: Optional[str] = Field(default=None, description="Timestamp ISO de conclusão ou cancelamento")
+    duration_seconds: Optional[float] = Field(default=None, description="Duração total da execução em segundos")
+    error_message: Optional[str] = Field(default=None, description="Mensagem de erro caso status seja FAILED")
+
+    def to_summary(self) -> DiscoverySearchSummary:
+        """Convert full aggregate into summary representation."""
+        return DiscoverySearchSummary(
+            id=self.id,
+            platform=self.platform,
+            query=self.query,
+            status=self.status,
+            total_found=self.total_found,
+            created_at=self.created_at,
+            completed_at=self.completed_at,
+            error_message=self.error_message,
+        )
 
 
 class DiscoveryResult(BaseModel):

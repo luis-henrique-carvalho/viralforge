@@ -129,16 +129,23 @@ class TikTokPlaywrightWorker:
             except Exception as nav_exc:
                 logger.warning("Navegação do Playwright falhou ou deu timeout: %s", nav_exc)
 
-            await asyncio.sleep(1.0)
-
-            # Se o TikTok exibir o botão 'Tente novamente', clica para forçar novo fetch com token atualizado
-            try:
+            # Aguarda a renderização inicial dos cards ou botão de retry
+            for _ in range(15):
+                async with lock:
+                    if len(extracted_items) >= target_limit:
+                        break
                 retry_btn = await page.query_selector('button:has-text("Tente novamente"), button:has-text("Retry")')
                 if retry_btn:
-                    await retry_btn.click()
-                    await asyncio.sleep(1.2)
-            except Exception:
-                pass
+                    try:
+                        await retry_btn.click()
+                        await asyncio.sleep(1.5)
+                        break
+                    except Exception:
+                        pass
+                cards = await page.query_selector_all('div[data-e2e="search_video-item"]')
+                if cards:
+                    break
+                await asyncio.sleep(0.3)
 
             # Executa scroll progressivo para ativar lotes adicionais
             for _ in range(2):
@@ -206,19 +213,37 @@ class TikTokPlaywrightWorker:
 
         cookies = parse_netscape_cookies(cookies_path) if (cookies_path and os.path.exists(cookies_path)) else []
 
-        # Constrói queries complementares escalonadas conforme o volume solicitado
+        # Constrói queries complementares inteligentes conforme o padrão da consulta
+        words = clean_query.split()
         queries = [clean_query]
         if limit > 20:
-            queries.extend([f"{clean_query} virais", f"melhores {clean_query}", f"{clean_query} brasil"])
+            if len(words) >= 2:
+                queries.extend([
+                    f"{words[-1]} virais",
+                    f"melhores {clean_query}",
+                    f"{clean_query} brasil",
+                ])
+            else:
+                queries.extend([f"{clean_query} virais", f"melhores {clean_query}", f"{clean_query} brasil"])
         if limit > 50:
-            queries.extend([
-                f"top {clean_query}",
-                f"{clean_query} novidades",
-                f"curiosidades {clean_query}",
-                f"{clean_query} momentos",
-                f"{clean_query} clips",
-                f"{clean_query} gameplay",
-            ])
+            if len(words) >= 2:
+                queries.extend([
+                    f"top {clean_query}",
+                    f"{clean_query} em alta",
+                    f"{words[-1]} {words[0]}",
+                    f"{words[-1]} divertidos",
+                    f"{clean_query} novidades",
+                    f"curiosidades {clean_query}",
+                ])
+            else:
+                queries.extend([
+                    f"top {clean_query}",
+                    f"{clean_query} em alta",
+                    f"curiosidades {clean_query}",
+                    f"{clean_query} momentos",
+                    f"{clean_query} clips",
+                    f"{clean_query} gameplay",
+                ])
 
         async with async_playwright() as p:
             launch_args = [
@@ -238,16 +263,19 @@ class TikTokPlaywrightWorker:
                 for q in queries:
                     if len(extracted_items) >= limit:
                         break
-                    await self._fetch_query_in_context(
-                        browser=browser,
-                        query=q,
-                        cookies=cookies,
-                        target_limit=limit,
-                        extracted_items=extracted_items,
-                        captured_ids=captured_ids,
-                        lock=lock,
-                        timeout_secs=timeout_secs,
-                    )
+                    try:
+                        await self._fetch_query_in_context(
+                            browser=browser,
+                            query=q,
+                            cookies=cookies,
+                            target_limit=limit,
+                            extracted_items=extracted_items,
+                            captured_ids=captured_ids,
+                            lock=lock,
+                            timeout_secs=timeout_secs,
+                        )
+                    except Exception as query_exc:
+                        logger.warning("Falha na busca individual '%s' no TikTok: %s", q, query_exc)
                     await asyncio.sleep(0.3)
             except Exception as exc:
                 logger.error("Erro durante execução do worker Playwright do TikTok: %s", exc)

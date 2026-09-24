@@ -110,3 +110,98 @@ def test_discovery_service_sorting():
 
     sorted_by_views = service._sort_items(items, SortOrder.VIEW_COUNT)
     assert sorted_by_views[0].id == "2"
+
+
+def test_discovery_search_to_summary():
+    from clippyme.domain.discovery.schemas import DiscoverySearch, DiscoverySearchStatus, DiscoverySearchSummary
+
+    filter_obj = DiscoveryFilter(query="test", platform=PlatformType.TIKTOK)
+    search = DiscoverySearch(
+        id="s-1",
+        platform=PlatformType.TIKTOK,
+        query="test",
+        filter_params=filter_obj,
+        status=DiscoverySearchStatus.QUEUED,
+        total_found=5,
+        created_at="2026-09-24T12:00:00Z",
+        completed_at="2026-09-24T12:01:00Z",
+        error_message=None,
+    )
+    summary = search.to_summary()
+    assert isinstance(summary, DiscoverySearchSummary)
+    assert summary.id == "s-1"
+    assert summary.platform == PlatformType.TIKTOK
+    assert summary.query == "test"
+    assert summary.status == DiscoverySearchStatus.QUEUED
+    assert summary.total_found == 5
+    assert summary.created_at == "2026-09-24T12:00:00Z"
+    assert summary.completed_at == "2026-09-24T12:01:00Z"
+
+
+@pytest.mark.asyncio
+async def test_discovery_worker_create_and_enqueue(tmp_path, monkeypatch):
+    import clippyme.domain.discovery.store as store_mod
+    from clippyme.domain.discovery.worker import DiscoveryWorker
+
+    monkeypatch.setattr(store_mod, "DATA_DIR", str(tmp_path))
+    worker = DiscoveryWorker(max_concurrent=2)
+    filter_obj = DiscoveryFilter(query="marketing", platform=PlatformType.YOUTUBE)
+
+    summary = await worker.create_and_enqueue(filter_obj)
+    assert summary.id is not None
+    assert summary.query == "marketing"
+    assert summary.platform == PlatformType.YOUTUBE
+    assert summary.status == "QUEUED"
+
+    queued_id = await worker._queue.get()
+    assert queued_id == summary.id
+
+
+@pytest.mark.asyncio
+async def test_discovery_worker_platform_locking(tmp_path, monkeypatch):
+    import asyncio
+    import clippyme.domain.discovery.store as store_mod
+    from clippyme.domain.discovery.worker import DiscoveryWorker
+    from clippyme.domain.discovery.schemas import DiscoveryResult
+
+    monkeypatch.setattr(store_mod, "DATA_DIR", str(tmp_path))
+    worker = DiscoveryWorker(max_concurrent=4)
+
+    # Track concurrent execution per platform
+    active_per_platform = {PlatformType.TIKTOK: 0, PlatformType.INSTAGRAM: 0}
+    max_active_per_platform = {PlatformType.TIKTOK: 0, PlatformType.INSTAGRAM: 0}
+
+    class MockDiscoveryService:
+        async def search(self, filter_params):
+            plat = filter_params.platform
+            active_per_platform[plat] += 1
+            if active_per_platform[plat] > max_active_per_platform[plat]:
+                max_active_per_platform[plat] = active_per_platform[plat]
+            await asyncio.sleep(0.05)
+            active_per_platform[plat] -= 1
+            return DiscoveryResult(
+                query=filter_params.query,
+                platform=plat,
+                total_found=0,
+                items=[],
+                fetched_at="now",
+            )
+
+    import clippyme.domain.discovery.worker as worker_mod
+    monkeypatch.setattr(worker_mod, "get_discovery_service", lambda: MockDiscoveryService())
+
+    # Enqueue two TikTok searches and one Instagram search
+    s1 = await worker.create_and_enqueue(DiscoveryFilter(query="q1", platform=PlatformType.TIKTOK))
+    s2 = await worker.create_and_enqueue(DiscoveryFilter(query="q2", platform=PlatformType.TIKTOK))
+    s3 = await worker.create_and_enqueue(DiscoveryFilter(query="q3", platform=PlatformType.INSTAGRAM))
+
+    # Process all three concurrently
+    await asyncio.gather(
+        worker._process_search(s1.id),
+        worker._process_search(s2.id),
+        worker._process_search(s3.id),
+    )
+
+    # For TikTok, max concurrency should be exactly 1 due to per-platform lock
+    assert max_active_per_platform[PlatformType.TIKTOK] == 1
+    assert max_active_per_platform[PlatformType.INSTAGRAM] == 1

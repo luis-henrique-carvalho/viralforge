@@ -1,21 +1,61 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Compass } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Typography } from '@/components/ui/typography'
 import { DiscoverySearchBar } from '../components/discovery-search-bar'
 import { DiscoveryFilterBar } from '../components/discovery-filter-bar'
+import { DiscoveryHistoryPanel } from '../components/discovery-history-panel'
 import { DiscoveryResultsSection } from '../components/discovery-results-section'
 import { DiscoveryInitialState } from '../components/discovery-initial-state'
 import { DiscoveryImportDrawer } from '../components/discovery-import-drawer'
 import { DiscoverySkeletonGrid } from '../components/discovery-skeleton-grid'
 import { DiscoveryFloatingBar } from '../components/discovery-floating-bar'
-import { useDiscoverySearch } from '../hooks/use-discovery'
-import type {
-  DiscoveryItem,
-  DiscoveryResult,
-  PlatformType,
-  SortOrder,
-} from '../data/discovery.types'
+import { DiscoveryStatusCard } from '../components/discovery-status-card'
+import {
+  useCancelDiscoverySearch,
+  useCreateDiscoverySearch,
+  useDeleteDiscoverySearch,
+  useDiscoverySearchDetail,
+  useDiscoverySearches,
+} from '../hooks/use-discovery'
+import type { DiscoveryItem, PlatformType, SortOrder } from '../data/discovery.types'
+
+function filterAndSortItems(
+  items: DiscoveryItem[],
+  durationFilter: string,
+  minViews: number | null,
+  sortBy: SortOrder,
+): DiscoveryItem[] {
+  let list = [...items]
+
+  if (durationFilter === 'short') {
+    list = list.filter((i) => i.duration_seconds === null || (i.duration_seconds || 0) <= 30)
+  } else if (durationFilter === 'medium') {
+    list = list.filter(
+      (i) =>
+        i.duration_seconds === null ||
+        ((i.duration_seconds || 0) >= 30 && (i.duration_seconds || 0) <= 60),
+    )
+  } else if (durationFilter === 'long') {
+    list = list.filter((i) => i.duration_seconds === null || (i.duration_seconds || 0) >= 60)
+  }
+
+  if (minViews) {
+    list = list.filter((i) => i.view_count >= minViews)
+  }
+
+  if (sortBy === 'virality_score') {
+    list.sort((a, b) => b.virality_score - a.virality_score)
+  } else if (sortBy === 'view_count') {
+    list.sort((a, b) => b.view_count - a.view_count)
+  } else if (sortBy === 'engagement_rate') {
+    list.sort((a, b) => b.engagement_rate - a.engagement_rate)
+  } else if (sortBy === 'recent') {
+    list.sort((a, b) => (b.published_timestamp || 0) - (a.published_timestamp || 0))
+  }
+
+  return list
+}
 
 export function DiscoveryView() {
   const [query, setQuery] = useState('')
@@ -27,9 +67,21 @@ export function DiscoveryView() {
 
   const [selectedItems, setSelectedItems] = useState<DiscoveryItem[]>([])
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-  const [searchResults, setSearchResults] = useState<DiscoveryResult | null>(null)
+  const [activeSearchId, setActiveSearchId] = useState<string | null>(null)
 
-  const searchMutation = useDiscoverySearch()
+  const { data: searchHistory = [] } = useDiscoverySearches()
+  const { data: activeSearch, isLoading: isLoadingDetail } =
+    useDiscoverySearchDetail(activeSearchId)
+  const createSearchMutation = useCreateDiscoverySearch()
+  const cancelSearchMutation = useCancelDiscoverySearch()
+  const deleteSearchMutation = useDeleteDiscoverySearch()
+
+  useEffect(() => {
+    if (!activeSearchId && searchHistory.length > 0) {
+      const running = searchHistory.find((s) => s.status === 'SEARCHING' || s.status === 'QUEUED')
+      if (running) setActiveSearchId(running.id)
+    }
+  }, [searchHistory, activeSearchId])
 
   const handleSearch = async (searchQuery: string, searchPlatform: PlatformType) => {
     setQuery(searchQuery)
@@ -45,7 +97,7 @@ export function DiscoveryView() {
     } else if (durationFilter === 'long') minDur = 60
 
     try {
-      const res = await searchMutation.mutateAsync({
+      const summary = await createSearchMutation.mutateAsync({
         query: searchQuery,
         platform: searchPlatform,
         limit,
@@ -54,45 +106,22 @@ export function DiscoveryView() {
         max_duration_seconds: maxDur,
         sort_by: sortBy,
       })
-      setSearchResults(res)
+      setActiveSearchId(summary.id)
     } catch {
-      // Handled by toast
+      // Handled by mutation toast
     }
   }
 
-  const items = useMemo(() => searchResults?.items || [], [searchResults?.items])
+  const isMining =
+    activeSearch?.status === 'QUEUED' ||
+    activeSearch?.status === 'SEARCHING' ||
+    createSearchMutation.isPending
 
-  const filteredAndSortedItems = useMemo(() => {
-    let list = [...items]
-
-    if (durationFilter === 'short') {
-      list = list.filter((i) => i.duration_seconds === null || (i.duration_seconds || 0) <= 30)
-    } else if (durationFilter === 'medium') {
-      list = list.filter(
-        (i) =>
-          i.duration_seconds === null ||
-          ((i.duration_seconds || 0) >= 30 && (i.duration_seconds || 0) <= 60),
-      )
-    } else if (durationFilter === 'long') {
-      list = list.filter((i) => i.duration_seconds === null || (i.duration_seconds || 0) >= 60)
-    }
-
-    if (minViews) {
-      list = list.filter((i) => i.view_count >= minViews)
-    }
-
-    if (sortBy === 'virality_score') {
-      list.sort((a, b) => b.virality_score - a.virality_score)
-    } else if (sortBy === 'view_count') {
-      list.sort((a, b) => b.view_count - a.view_count)
-    } else if (sortBy === 'engagement_rate') {
-      list.sort((a, b) => b.engagement_rate - a.engagement_rate)
-    } else if (sortBy === 'recent') {
-      list.sort((a, b) => (b.published_timestamp || 0) - (a.published_timestamp || 0))
-    }
-
-    return list
-  }, [items, durationFilter, minViews, sortBy])
+  const items = useMemo(() => activeSearch?.items || [], [activeSearch?.items])
+  const filteredAndSortedItems = useMemo(
+    () => filterAndSortItems(items, durationFilter, minViews, sortBy),
+    [items, durationFilter, minViews, sortBy],
+  )
 
   const handleToggleSelect = (item: DiscoveryItem) => {
     setSelectedItems((prev) =>
@@ -126,20 +155,44 @@ export function DiscoveryView() {
             </Badge>
           </div>
           <Typography variant="muted">
-            Minerador de vídeos virais e tendências com cálculo em tempo real de Viral Score e
-            engajamento.
+            Minerador assíncrono de vídeos virais e tendências com cálculo em tempo real de Viral
+            Score.
           </Typography>
         </div>
       </div>
 
       <DiscoverySearchBar
         onSearch={handleSearch}
-        isLoading={searchMutation.isPending}
+        isLoading={isMining}
         initialQuery={query}
         initialPlatform={platform}
       />
 
-      {searchResults && (
+      <DiscoveryHistoryPanel
+        searches={searchHistory}
+        activeSearchId={activeSearchId}
+        onSelectSearch={(id) => {
+          setActiveSearchId(id)
+          setSelectedItems([])
+        }}
+        onCancelSearch={(id) => cancelSearchMutation.mutate(id)}
+        onDeleteSearch={(id) => {
+          if (activeSearchId === id) setActiveSearchId(null)
+          deleteSearchMutation.mutate(id)
+        }}
+        isCancelling={cancelSearchMutation.isPending}
+        isDeleting={deleteSearchMutation.isPending}
+      />
+
+      <DiscoveryStatusCard
+        search={activeSearch}
+        fallbackQuery={query}
+        isMining={isMining}
+        onCancel={activeSearchId ? () => cancelSearchMutation.mutate(activeSearchId) : undefined}
+        isCancelling={cancelSearchMutation.isPending}
+      />
+
+      {activeSearch?.status === 'COMPLETED' && (
         <DiscoveryFilterBar
           sortBy={sortBy}
           onChangeSortBy={setSortBy}
@@ -152,19 +205,19 @@ export function DiscoveryView() {
         />
       )}
 
-      {searchMutation.isPending && <DiscoverySkeletonGrid />}
+      {isMining && <DiscoverySkeletonGrid />}
 
-      {!searchMutation.isPending && searchResults && (
+      {!isMining && activeSearch?.status === 'COMPLETED' && (
         <DiscoveryResultsSection
           items={filteredAndSortedItems}
           selectedItems={selectedItems}
-          query={searchResults.query}
+          query={activeSearch.query}
           onToggleSelect={handleToggleSelect}
           onSelectAll={handleSelectAll}
         />
       )}
 
-      {!searchMutation.isPending && !searchResults && <DiscoveryInitialState />}
+      {!isMining && !activeSearch && !isLoadingDetail && <DiscoveryInitialState />}
 
       <DiscoveryFloatingBar
         selectedCount={selectedItems.length}
@@ -176,6 +229,9 @@ export function DiscoveryView() {
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         selectedItems={selectedItems}
+        searchId={activeSearch?.id}
+        searchPlatform={activeSearch?.platform}
+        searchQuery={activeSearch?.query}
       />
     </div>
   )

@@ -128,3 +128,23 @@ _Avoid_: SystemStats, DeviceProbe, GpuMonitor
 Uploaded visual and typographic brand artifacts (transparent PNG logo, licensed TTF/OTF subtitle fonts) utilized across the rendering and burn-in pipelines.
 _Avoid_: MediaAsset, CustomFile, SubtitleFont
 
+## Content Discovery & Mining
+
+**DiscoverySearch**:
+The persistent domain aggregate representing an asynchronous video exploration query across social platforms (TikTok, Instagram, YouTube), containing search query parameters, lifecycle status (`QUEUED`, `SEARCHING`, `COMPLETED`, `FAILED`, `CANCELLED`), execution telemetry, and the ranked collection of discovered media items.
+_Avoid_: DiscoveryJob, SearchRun, ScrapeSession, DiscoveryTask
+
+**DiscoveredVideo**:
+An individual video candidate identified during a DiscoverySearch, capturing source URL, author handle, view/like/comment counts, calculated `viral_score`, and import eligibility.
+_Avoid_: SearchHit, ScrapedVideo, VideoProspect, CandidateItem
+
+**DiscoveryWorker**:
+The background task queue and concurrency orchestrator in the backend responsible for consuming pending DiscoverySearches, enforcing platform rate limits, and safely capturing media metadata without blocking web requests.
+_Avoid_: ScraperDaemon, SearchQueueManager, MinerProcess
+
+**ImportProvenance**:
+The audit and deduplication record linking an imported `ViralItem` back to the original `DiscoverySearch` and source platform from which it was mined.
+_Avoid_: SourceLink, OriginReference, IngestionTracker
+
+
+

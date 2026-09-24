@@ -156,6 +156,15 @@ async def lifespan(app: FastAPI):
     # Failures are non-fatal — smartcut has an FFmpeg fallback path.
     from clippyme.integrations.auto_editor_updater import background_updater_loop
     ae_updater_task = asyncio.create_task(background_updater_loop())
+    # Startup recovery and background tasks for async discovery worker
+    from clippyme.domain.discovery.worker import get_discovery_worker
+    discovery_worker = get_discovery_worker()
+    try:
+        await discovery_worker.recover_on_startup()
+    except Exception:
+        logger.exception("Discovery worker startup recovery failed")
+    discovery_task = asyncio.create_task(discovery_worker.run())
+
     # Bring back every monitor that was still marked resume_on_start when the
     # process last went down (durable auto-resume). Never fatal to startup —
     # a per-monitor failure stays visible via its status() instead.
@@ -171,10 +180,17 @@ async def lifespan(app: FastAPI):
         await live_monitor.shutdown()
     except Exception:
         logger.exception("live monitor failed to stop cleanly")
+
+    # Stop discovery worker
+    try:
+        await discovery_worker.stop()
+    except Exception:
+        logger.exception("discovery worker failed to stop cleanly")
+
     # Cancel ALL background tasks on shutdown — not just the updater. Leaving
     # the worker/cleanup loops pending blocks uvicorn's graceful exit and logs
     # "Task was destroyed but it is pending!" tracebacks.
-    _bg_tasks = (worker_task, cleanup_task, ae_updater_task)
+    _bg_tasks = (worker_task, cleanup_task, ae_updater_task, discovery_task)
     for _t in _bg_tasks:
         _t.cancel()
     for _t in _bg_tasks:

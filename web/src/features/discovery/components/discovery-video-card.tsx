@@ -61,13 +61,24 @@ export function DiscoveryVideoCard({ item, isSelected, onToggleSelect }: Discove
             className="absolute top-2 left-2 right-2 flex items-center justify-between gap-1.5 pointer-events-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-black/60 backdrop-blur-md rounded-md p-1 border border-white/20 flex items-center justify-center shadow-xs">
-              <Checkbox
-                checked={isSelected}
-                onCheckedChange={() => onToggleSelect(item)}
-                aria-label={`Selecionar vídeo ${item.id}`}
-                className="size-4 border-white/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-              />
+            <div className="flex items-center gap-1.5">
+              <div className="bg-black/60 backdrop-blur-md rounded-md p-1 border border-white/20 flex items-center justify-center shadow-xs">
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={() => onToggleSelect(item)}
+                  aria-label={`Selecionar vídeo ${item.id}`}
+                  className="size-4 border-white/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                />
+              </div>
+
+              {item.already_imported && (
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] px-1.5 py-0 h-5 bg-emerald-500/80 text-white font-semibold backdrop-blur-md border border-white/20 shadow-xs"
+                >
+                  {item.imported_batch_id ? `Já no Lote #${item.imported_batch_id}` : 'Já no Lote'}
+                </Badge>
+              )}
             </div>
 
             <Badge

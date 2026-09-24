@@ -24,19 +24,25 @@ import { useCreateBatch } from '@/features/viral-studio/hooks/use-create-batch'
 import { useLocalAIModels } from '@/features/viral-studio/hooks/use-local-ai-models'
 import { DiscoveryBrandPicker } from './discovery-brand-picker'
 import { DiscoveryStrategyPicker } from './discovery-strategy-picker'
-import type { DiscoveryItem } from '../data/discovery.types'
+import type { DiscoveryItem, PlatformType } from '../data/discovery.types'
 import type { VisualTemplate } from '@/features/viral-studio/data/batch.types'
 
 export interface DiscoveryImportDrawerProps {
   isOpen: boolean
   onClose: () => void
   selectedItems: DiscoveryItem[]
+  searchId?: string | null
+  searchPlatform?: PlatformType
+  searchQuery?: string
 }
 
 export function DiscoveryImportDrawer({
   isOpen,
   onClose,
   selectedItems,
+  searchId,
+  searchPlatform,
+  searchQuery,
 }: DiscoveryImportDrawerProps) {
   const navigate = useNavigate()
   const { data: brandsData } = useBrands()
@@ -89,6 +95,17 @@ export function DiscoveryImportDrawer({
         items: selectedItems.map((item) => ({
           source_url: item.url,
           manual_headline: item.title ? item.title.slice(0, 120) : undefined,
+          provenance:
+            item.provenance ||
+            (searchId
+              ? {
+                  search_id: searchId,
+                  platform: searchPlatform || item.platform,
+                  query: searchQuery || '',
+                  discovered_item_id: item.id,
+                  virality_score: item.virality_score,
+                }
+              : undefined),
         })),
       })
 

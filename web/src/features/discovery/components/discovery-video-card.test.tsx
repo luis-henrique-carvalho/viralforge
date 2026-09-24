@@ -43,4 +43,39 @@ describe('DiscoveryVideoCard', () => {
 
     expect(screen.getByText(item.title)).toBeInTheDocument()
   })
+
+  it('renders already imported badge with and without batch id', () => {
+    const handleToggle = vi.fn()
+    const itemWithBatch = {
+      ...mockDiscoveryItems[0],
+      already_imported: true,
+      imported_batch_id: 'batch-99',
+    }
+
+    const { rerender } = render(
+      <DiscoveryVideoCard
+        item={itemWithBatch}
+        isSelected={false}
+        onToggleSelect={handleToggle}
+      />,
+    )
+
+    expect(screen.getByText('Já no Lote #batch-99')).toBeInTheDocument()
+
+    const itemWithoutBatch = {
+      ...mockDiscoveryItems[0],
+      already_imported: true,
+      imported_batch_id: undefined,
+    }
+
+    rerender(
+      <DiscoveryVideoCard
+        item={itemWithoutBatch}
+        isSelected={false}
+        onToggleSelect={handleToggle}
+      />,
+    )
+
+    expect(screen.getByText('Já no Lote')).toBeInTheDocument()
+  })
 })

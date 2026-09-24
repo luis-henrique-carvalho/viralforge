@@ -886,6 +886,7 @@ def create_batch(batch: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
             item["template_id"] = item.get("template_id") or template_id
             item_model = item.get("model") or data.get("model")
             item["model"] = str(item_model).strip() if item_model and str(item_model).strip() else None
+            item.setdefault("provenance", item.get("provenance"))
             item.setdefault("status", "PENDING")
             item.setdefault("source_path", None)
             item.setdefault("rendered_path", None)
@@ -1009,6 +1010,7 @@ def update_item(item_id: str, updates: Union[Dict[str, Any], Any]) -> Dict[str, 
                             "logs",
                             "publication_records",
                             "model",
+                            "provenance",
                         ):
                             item[k] = v
                     item["updated_at"] = _utcnow_iso()
