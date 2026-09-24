@@ -17,6 +17,7 @@ import os
 import re
 import subprocess
 import tempfile
+from io import BytesIO
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
@@ -37,6 +38,100 @@ if not os.path.isdir(FONTS_DIR):
     _cwd_fallback = os.path.abspath("fonts")
     if os.path.isdir(_cwd_fallback):
         FONTS_DIR = _cwd_fallback
+
+_EMOJI_CACHE_DIR = os.path.join(_REPO_ROOT, "data", "cache", "emojis")
+
+try:
+    from pilmoji.source import Twemoji
+
+    class _CachedTwemojiSource(Twemoji):
+        """Local file-cached Twemoji source for fast, offline-resilient emoji rendering."""
+
+        def get_emoji(self, emoji_str: str) -> Optional[BytesIO]:
+            os.makedirs(_EMOJI_CACHE_DIR, exist_ok=True)
+            code = "-".join(f"{ord(c):x}" for c in emoji_str)
+            filepath = os.path.join(_EMOJI_CACHE_DIR, f"twemoji_{code}.png")
+            if os.path.isfile(filepath):
+                try:
+                    with open(filepath, "rb") as f:
+                        return BytesIO(f.read())
+                except Exception:
+                    pass
+            try:
+                bio = super().get_emoji(emoji_str)
+                if bio:
+                    data = bio.getvalue()
+                    with open(filepath, "wb") as f:
+                        f.write(data)
+                    return BytesIO(data)
+            except Exception as exc:
+                logger.debug("Failed to fetch emoji %s from CDN: %s", emoji_str, exc)
+            return None
+except Exception:
+    class _CachedTwemojiSource:  # type: ignore
+        def get_emoji(self, emoji_str: str) -> Optional[BytesIO]:
+            return None
+
+
+_cached_emoji_source: Any = None
+
+
+def _get_emoji_source() -> Any:
+    global _cached_emoji_source
+    if _cached_emoji_source is None:
+        _cached_emoji_source = _CachedTwemojiSource()
+    return _cached_emoji_source
+
+
+def _measure_text_width(
+    text: str,
+    font: ImageFont.ImageFont,
+    draw: Optional[ImageDraw.ImageDraw] = None,
+) -> int:
+    """Measure exact width of text line taking both typography and emojis into account."""
+    if not text:
+        return 0
+    try:
+        from pilmoji import Pilmoji
+        source = _get_emoji_source()
+        if source:
+            dummy = Image.new("RGBA", (1, 1))
+            with Pilmoji(dummy, source=source) as p:
+                w, _ = p.getsize(text, font=font)
+                return int(w)
+    except Exception:
+        pass
+
+    if draw is None:
+        dummy = Image.new("RGBA", (1, 1))
+        draw = ImageDraw.Draw(dummy)
+    bbox = draw.textbbox((0, 0), text, font=font)
+    return int(bbox[2] - bbox[0])
+
+
+def _draw_text_with_emojis(
+    img: Image.Image,
+    xy: Tuple[int, int],
+    text: str,
+    font: ImageFont.ImageFont,
+    fill: Union[Tuple[int, int, int, int], Tuple[int, int, int]],
+) -> None:
+    """Draw text with full color emoji support and fallback to standard Pillow text."""
+    if not text:
+        return
+    try:
+        from pilmoji import Pilmoji
+        source = _get_emoji_source()
+        if source:
+            with Pilmoji(img, source=source) as pilmoji:
+                pilmoji.text(xy, text, fill=fill, font=font)
+                return
+    except Exception as exc:
+        logger.debug("Pilmoji draw fallback to draw.text: %s", exc)
+
+    draw = ImageDraw.Draw(img)
+    draw.text(xy, text, font=font, fill=fill)
+
 
 DEFAULT_HEADLINE_FONT = "Montserrat-ExtraBold.ttf"
 DEFAULT_BRAND_FONT = "Montserrat-ExtraBold.ttf"
@@ -178,8 +273,7 @@ def wrap_and_fit_headline(
 
         for word in words:
             test_line = " ".join(current_line + [word])
-            bbox = draw.textbbox((0, 0), test_line, font=font)
-            line_w = bbox[2] - bbox[0]
+            line_w = _measure_text_width(test_line, font=font, draw=draw)
 
             if line_w <= max_w:
                 current_line.append(word)
@@ -187,8 +281,8 @@ def wrap_and_fit_headline(
                 if current_line:
                     lines.append(" ".join(current_line))
                     current_line = [word]
-                    word_bbox = draw.textbbox((0, 0), word, font=font)
-                    if (word_bbox[2] - word_bbox[0]) > max_w:
+                    word_w = _measure_text_width(word, font=font, draw=draw)
+                    if word_w > max_w:
                         has_overflow_word = True
                 else:
                     # Single word is wider than max_w
@@ -213,7 +307,7 @@ def wrap_and_fit_headline(
         trimmed_lines = best_lines[: max_l - 1]
         overflow_words = " ".join(best_lines[max_l - 1 :])
         truncated = overflow_words
-        while truncated and (draw.textbbox((0, 0), f"{truncated}...", font=font)[2] - draw.textbbox((0, 0), f"{truncated}...", font=font)[0]) > max_w:
+        while truncated and _measure_text_width(f"{truncated}...", font=font, draw=draw) > max_w:
             parts = truncated.split()
             if len(parts) > 1:
                 truncated = " ".join(parts[:-1])
@@ -225,10 +319,10 @@ def wrap_and_fit_headline(
     # Ensure every single line is bounded within max_w
     bounded_lines: List[str] = []
     for line in best_lines:
-        line_w = draw.textbbox((0, 0), line, font=font)[2] - draw.textbbox((0, 0), line, font=font)[0]
+        line_w = _measure_text_width(line, font=font, draw=draw)
         if line_w > max_w:
             t = line
-            while t and (draw.textbbox((0, 0), f"{t}...", font=font)[2] - draw.textbbox((0, 0), f"{t}...", font=font)[0]) > max_w:
+            while t and _measure_text_width(f"{t}...", font=font, draw=draw) > max_w:
                 t = t[:-1].rstrip("\u200d\ufe0f ")
             bounded_lines.append(f"{t}..." if t else "...")
         else:
@@ -606,19 +700,19 @@ def generate_header_overlay(
         if brand_alignment == "center":
             name_y = (avatar_bottom + 12) if avatar_enabled else avatar_y
             if brand_name:
+                nw = _measure_text_width(brand_name, font=name_font, draw=draw)
                 t_bbox = draw.textbbox((0, 0), brand_name, font=name_font)
-                nw = t_bbox[2] - t_bbox[0]
                 nx = (canvas_w - nw) // 2
-                draw.text((nx - t_bbox[0], name_y - t_bbox[1]), brand_name, font=name_font, fill=brand_name_color)
+                _draw_text_with_emojis(img, (nx, name_y), brand_name, font=name_font, fill=brand_name_color)
                 header_bottom = max(header_bottom, name_y + (t_bbox[3] - t_bbox[1]))
 
             if clean_handle:
                 display_handle = f"@{clean_handle}"
+                hw = _measure_text_width(display_handle, font=handle_font, draw=draw)
                 h_bbox = draw.textbbox((0, 0), display_handle, font=handle_font)
-                hw = h_bbox[2] - h_bbox[0]
                 hx = (canvas_w - hw) // 2
                 hy = (name_y + brand_name_font_size + 6) if brand_name else name_y
-                draw.text((hx - h_bbox[0], hy - h_bbox[1]), display_handle, font=handle_font, fill=handle_color)
+                _draw_text_with_emojis(img, (hx, hy), display_handle, font=handle_font, fill=handle_color)
                 header_bottom = max(header_bottom, hy + (h_bbox[3] - h_bbox[1]))
         else:
             text_x = (avatar_x + avatar_size + 24) if avatar_enabled else avatar_x
@@ -627,24 +721,24 @@ def generate_header_overlay(
 
             if brand_name:
                 display_name = brand_name
-                if (draw.textbbox((0, 0), display_name, font=name_font)[2] - draw.textbbox((0, 0), display_name, font=name_font)[0]) > max_text_w:
-                    while display_name and (draw.textbbox((0, 0), f"{display_name}...", font=name_font)[2] - draw.textbbox((0, 0), f"{display_name}...", font=name_font)[0]) > max_text_w:
+                if _measure_text_width(display_name, font=name_font, draw=draw) > max_text_w:
+                    while display_name and _measure_text_width(f"{display_name}...", font=name_font, draw=draw) > max_text_w:
                         display_name = display_name[:-1].rstrip()
                     display_name = f"{display_name}..." if display_name else "..."
 
-                draw.text((text_x, name_y), display_name, font=name_font, fill=brand_name_color)
+                _draw_text_with_emojis(img, (text_x, name_y), display_name, font=name_font, fill=brand_name_color)
                 header_bottom = max(avatar_bottom, name_y + brand_name_font_size)
 
             if clean_handle:
                 display_handle = f"@{clean_handle}"
                 handle_y = (name_y + brand_name_font_size + 8) if brand_name else name_y
 
-                if (draw.textbbox((0, 0), display_handle, font=handle_font)[2] - draw.textbbox((0, 0), display_handle, font=handle_font)[0]) > max_text_w:
-                    while clean_handle and (draw.textbbox((0, 0), f"@{clean_handle}...", font=handle_font)[2] - draw.textbbox((0, 0), f"@{clean_handle}...", font=handle_font)[0]) > max_text_w:
+                if _measure_text_width(display_handle, font=handle_font, draw=draw) > max_text_w:
+                    while clean_handle and _measure_text_width(f"@{clean_handle}...", font=handle_font, draw=draw) > max_text_w:
                         clean_handle = clean_handle[:-1].rstrip()
                     display_handle = f"@{clean_handle}..." if clean_handle else "..."
 
-                draw.text((text_x, handle_y), display_handle, font=handle_font, fill=handle_color)
+                _draw_text_with_emojis(img, (text_x, handle_y), display_handle, font=handle_font, fill=handle_color)
                 header_bottom = max(header_bottom, handle_y + handle_font_size)
 
     # Top Badge / Niche Tag
@@ -657,8 +751,9 @@ def generate_header_overlay(
 
     if badge_enabled and custom_badge_text:
         badge_font = _resolve_font(DEFAULT_HEADLINE_FONT, 24)
+        bw_text = _measure_text_width(custom_badge_text, font=badge_font, draw=draw)
         t_bbox = draw.textbbox((0, 0), custom_badge_text, font=badge_font)
-        bw = (t_bbox[2] - t_bbox[0]) + 36
+        bw = bw_text + 36
         bh = max(34, (t_bbox[3] - t_bbox[1]) + 16)
         bx = (canvas_w - bw) // 2
         draw.rounded_rectangle(
@@ -666,8 +761,11 @@ def generate_header_overlay(
             radius=8,
             fill=badge_bg_color,
         )
-        draw.text(
-            (bx + (bw - (t_bbox[2] - t_bbox[0])) // 2 - t_bbox[0], badge_y + (bh - (t_bbox[3] - t_bbox[1])) // 2 - t_bbox[1]),
+        badge_text_x = bx + (bw - bw_text) // 2
+        badge_text_y = badge_y + (bh - (t_bbox[3] - t_bbox[1])) // 2 - t_bbox[1]
+        _draw_text_with_emojis(
+            img,
+            (badge_text_x, badge_text_y),
             custom_badge_text,
             font=badge_font,
             fill=badge_text_color,
@@ -706,9 +804,16 @@ def generate_header_overlay(
 
         line_height = draw.textbbox((0, 0), "Ajgq!#1", font=hl_font)[3] - draw.textbbox((0, 0), "Ajgq!#1", font=hl_font)[1]
         line_spacing = int(line_height * 0.20)
+        headline_alignment = str(_extract_field(template, "headline_alignment", "center") or "center").lower()
 
         for line in headline_lines:
-            draw.text((headline_margin_x, curr_y), line, font=hl_font, fill=headline_color)
+            if headline_alignment == "left":
+                line_x = headline_margin_x
+            else:
+                line_w = _measure_text_width(line, font=hl_font, draw=draw)
+                line_x = max(0, (canvas_w - line_w) // 2)
+
+            _draw_text_with_emojis(img, (line_x, curr_y), line, font=hl_font, fill=headline_color)
             curr_y += line_height + line_spacing
 
         headline_bottom = curr_y
@@ -773,7 +878,8 @@ def generate_header_overlay(
         extra_h = max(30, int(_extract_field(template, "extra_image_height", 340)))
         extra_w_pct = max(20, min(100, int(_extract_field(template, "extra_image_width", 92))))
         extra_w = int(canvas_w * (extra_w_pct / 100.0))
-        extra_x = (canvas_w - extra_w) // 2
+        extra_x_conf = _extract_field(template, "extra_image_x")
+        extra_x = int(extra_x_conf) if extra_x_conf is not None else ((canvas_w - extra_w) // 2)
         extra_r = max(0, int(_extract_field(template, "extra_image_radius", 16)))
 
         if extra_type in ("custom_upload", "custom", "image"):
@@ -812,44 +918,48 @@ def generate_header_overlay(
                 outline=card_border,
                 width=2,
             )
-            title_font = _resolve_font(DEFAULT_HEADLINE_FONT, 28)
-            body_font = _resolve_font(DEFAULT_HANDLE_FONT, 22)
+            title_font = _resolve_font(DEFAULT_HEADLINE_FONT, 24)
+            body_font = _resolve_font(DEFAULT_HANDLE_FONT, 18)
 
             if custom_title and str(custom_title).strip():
                 c_title = str(custom_title).strip()
             elif extra_type == "comment":
-                c_title = "O QUE VOCÊ ACHOU?"
+                c_title = "💬 DEIXE SEU COMENTÁRIO"
             elif extra_type == "follow":
-                c_title = "SIGA O PERFIL PARA MAIS"
+                c_title = "🔔 SIGA O PERFIL PARA MAIS"
             elif extra_type == "deal":
-                c_title = "OFERTA DISPONÍVEL"
+                c_title = "🛒 CONFIRA O LINK NA BIO"
             else:
-                c_title = "FATO CURIOSO"
+                c_title = "💡 FATO CURIOSO DIÁRIO"
 
             if custom_sub and str(custom_sub).strip():
                 c_sub = str(custom_sub).strip()
             elif extra_type == "comment":
-                c_sub = "Deixe seu comentário e compartilhe sua opinião!"
-            elif extra_type == "follow":
                 c_sub = "Participe do debate e compartilhe com seus amigos!"
+            elif extra_type == "follow":
+                c_sub = "Não perca os próximos conteúdos exclusivos!"
             elif extra_type == "deal":
-                c_sub = "Confira o link na bio ou comente QUERO!"
+                c_sub = "Aproveite as ofertas antes que esgotem!"
             else:
                 c_sub = "Salve este vídeo para rever quando quiser!"
 
+            tw = _measure_text_width(c_title, font=title_font, draw=draw)
+            sw = _measure_text_width(c_sub, font=body_font, draw=draw)
             t_bbox = draw.textbbox((0, 0), c_title, font=title_font)
             s_bbox = draw.textbbox((0, 0), c_sub, font=body_font)
             content_h = (t_bbox[3] - t_bbox[1]) + 12 + (s_bbox[3] - s_bbox[1])
             start_cy = extra_y + (extra_h - content_h) // 2
 
-            draw.text(
-                (extra_x + (extra_w - (t_bbox[2] - t_bbox[0])) // 2 - t_bbox[0], start_cy - t_bbox[1]),
+            _draw_text_with_emojis(
+                img,
+                (extra_x + (extra_w - tw) // 2, start_cy),
                 c_title,
                 font=title_font,
                 fill=card_title_col,
             )
-            draw.text(
-                (extra_x + (extra_w - (s_bbox[2] - s_bbox[0])) // 2 - s_bbox[0], start_cy + (t_bbox[3] - t_bbox[1]) + 12 - s_bbox[1]),
+            _draw_text_with_emojis(
+                img,
+                (extra_x + (extra_w - sw) // 2, start_cy + (t_bbox[3] - t_bbox[1]) + 12),
                 c_sub,
                 font=body_font,
                 fill=card_sub_col,
@@ -1049,7 +1159,7 @@ def render_viral_video(
     try:
         canvas_w = int(_extract_field(template, "width", 1080))
         canvas_h = int(_extract_field(template, "height", 1920))
-        bg_color = str(_extract_field(template, "background_color", "#FFFFFF"))
+        bg_color = str(_extract_field(template, "background_color", "#0D1117") or "#0D1117")
         video_fit = str(_extract_field(template, "video_fit", "contain"))
 
         video_placement = calculate_video_placement(

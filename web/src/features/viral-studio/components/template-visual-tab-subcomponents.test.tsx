@@ -41,6 +41,7 @@ const mockTemplate: VisualTemplate = {
   headline_font: 'Montserrat-ExtraBold',
   headline_font_size: 48,
   headline_color: '#FFFFFF',
+  headline_alignment: 'center',
   headline_y: 130,
   headline_max_lines: 3,
   headline_margin_x: 60,
@@ -142,6 +143,12 @@ describe('TemplateVisualTab subcomponents', () => {
       fireEvent.change(colorPickers[0], { target: { value: '#FBBF24' } })
       expect(onChange).toHaveBeenCalledWith('headline_color', '#FBBF24')
     }
+
+    fireEvent.click(screen.getByRole('button', { name: /Esquerda/i }))
+    expect(onChange).toHaveBeenCalledWith('headline_alignment', 'left')
+
+    fireEvent.click(screen.getByRole('button', { name: /Centro/i }))
+    expect(onChange).toHaveBeenCalledWith('headline_alignment', 'center')
 
     const sliders = screen.getAllByRole('slider')
     if (sliders[0]) {

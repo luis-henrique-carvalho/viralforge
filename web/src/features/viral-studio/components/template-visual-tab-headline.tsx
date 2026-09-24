@@ -1,4 +1,5 @@
-import { Type } from 'lucide-react'
+import { Type, AlignLeft, AlignCenter } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -73,6 +74,32 @@ export function TemplateVisualTabHeadline({ template, onChange }: TemplateVisual
                   className="h-8 text-xs font-mono"
                 />
               </div>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Alinhamento</Label>
+            <div className="flex gap-1.5">
+              <Button
+                type="button"
+                variant={template.headline_alignment === 'left' ? 'default' : 'outline'}
+                size="sm"
+                className="flex-1 h-8 text-xs gap-1.5"
+                onClick={() => onChange('headline_alignment', 'left')}
+              >
+                <AlignLeft className="h-3.5 w-3.5" />
+                Esquerda
+              </Button>
+              <Button
+                type="button"
+                variant={template.headline_alignment !== 'left' ? 'default' : 'outline'}
+                size="sm"
+                className="flex-1 h-8 text-xs gap-1.5"
+                onClick={() => onChange('headline_alignment', 'center')}
+              >
+                <AlignCenter className="h-3.5 w-3.5" />
+                Centro
+              </Button>
             </div>
           </div>
 

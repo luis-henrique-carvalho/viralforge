@@ -56,7 +56,7 @@ export function KonvaHeadlineGroup({
         x={0}
         y={0}
         width={CANVAS_WIDTH - 2 * template.headline_margin_x}
-        align="center"
+        align={template.headline_alignment || 'center'}
         fontSize={template.headline_font_size}
         fontStyle="bold"
         fontFamily={getFontFamily(template.headline_font)}

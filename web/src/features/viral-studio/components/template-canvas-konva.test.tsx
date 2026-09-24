@@ -91,6 +91,7 @@ const mockTemplate: VisualTemplate = {
   headline_font: 'Montserrat-ExtraBold',
   headline_font_size: 48,
   headline_color: '#FFFFFF',
+  headline_alignment: 'center',
   headline_y: 130,
   headline_max_lines: 3,
   headline_margin_x: 60,
