@@ -1,9 +1,9 @@
-# Especificação Técnica — Publicação Inteligente & Fila Contínua (Zernio)
+# Especificação Técnica — Publicação Inteligente & Fila Contínua (Zernio V1 / Histórico)
 
 > **Documento de Engenharia & Arquitetura de Produto**  
 > **Módulo:** Viral Studio / Publicação & Redes Sociais  
-> **Status:** Aprovado para implementação  
-> **Integração Externa:** [Zernio API](https://zernio.com) (TikTok, Instagram Reels, YouTube Shorts)
+> **Status:** Histórico (V1 com Zernio). Para a arquitetura de produção multimarca atual com **Postiz**, consulte: [`docs/integracao-publicacao-postiz.md`](integracao-publicacao-postiz.md).  
+> **Integração Externa Original:** [Zernio API](https://zernio.com) (TikTok, Instagram Reels, YouTube Shorts)
 
 ---
 

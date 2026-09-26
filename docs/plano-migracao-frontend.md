@@ -129,6 +129,28 @@ web/
 │   │   │       ├── batch.schema.ts          # Schemas Zod de validação
 │   │   │       └── batch.types.ts           # Tipos TypeScript inferidos
 │   │   │
+│   │   ├── brands/                   # 🏷️ GESTÃO DE MARCAS & WORKSPACE
+│   │   │   ├── views/
+│   │   │   │   ├── brands-view.tsx          # Catálogo global de marcas (/viral-studio/brands)
+│   │   │   │   └── brand-workspace-view.tsx # Workspace da marca (/viral-studio/brands/:brandId)
+│   │   │   ├── components/
+│   │   │   │   ├── brand-card.tsx           # Card da marca com métricas e atalhos
+│   │   │   │   ├── create-brand-dialog.tsx  # Diálogo de criação inicial de marca
+│   │   │   │   ├── brand-channels-tab.tsx   # Aba 1: Canais conectados (Postiz)
+│   │   │   │   ├── brand-videos-tab.tsx     # Aba 2: Vídeos da marca & auto-schedule
+│   │   │   │   ├── brand-schedule-tab.tsx   # Aba 3: Agendamentos & timeline Postiz
+│   │   │   │   └── brand-settings-tab.tsx   # Aba 4: Edição soberana dos dados da marca
+│   │   │   ├── hooks/
+│   │   │   │   ├── use-brands.ts            # Query de listagem de marcas
+│   │   │   │   ├── use-brand-workspace.ts   # Query agregada de canais, vídeos e fila
+│   │   │   │   ├── use-auto-schedule.ts     # Mutation para auto-agendar no próximo slot
+│   │   │   │   └── use-update-brand.ts      # Mutation para atualizar metadados na Aba 4
+│   │   │   ├── services/
+│   │   │   │   └── brands.api.ts            # Endpoints: /api/viral-studio/brands/*
+│   │   │   └── data/
+│   │   │       ├── brand.schema.ts          # Schemas Zod de validação
+│   │   │       └── brand.types.ts           # Tipos TypeScript inferidos
+│   │   │
 │   │   ├── viral-editor/             # ✂️ EDITOR DE CONTEÚDO E GANCHO VIRAL
 │   │   │   ├── views/
 │   │   │   │   └── viral-edit-dialog.tsx    # Modal orquestrador da edição (substitui o arquivo de 1000 linhas)
@@ -196,7 +218,10 @@ web/
 │   │   ├── _app/
 │   │   │   ├── viral-studio/
 │   │   │   │   ├── index.tsx         # Rota /viral-studio
-│   │   │   │   └── $batchId.tsx      # Rota /viral-studio/:batchId
+│   │   │   │   ├── $batchId.tsx      # Rota /viral-studio/:batchId
+│   │   │   │   └── brands/
+│   │   │   │       ├── index.tsx     # Rota /viral-studio/brands (Catálogo de Marcas)
+│   │   │   │       └── $brandId.tsx  # Rota /viral-studio/brands/:brandId (Workspace da Marca)
 │   │   │   ├── discovery.tsx         # Rota /discovery
 │   │   │   ├── clips.tsx             # Rota /clips
 │   │   │   └── settings.tsx          # Rota /settings

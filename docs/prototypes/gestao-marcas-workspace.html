@@ -1,0 +1,2302 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ViralForge — Workspace da Marca (Fidelidade Visual 100%)</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+    /* ===================================================================== */
+    /* VIRALFORGE EXACT DESIGN TOKENS (from web/src/styles/index.css)        */
+    /* ===================================================================== */
+    :root, .dark {
+      --background: oklch(0.1457 0.0043 285.8570);
+      --foreground: oklch(0.9803 0.0053 286.3017);
+      --card: oklch(0.1840 0.0081 285.5768);
+      --card-foreground: oklch(0.9803 0.0053 286.3017);
+      --popover: oklch(0.1840 0.0081 285.5768);
+      --popover-foreground: oklch(0.9803 0.0053 286.3017);
+      --primary: oklch(0.6449 0.2024 288.1131);
+      --primary-foreground: oklch(1.0000 0 0);
+      --secondary: oklch(0.2434 0.0577 285.6789);
+      --secondary-foreground: oklch(0.8684 0.0704 292.0563);
+      --muted: oklch(0.2225 0.0194 284.7155);
+      --muted-foreground: oklch(0.7155 0.0288 285.6486);
+      --accent: oklch(0.2793 0.0598 283.1864);
+      --accent-foreground: oklch(0.8201 0.0997 293.7767);
+      --destructive: oklch(0.3958 0.1331 25.7230);
+      --destructive-foreground: oklch(0.9842 0.0034 247.8575);
+      --border: oklch(0.2897 0.0199 285.0881);
+      --input: oklch(0.2897 0.0199 285.0881);
+      --ring: oklch(0.6449 0.2024 288.1131);
+      --sidebar: oklch(0.1795 0.0082 285.5496);
+      --sidebar-foreground: oklch(0.9197 0.0040 286.3202);
+      --sidebar-primary: oklch(0.6449 0.2024 288.1131);
+      --sidebar-primary-foreground: oklch(1.0000 0 0);
+      --sidebar-accent: oklch(0.2434 0.0577 285.6789);
+      --sidebar-accent-foreground: oklch(0.8684 0.0704 292.0563);
+      --sidebar-border: oklch(0.2739 0.0055 286.0326);
+      --radius: 1.4rem;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--background);
+      color: var(--foreground);
+      letter-spacing: -0.01em;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Semantic color utility classes matching ViralForge Shadcn */
+    .bg-vf-bg { background-color: var(--background); }
+    .bg-vf-card { background-color: var(--card); }
+    .bg-vf-card-subtle { background-color: color-mix(in srgb, var(--card) 60%, transparent); }
+    .bg-vf-muted { background-color: var(--muted); }
+    .bg-vf-muted-subtle { background-color: color-mix(in srgb, var(--muted) 40%, transparent); }
+    .bg-vf-primary { background-color: var(--primary); }
+    .bg-vf-primary-subtle { background-color: color-mix(in srgb, var(--primary) 12%, transparent); }
+    .text-vf-primary { color: var(--primary); }
+    .text-vf-muted { color: var(--muted-foreground); }
+    .text-vf-fg { color: var(--foreground); }
+    .border-vf { border-color: var(--border); }
+    .border-vf-subtle { border-color: color-mix(in srgb, var(--border) 60%, transparent); }
+    .border-vf-primary { border-color: var(--primary); }
+    .border-vf-primary-subtle { border-color: color-mix(in srgb, var(--primary) 30%, transparent); }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--primary);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-row antialiased select-none">
+
+  <!-- ===================================================================== -->
+  <!-- 1. VIRALFORGE APP SIDEBAR (web/src/components/shared/app-sidebar.tsx) -->
+  <!-- ===================================================================== -->
+  <aside class="w-64 shrink-0 border-r border-vf bg-[var(--sidebar)] flex flex-col justify-between hidden md:flex min-h-screen">
+    <div>
+      <!-- Brand Header (h-16) -->
+      <div class="h-16 flex items-center px-4 border-b border-vf-subtle gap-3">
+        <div class="size-10 shrink-0 flex items-center justify-center rounded-xl bg-vf-primary text-white shadow-md shadow-purple-500/25">
+          <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+        </div>
+        <div class="leading-tight">
+          <span class="font-bold tracking-tight text-white text-base">Viral<span class="font-black text-vf-primary">Forge</span></span>
+          <span class="block font-mono text-[9px] uppercase tracking-widest text-vf-muted">AI Video Studio</span>
+        </div>
+      </div>
+
+      <!-- Navigation Menu -->
+      <nav class="p-3 space-y-1">
+        <div class="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-vf-muted">Studio Core</div>
+
+        <!-- Active Menu Item: Viral Studio -->
+        <a href="#viral-studio" class="flex items-center justify-between px-3 py-2.5 rounded-xl bg-vf-primary-subtle text-vf-primary font-medium text-xs border border-vf-primary-subtle transition">
+          <div class="flex items-center gap-2.5">
+            <svg class="size-4 text-vf-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+            <span class="font-semibold text-white">Viral Studio</span>
+          </div>
+          <span class="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-vf-primary text-white">CORE</span>
+        </a>
+
+        <!-- Perfis de Marca -->
+        <a href="javascript:void(0)" onclick="navigateToBrandsList()" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-vf-muted hover:text-white hover:bg-vf-muted-subtle text-xs transition">
+          <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+          <span>Perfis de Marca</span>
+        </a>
+
+        <!-- Descoberta -->
+        <a href="#discovery" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-vf-muted hover:text-white hover:bg-vf-muted-subtle text-xs transition">
+          <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16zm-1-11l3-1-1 3-3 1 1-3z"/></svg>
+          <span>Descoberta</span>
+        </a>
+
+        <!-- Cortes 9:16 -->
+        <a href="#clips" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-vf-muted hover:text-white hover:bg-vf-muted-subtle text-xs transition">
+          <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.242 4.242 3 3 0 004.242-4.242zm0-5.758a3 3 0 10-4.242-4.242 3 3 0 004.242 4.242z"/></svg>
+          <span>Cortes 9:16</span>
+        </a>
+
+        <!-- Configurações Globais -->
+        <a href="#settings" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-vf-muted hover:text-white hover:bg-vf-muted-subtle text-xs transition">
+          <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <span>Configurações</span>
+        </a>
+      </nav>
+    </div>
+
+    <!-- Sidebar Footer -->
+    <div class="p-3 border-t border-vf-subtle text-xs text-vf-muted">
+      <div class="flex items-center justify-between px-2 py-1">
+        <span>ViralForge v2.4</span>
+        <span class="font-mono text-emerald-400">● Online</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===================================================================== -->
+  <!-- 2. MAIN APP CONTENT AREA (with TopNav and Responsive Canvas)          -->
+  <!-- ===================================================================== -->
+  <div class="flex-1 flex flex-col min-w-0 bg-vf-bg overflow-y-auto">
+
+    <!-- TopNav (h-16, sticky, backdrop blur) -->
+    <header class="h-16 shrink-0 sticky top-0 z-40 border-b border-vf bg-[var(--card)]/75 backdrop-blur-md px-6 flex items-center justify-between">
+      <!-- Breadcrumb matching ViralForge Web -->
+      <div class="flex items-center gap-2 text-xs">
+        <span class="text-vf-muted">Viral Studio</span>
+        <span class="text-vf-muted">/</span>
+        <a href="javascript:void(0)" id="breadcrumb-brands-link" onclick="navigateToBrandsList()" class="text-vf-muted hover:text-white transition cursor-pointer">Perfis de Marca</a>
+        <span id="breadcrumb-separator-brand" class="text-vf-muted">/</span>
+        <span id="breadcrumb-brand-name" class="font-semibold text-white">Achadinhos da Ju</span>
+      </div>
+
+      <!-- Right TopNav Controls: Brand Switcher + Health Badge -->
+      <div class="flex items-center gap-3">
+        <!-- Switch Brand Dropdown -->
+        <div class="flex items-center gap-2">
+          <label for="top-brand-select" class="text-xs text-vf-muted font-medium">Visualização:</label>
+          <select id="top-brand-select" onchange="switchBrand(this.value)" class="bg-vf-card border border-vf text-xs font-semibold text-white rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-vf-primary transition cursor-pointer">
+            <!-- Populated via JS -->
+          </select>
+        </div>
+
+        <!-- Health badge -->
+        <div class="flex items-center gap-1.5 bg-vf-muted-subtle border border-vf px-2.5 py-1 rounded-full text-[11px] font-mono text-emerald-400">
+          <svg class="size-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          <span>Port: OK</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Body Container -->
+    <main class="max-w-7xl w-full mx-auto p-6 sm:p-8 space-y-6">
+
+      <!-- =================================================================== -->
+      <!-- VIEW 1: BRAND WORKSPACE (Dedicated 4-Tab Workspace)                 -->
+      <!-- =================================================================== -->
+      <div id="view-brand-workspace" class="space-y-6">
+
+        <!-- =================================================================== -->
+        <!-- PAGE HEADER WITH BACK BUTTON & ACTIONS                             -->
+        <!-- =================================================================== -->
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex items-center gap-3">
+            <button onclick="navigateToBrandsList()" class="size-8 rounded-lg border border-vf flex items-center justify-center text-vf-muted hover:text-white hover:bg-vf-card transition" title="Voltar para a listagem de marcas">
+              <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            </button>
+            <div>
+              <div class="flex items-center gap-2">
+                <svg class="size-6 text-vf-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+                <h1 id="hero-brand-title" class="text-xl sm:text-2xl font-bold tracking-tight text-white">Achadinhos da Ju</h1>
+                <span id="hero-brand-handle" class="font-mono text-xs text-vf-primary font-medium bg-vf-primary-subtle px-2 py-0.5 rounded-full border border-vf-primary-subtle">@achadinhosdaju</span>
+              </div>
+            <p class="text-xs text-vf-muted mt-0.5">Workspace unificado da marca: canais conectados, acervo de vídeos e esteira de agendamento.</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button onclick="switchTab('settings')" class="px-3.5 py-2 rounded-xl border border-vf bg-vf-card hover:bg-vf-muted text-xs font-semibold text-white flex items-center gap-2 transition">
+            <svg class="size-3.5 text-vf-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            Configurações da Marca
+          </button>
+
+          <!-- Novo Lote Dropdown Menu -->
+          <div class="relative">
+            <button onclick="toggleNewBatchDropdown()" id="new-batch-dropdown-btn" class="px-4 py-2 rounded-xl bg-vf-primary hover:opacity-90 text-white text-xs font-bold shadow-md shadow-purple-900/30 flex items-center gap-2 transition">
+              <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              <span>Novo Lote de Vídeos</span>
+              <svg class="size-3 text-purple-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+
+            <!-- Dropdown Menu Content -->
+            <div id="new-batch-dropdown-menu" class="absolute right-0 mt-2 w-64 rounded-2xl border border-vf bg-vf-card p-1.5 shadow-2xl z-50 hidden animate-in fade-in zoom-in-95 duration-100">
+              <button onclick="openDiscoveryForBrand()" class="w-full text-left p-2.5 rounded-xl hover:bg-vf-muted text-xs transition flex items-start gap-2.5 group">
+                <div class="size-7 rounded-lg bg-vf-primary-subtle border border-vf-primary-subtle flex items-center justify-center text-vf-primary shrink-0 group-hover:bg-vf-primary group-hover:text-white transition">
+                  <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16zm-1-11l3-1-1 3-3 1 1-3z"/></svg>
+                </div>
+                <div>
+                  <div class="font-bold text-white">Minerar no Discovery</div>
+                  <div class="text-[11px] text-vf-muted">Minerar virais no nicho da marca no TikTok, Reels e Shorts</div>
+                </div>
+              </button>
+
+              <div class="h-px bg-vf-subtle my-1"></div>
+
+              <button onclick="openManualBatchModal()" class="w-full text-left p-2.5 rounded-xl hover:bg-vf-muted text-xs transition flex items-start gap-2.5 group">
+                <div class="size-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 group-hover:bg-emerald-500 group-hover:text-white transition">
+                  <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                </div>
+                <div>
+                  <div class="font-bold text-white">Inserir Links Manuais</div>
+                  <div class="text-[11px] text-vf-muted">Colar URLs diretas para renderizar com a identidade desta marca</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- =================================================================== -->
+      <!-- BRAND IDENTITY CARD (Clean, High-Level Overview)                    -->
+      <!-- =================================================================== -->
+      <div class="rounded-2xl border border-vf bg-vf-card/60 backdrop-blur-xs p-6 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div class="flex items-start sm:items-center gap-4">
+            <div class="relative">
+              <img id="brand-avatar-img" src="" class="size-16 rounded-2xl object-cover border border-vf shadow-inner bg-zinc-800">
+              <span class="absolute -bottom-1 -right-1 size-5 rounded-full bg-emerald-500 border-2 border-[var(--card)] flex items-center justify-center text-[10px] text-white font-bold">✓</span>
+            </div>
+            <div class="space-y-1.5">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="font-bold text-white text-base" id="brand-card-name">Achadinhos da Ju</span>
+                <span class="font-mono text-xs text-vf-muted" id="brand-card-id">ID: achadinhos-da-ju</span>
+                <span id="brand-active-prov-tag" class="font-mono text-[11px] px-2 py-0.5 rounded-full bg-vf-primary-subtle text-vf-primary border border-vf-primary-subtle">
+                  Motor Ativo: Postiz
+                </span>
+                <span id="brand-card-niche-tag" class="font-mono text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  Nicho: Achadinhos & Utilidades Domésticas
+                </span>
+              </div>
+              
+              <!-- CTA block styled matching brand-card.tsx -->
+              <div class="flex items-center gap-2 text-xs">
+                <span class="text-vf-muted flex items-center gap-1 font-medium shrink-0">
+                  <svg class="size-3.5 text-vf-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                  CTA:
+                </span>
+                <span id="brand-card-cta" class="line-clamp-1 rounded-md bg-vf-muted-subtle px-2 py-0.5 text-vf-fg font-normal border border-vf-subtle">
+                  "Confira os achadinhos no link da bio!"
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Template & Affiliate info -->
+          <div class="flex flex-col sm:flex-row sm:items-center gap-4 text-xs border-t md:border-t-0 md:border-l border-vf pt-3 md:pt-0 md:pl-6">
+            <div>
+              <span class="text-vf-muted block text-[11px]">Template Visual</span>
+              <span id="brand-card-template" class="font-mono font-semibold text-white flex items-center gap-1.5 mt-0.5">
+                <svg class="size-3.5 text-vf-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
+                classic-affiliate
+              </span>
+            </div>
+            <div>
+              <span class="text-vf-muted block text-[11px]">Link de Afiliado</span>
+              <a id="brand-card-affiliate" href="#" target="_blank" class="font-mono text-vf-primary hover:underline block truncate max-w-[180px] mt-0.5">
+                https://amzn.to/3achados
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- =================================================================== -->
+      <!-- 4 SHADCN TABS (Canais, Vídeos, Agenda, Configurações)               -->
+      <!-- =================================================================== -->
+      <div class="space-y-6">
+        <div class="inline-flex p-1 rounded-xl bg-vf-muted/50 border border-vf gap-1">
+          <button onclick="switchTab('channels')" id="tab-btn-channels" class="px-4 py-2 rounded-lg text-xs font-semibold text-vf-muted hover:text-white flex items-center gap-2 transition">
+            <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+            <span>1. Canais Sociais</span>
+            <span id="tab-badge-channels" class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-vf-card border border-vf text-vf-fg">0</span>
+          </button>
+
+          <button onclick="switchTab('videos')" id="tab-btn-videos" class="px-4 py-2 rounded-lg text-xs font-semibold bg-vf-card text-white shadow-sm flex items-center gap-2 transition">
+            <svg class="size-4 text-vf-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            <span>2. Vídeos da Marca</span>
+            <span id="tab-badge-videos" class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-vf-primary-subtle text-vf-primary font-bold">0</span>
+          </button>
+
+          <button onclick="switchTab('scheduled')" id="tab-btn-scheduled" class="px-4 py-2 rounded-lg text-xs font-semibold text-vf-muted hover:text-white flex items-center gap-2 transition">
+            <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            <span>3. Agenda & Fila</span>
+            <span id="tab-badge-scheduled" class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-vf-card border border-vf text-vf-fg">0</span>
+          </button>
+
+          <!-- TAB 4: CONFIGURAÇÕES DA MARCA & PROVEDOR -->
+          <button onclick="switchTab('settings')" id="tab-btn-settings" class="px-4 py-2 rounded-lg text-xs font-semibold text-vf-muted hover:text-white flex items-center gap-2 transition">
+            <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <span>4. Configurações</span>
+          </button>
+        </div>
+
+        <!-- =============================================================== -->
+        <!-- TAB 1: CANAIS SOCIAIS (100% LIMPO E FOCADO NO USUÁRIO)         -->
+        <!-- =============================================================== -->
+        <div id="tab-channels" class="hidden space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-base font-semibold text-white">Canais Sociais Conectados</h2>
+              <p class="text-xs text-vf-muted">Contas sociais ativas vinculadas a esta marca para publicação de Reels, Shorts e TikToks.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="syncChannels()" class="px-3 py-1.5 rounded-xl border border-vf bg-vf-card hover:bg-vf-muted text-xs font-medium text-white flex items-center gap-1.5 transition">
+                <svg id="sync-spinner" class="size-3.5 text-vf-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                <span>Sincronizar</span>
+              </button>
+              <button onclick="triggerConnectChannel()" class="px-3.5 py-1.5 rounded-xl bg-vf-primary hover:opacity-90 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition">
+                <svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                <span>Conectar Nova Rede</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Channel Cards Grid -->
+          <div id="channels-container" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+
+        <!-- =============================================================== -->
+        <!-- TAB 2: VÍDEOS DA MARCA (batches.json filtrado por brand_id)     -->
+        <!-- =============================================================== -->
+        <div id="tab-videos" class="space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-base font-semibold text-white">Acervo de Vídeos Renderizados</h2>
+              <p class="text-xs text-vf-muted">Vídeos associados a esta marca. Aprove vídeos e envie para agendamento com um clique.</p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2.5">
+              <!-- Filter Chips (Styled matching ViralForge) -->
+              <div class="inline-flex p-1 rounded-xl bg-vf-muted/50 border border-vf text-xs">
+                <button onclick="filterVideos('all')" id="vf-filter-all" class="px-3 py-1 rounded-lg bg-vf-card text-white font-medium shadow-xs">Todos</button>
+                <button onclick="filterVideos('ready')" id="vf-filter-ready" class="px-3 py-1 rounded-lg text-vf-muted hover:text-white">Prontos</button>
+                <button onclick="filterVideos('approved')" id="vf-filter-approved" class="px-3 py-1 rounded-lg text-vf-muted hover:text-white">Aprovados</button>
+                <button onclick="filterVideos('scheduled')" id="vf-filter-scheduled" class="px-3 py-1 rounded-lg text-vf-muted hover:text-white">Agendados</button>
+                <button onclick="filterVideos('published')" id="vf-filter-published" class="px-3 py-1 rounded-lg text-vf-muted hover:text-white">Publicados</button>
+              </div>
+
+              <!-- Quick Auto-Schedule Next Slot Button -->
+              <button onclick="autoScheduleNextApprovedVideo()" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm shadow-emerald-950/40">
+                <svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                <span>Auto-Agendar Próximo Slot</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Videos Grid (Aspect 9:16 Viral Studio Style) -->
+          <div id="videos-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+
+        <!-- =============================================================== -->
+        <!-- TAB 3: AGENDA & FILA (SocialPublisherPort.list_scheduled)       -->
+        <!-- =============================================================== -->
+        <div id="tab-scheduled" class="hidden space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-base font-semibold text-white">Linha do Tempo de Publicações</h2>
+              <p class="text-xs text-vf-muted">Grade de postagens agendadas para esta marca.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-vf-muted">Próximo Slot Livre:</span>
+              <span id="next-slot-pill" class="font-mono text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
+                Hoje às 18:00
+              </span>
+            </div>
+          </div>
+
+          <!-- Schedule Timeline List -->
+          <div id="scheduled-container" class="space-y-3">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+
+        <!-- =============================================================== -->
+        <!-- TAB 4: CONFIGURAÇÕES & DETALHES TÉCNICOS DO PROVEDOR            -->
+        <!-- =============================================================== -->
+        <div id="tab-settings" class="hidden space-y-6">
+          <div>
+            <h2 class="text-base font-semibold text-white">Configurações da Marca & Motor de Publicação</h2>
+            <p class="text-xs text-vf-muted">Defina o provedor de publicação, vínculos de workspace externos e parâmetros editoriais.</p>
+          </div>
+
+          <!-- CARD 1: SELEÇÃO E DETALHES TÉCNICOS DO PROVEDOR -->
+          <div class="rounded-2xl border border-vf bg-vf-card p-6 space-y-5 shadow-sm">
+            <div class="flex items-center justify-between border-b border-vf-subtle pb-4">
+              <div class="flex items-center gap-3">
+                <div class="size-10 rounded-xl bg-vf-primary-subtle border border-vf-primary-subtle flex items-center justify-center text-vf-primary">
+                  <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                </div>
+                <div>
+                  <h3 class="font-bold text-white text-sm">Motor & Adaptador de Publicação Social</h3>
+                  <p class="text-xs text-vf-muted">Selecione qual implementação da porta <code class="font-mono text-vf-primary">SocialPublisherPort</code> executa os envios desta marca.</p>
+                </div>
+              </div>
+              <span id="tab4-prov-status-pill" class="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
+                ● Conectado (HTTP 200)
+              </span>
+            </div>
+
+            <!-- Provider Selection Field -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="space-y-1.5">
+                <label class="block text-xs font-medium text-white">Provedor Ativo desta Marca</label>
+                <select id="config-provider-select" onchange="onConfigProviderChange(this.value)" class="w-full bg-vf-bg border border-vf rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-vf-primary cursor-pointer">
+                  <option value="postiz">Postiz (Docker Self-Hosted)</option>
+                  <option value="zernio">Zernio (Cloud Provider)</option>
+                  <option value="mock">Mock Offline (Desenvolvimento & Testes)</option>
+                </select>
+                <p class="text-[11px] text-vf-muted">Mude o provedor para alternar instantaneamente o adapter em execução.</p>
+              </div>
+
+              <!-- Workspace / Group binding -->
+              <div class="space-y-1.5">
+                <label class="block text-xs font-medium text-white">Espaço / Grupo no Provedor Selecionado</label>
+                <select id="config-workspace-select" class="w-full bg-vf-bg border border-vf rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-vf-primary">
+                  <!-- Populated via JS -->
+                </select>
+                <p class="text-[11px] text-vf-muted">Vínculo mantido em <code class="font-mono text-vf-primary">brand.publishing_profiles</code>.</p>
+              </div>
+            </div>
+
+            <!-- Technical details panel -->
+            <div class="rounded-xl border border-vf-subtle bg-vf-bg p-4 space-y-2 text-xs font-mono">
+              <div class="flex items-center justify-between text-vf-muted pb-1 border-b border-vf-subtle">
+                <span class="font-semibold text-white">Parâmetros Técnicos do Adaptador:</span>
+                <span id="config-tech-adapter-class" class="text-vf-primary">PostizPublisherAdapter</span>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px]">
+                <div>
+                  <span class="text-vf-muted block">Endpoint Base:</span>
+                  <span id="config-tech-endpoint" class="text-white">http://host.docker.internal:4007</span>
+                </div>
+                <div>
+                  <span class="text-vf-muted block">Orquestrador de Fila:</span>
+                  <span id="config-tech-queue" class="text-white">Temporal Engine (7233)</span>
+                </div>
+                <div>
+                  <span class="text-vf-muted block">Slots Livres:</span>
+                  <span id="config-tech-slots" class="text-emerald-400">Ativo (GET /find-slot)</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-2">
+              <button onclick="testProviderConnection()" class="px-4 py-2 rounded-xl border border-vf bg-vf-card hover:bg-vf-muted text-xs font-semibold text-white transition flex items-center gap-1.5">
+                <svg class="size-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                Testar Conexão com o Motor
+              </button>
+            </div>
+          </div>
+
+          <!-- CARD 2: GRADE DE PUBLICAÇÃO AUTOMÁTICA (POSTING SCHEDULE) -->
+          <div class="rounded-2xl border border-vf bg-vf-card p-6 space-y-5 shadow-sm">
+            <div class="flex items-center justify-between border-b border-vf-subtle pb-4">
+              <div class="flex items-center gap-3">
+                <div class="size-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                  <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <div>
+                  <h3 class="font-bold text-white text-sm">Grade de Horários Diários (Posting Schedule)</h3>
+                  <p class="text-xs text-vf-muted">Configure a frequência e horários fixos de postagem diária integrados ao motor nativo.</p>
+                </div>
+              </div>
+              <span id="schedule-active-summary" class="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
+                3 envios / dia
+              </span>
+            </div>
+
+            <!-- Frequência e Timezone -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="space-y-1.5">
+                <label class="block text-xs font-medium text-white">Frequência Diária Pré-definida</label>
+                <div class="grid grid-cols-4 gap-2">
+                  <button type="button" onclick="setScheduleFrequency(1)" id="freq-btn-1" class="py-2 rounded-xl border border-vf bg-vf-bg text-xs font-semibold text-vf-muted hover:text-white transition text-center">1x / dia</button>
+                  <button type="button" onclick="setScheduleFrequency(2)" id="freq-btn-2" class="py-2 rounded-xl border border-vf bg-vf-bg text-xs font-semibold text-vf-muted hover:text-white transition text-center">2x / dia</button>
+                  <button type="button" onclick="setScheduleFrequency(3)" id="freq-btn-3" class="py-2 rounded-xl border border-vf-primary bg-vf-primary-subtle text-xs font-bold text-vf-primary transition text-center">3x / dia</button>
+                  <button type="button" onclick="setScheduleFrequency(4)" id="freq-btn-4" class="py-2 rounded-xl border border-vf bg-vf-bg text-xs font-semibold text-vf-muted hover:text-white transition text-center">4x / dia</button>
+                </div>
+                <p class="text-[11px] text-vf-muted">Escolha um preset ou personalize os horários exatos abaixo.</p>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="block text-xs font-medium text-white">Fuso Horário da Marca (Timezone)</label>
+                <select id="config-schedule-tz" onchange="updateMinutesPreview()" class="w-full bg-vf-bg border border-vf rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-vf-primary">
+                  <option value="America/Sao_Paulo">America/Sao_Paulo (GMT-3 Horário de Brasília)</option>
+                  <option value="America/Manaus">America/Manaus (GMT-4)</option>
+                  <option value="UTC">UTC (Universal Coordinated Time)</option>
+                  <option value="America/New_York">America/New_York (EST)</option>
+                  <option value="Europe/Lisbon">Europe/Lisbon (WET)</option>
+                </select>
+                <p class="text-[11px] text-vf-muted">O motor calcula os disparos rigorosamente neste fuso.</p>
+              </div>
+            </div>
+
+            <!-- Horários / Slots dinâmicos -->
+            <div class="space-y-2.5">
+              <div class="flex items-center justify-between">
+                <div>
+                  <label class="block text-xs font-medium text-white">Horários de Postagem (Slots Ativos)</label>
+                  <p class="text-[11px] text-vf-muted">Horários em que novos vídeos são publicados sequencialmente a cada dia.</p>
+                </div>
+                <button type="button" onclick="addScheduleSlot()" class="px-2.5 py-1 rounded-lg border border-vf-primary-subtle bg-vf-primary-subtle text-vf-primary text-xs font-semibold hover:bg-vf-primary hover:text-white transition flex items-center gap-1">
+                  <svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                  Adicionar Horário
+                </button>
+              </div>
+
+              <!-- Container dinâmico dos slots -->
+              <div id="schedule-slots-container" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <!-- Preenchido via JS -->
+              </div>
+            </div>
+
+            <!-- Explicação técnica Ponytail -->
+            <div class="rounded-xl border border-vf-subtle bg-vf-bg p-3.5 flex items-start gap-3 text-xs">
+              <div class="size-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
+                <svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+              <div class="space-y-1">
+                <div class="font-semibold text-white">Integração Nativa com o Postiz (Sem Cronjob no SQLite):</div>
+                <p class="text-[11px] text-vf-muted leading-relaxed">
+                  Estes slots são salvos via <code class="font-mono text-vf-primary">POST /integrations/:id/time</code> convertidos em minutos a partir da meia-noite: 
+                  <span id="config-schedule-minutes-preview" class="font-mono text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">[{time: 600}, {time: 900}, {time: 1200}]</span>.
+                  Ao clicar em <strong>"Auto-Agendar"</strong>, o ViralForge apenas consulta <code class="font-mono text-vf-primary">GET /public/v1/find-slot/:id</code>, que preenche automaticamente a próxima janela vaga!
+                </p>
+              </div>
+            </div>
+
+            <div class="flex justify-end pt-1">
+              <button onclick="saveScheduleConfig()" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-md shadow-emerald-950/40 flex items-center gap-1.5">
+                <svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                Salvar Grade de Horários
+              </button>
+            </div>
+          </div>
+
+          <!-- CARD 3: IDENTIDADE EDITORIAL DA MARCA -->
+          <div class="rounded-2xl border border-vf bg-vf-card p-6 space-y-4 shadow-sm">
+            <h3 class="font-bold text-white text-sm border-b border-vf-subtle pb-3">Identidade Visual & Diretrizes de Conteúdo</h3>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div class="space-y-1">
+                <label class="block font-medium text-vf-muted">Nome da Marca</label>
+                <input type="text" id="config-brand-name-input" class="w-full bg-vf-bg border border-vf rounded-xl px-3 py-2 text-white focus:outline-none focus:border-vf-primary">
+              </div>
+
+              <div class="space-y-1">
+                <label class="block font-medium text-vf-muted">Handle (@)</label>
+                <input type="text" id="config-brand-handle-input" class="w-full bg-vf-bg border border-vf rounded-xl px-3 py-2 text-white focus:outline-none focus:border-vf-primary">
+              </div>
+
+              <div class="space-y-1">
+                <label class="block font-medium text-vf-muted">Nicho Editorial da Marca</label>
+                <input type="text" id="config-brand-niche-input" placeholder="ex: Achadinhos & Utilidades Domésticas" class="w-full bg-vf-bg border border-vf rounded-xl px-3 py-2 text-white focus:outline-none focus:border-vf-primary">
+                <p class="text-[11px] text-vf-muted">Contextualiza a curadoria de vídeos e títulos de IA.</p>
+              </div>
+
+              <div class="space-y-1">
+                <label class="block font-medium text-vf-muted">Template Visual Padrão</label>
+                <select id="config-brand-template-select" class="w-full bg-vf-bg border border-vf rounded-xl px-3 py-2 text-white focus:outline-none focus:border-vf-primary">
+                  <option value="classic-affiliate">classic-affiliate (Achadinhos & Produtos)</option>
+                  <option value="modern-minimal">modern-minimal (Cortes & Tech)</option>
+                  <option value="news-headline">news-headline (Notícias & Urgência)</option>
+                </select>
+                <p class="text-[11px] text-vf-muted">Layout 1080x1920 pré-selecionado no Discovery.</p>
+              </div>
+
+              <div class="sm:col-span-2 space-y-1">
+                <label class="block font-medium text-vf-muted">Palavras-chave para Mineração no Discovery (separadas por vírgula)</label>
+                <input type="text" id="config-brand-keywords-input" placeholder="achadinhos shopee, produtos úteis tiktok, utilidades domésticas" class="w-full bg-vf-bg border border-vf rounded-xl px-3 py-2 text-white focus:outline-none focus:border-vf-primary">
+                <p class="text-[11px] text-vf-muted">Gera chips de busca rápida clicáveis ao abrir o Discovery vindo desta marca.</p>
+              </div>
+
+              <div class="space-y-1">
+                <label class="block font-medium text-vf-muted">Link de Afiliado Padrão</label>
+                <input type="text" id="config-brand-affiliate-input" class="w-full bg-vf-bg border border-vf rounded-xl px-3 py-2 text-white focus:outline-none focus:border-vf-primary">
+              </div>
+
+              <div class="space-y-1">
+                <label class="block font-medium text-vf-muted">Chamada para Ação (CTA) Padrão</label>
+                <input type="text" id="config-brand-cta-input" class="w-full bg-vf-bg border border-vf rounded-xl px-3 py-2 text-white focus:outline-none focus:border-vf-primary">
+              </div>
+            </div>
+
+            <div class="flex justify-end pt-3">
+              <button onclick="saveBrandFullConfig()" class="px-5 py-2 rounded-xl bg-vf-primary hover:opacity-90 text-white text-xs font-bold transition shadow-md shadow-purple-900/30">
+                Salvar Configurações da Marca
+              </button>
+            </div>
+          </div>
+        </div>
+        </div>
+      </div> <!-- /view-brand-workspace -->
+
+      <!-- =================================================================== -->
+      <!-- VIEW 2: BRANDS LIST (Global Brands Catalog: /viral-studio/brands)   -->
+      <!-- =================================================================== -->
+      <div id="view-brands-list" class="space-y-6 hidden">
+
+        <!-- Page Header -->
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex items-center gap-3">
+            <button onclick="showToast('Retornar ao painel geral do Viral Studio...')" class="size-8 rounded-lg border border-vf flex items-center justify-center text-vf-muted hover:text-white hover:bg-vf-card transition" title="Voltar ao Viral Studio">
+              <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            </button>
+            <div>
+              <div class="flex items-center gap-2">
+                <svg class="size-6 text-vf-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+                <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-white">Perfis de Marca</h1>
+              </div>
+              <p class="text-xs text-vf-muted mt-0.5">Gerencie marcas comerciais, canais conectados, acervos e esteiras de publicação independente.</p>
+            </div>
+          </div>
+
+          <button onclick="openCreateBrandModal()" class="px-4 py-2 rounded-xl bg-vf-primary hover:opacity-90 text-white text-xs font-bold shadow-md shadow-purple-900/30 flex items-center gap-2 transition">
+            <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            <span>Nova Marca</span>
+          </button>
+        </div>
+
+        <!-- Search and Filters Bar -->
+        <div class="rounded-2xl border border-vf bg-vf-card/60 backdrop-blur-xs p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div class="flex flex-1 items-center gap-3">
+            <!-- Search Input -->
+            <div class="relative flex-1 max-w-md">
+              <svg class="size-4 text-vf-muted absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              <input type="text" id="brands-search-input" oninput="onBrandsFilterChange()" placeholder="Buscar por nome, @handle ou nicho..." class="w-full bg-vf-bg border border-vf rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder:text-vf-muted focus:outline-none focus:border-vf-primary transition">
+            </div>
+
+            <!-- Provider Filter -->
+            <div class="flex items-center gap-2">
+              <label for="brands-provider-filter" class="text-xs text-vf-muted hidden sm:inline">Motor:</label>
+              <select id="brands-provider-filter" onchange="onBrandsFilterChange()" class="bg-vf-bg border border-vf rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-vf-primary transition cursor-pointer">
+                <option value="all">Todos os Motores</option>
+                <option value="postiz">Postiz</option>
+                <option value="zernio">Zernio</option>
+                <option value="mock">Mock Offline</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Count badge -->
+          <div class="flex items-center gap-2">
+            <span id="brands-count-badge" class="font-mono text-xs text-vf-muted bg-vf-muted-subtle px-3 py-1.5 rounded-xl border border-vf">
+              <!-- Populated via JS -->
+            </span>
+          </div>
+        </div>
+
+        <!-- Brands Grid -->
+        <div id="brands-list-grid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <!-- Populated via renderBrandsList() -->
+        </div>
+
+        <!-- Empty State for Brands Grid (hidden by default) -->
+        <div id="brands-list-empty" class="hidden rounded-2xl border border-dashed border-vf bg-vf-card/30 p-12 text-center space-y-3">
+          <div class="size-12 rounded-2xl bg-vf-primary-subtle text-vf-primary border border-vf-primary-subtle flex items-center justify-center mx-auto">
+            <svg class="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+          </div>
+          <h3 class="text-sm font-bold text-white">Nenhuma marca encontrada</h3>
+          <p class="text-xs text-vf-muted max-w-sm mx-auto">Tente alterar os termos da busca ou limpe o filtro de motor de publicação.</p>
+          <button onclick="clearBrandsFilter()" class="px-3.5 py-1.5 rounded-xl border border-vf bg-vf-card hover:bg-vf-muted text-xs font-medium text-white transition">
+            Limpar Filtros
+          </button>
+        </div>
+
+      </div> <!-- /view-brands-list -->
+
+    </main>
+
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL: INSERIR LINKS MANUAIS (Styled exactly like Shadcn Dialog)      -->
+  <!-- ===================================================================== -->
+  <div id="manual-batch-dialog" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs hidden flex items-center justify-center p-4">
+    <div class="bg-[var(--card)] border border-vf rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
+      
+      <div class="p-6 border-b border-vf flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="size-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+            <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Novo Lote: Inserir Links Manuais</h3>
+            <p class="text-xs text-vf-muted mt-0.5">Cole links diretos de vídeos para processar e renderizar nesta marca.</p>
+          </div>
+        </div>
+        <button onclick="closeManualBatchModal()" class="text-vf-muted hover:text-white text-lg">✕</button>
+      </div>
+
+      <div class="p-6 space-y-4 text-xs">
+        <div class="space-y-1.5">
+          <label class="block font-medium text-white">URLs dos Vídeos de Origem (uma por linha)</label>
+          <textarea id="manual-batch-urls" rows="4" placeholder="https://www.tiktok.com/@creator/video/123456789&#10;https://www.instagram.com/reel/C8xyz123/&#10;https://youtube.com/shorts/xyz456" class="w-full bg-vf-bg border border-vf rounded-xl p-3 text-xs font-mono text-white placeholder:text-vf-muted focus:outline-none focus:border-vf-primary resize-none"></textarea>
+          <p class="text-[11px] text-vf-muted">Suporta links de Reels do Instagram, TikTok e YouTube Shorts.</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 p-3 rounded-xl bg-vf-muted-subtle border border-vf-subtle">
+          <div>
+            <span class="text-[11px] text-vf-muted block">Marca Vinculada</span>
+            <span id="manual-batch-brand-name" class="font-bold text-white text-xs mt-0.5 block truncate">Achadinhos da Ju</span>
+          </div>
+          <div>
+            <span class="text-[11px] text-vf-muted block">Template 1080x1920</span>
+            <span id="manual-batch-template-name" class="font-mono font-semibold text-vf-primary text-xs mt-0.5 block truncate">classic-affiliate</span>
+          </div>
+        </div>
+
+        <div class="rounded-xl border border-vf-subtle bg-vf-bg p-3 flex items-start gap-2.5 text-[11px] text-vf-muted">
+          <svg class="size-4 text-emerald-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span>Os vídeos serão transcritos, enriquecidos com IA e renderizados com o avatar, @handle e CTA desta marca automaticamente.</span>
+        </div>
+      </div>
+
+      <div class="p-6 border-t border-vf bg-vf-muted-subtle flex items-center justify-end gap-3">
+        <button onclick="closeManualBatchModal()" class="px-4 py-2 rounded-xl border border-vf bg-vf-card hover:bg-vf-muted text-xs font-semibold text-white transition">Cancelar</button>
+        <button onclick="submitManualBatch()" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-950/40 flex items-center gap-2 transition">
+          <svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/></svg>
+          <span>Iniciar Renderização</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL: QUICK PUBLISH (Styled exactly like Shadcn Dialog)              -->
+  <!-- ===================================================================== -->
+  <div id="quick-publish-dialog" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs hidden flex items-center justify-center p-4">
+    <div class="bg-[var(--card)] border border-vf rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
+      
+      <div class="p-6 border-b border-vf flex items-center justify-between">
+        <div>
+          <h3 class="text-base font-bold text-white">Agendar Publicação do Vídeo</h3>
+          <p class="text-xs text-vf-muted mt-0.5">Dispare a publicação nos canais conectados através do motor ativo.</p>
+        </div>
+        <button onclick="closePublishModal()" class="text-vf-muted hover:text-white text-lg">✕</button>
+      </div>
+
+      <div class="p-6 space-y-5 text-xs">
+        <!-- Video Preview Snippet -->
+        <div class="flex gap-4 p-3 rounded-xl bg-vf-muted-subtle border border-vf-subtle">
+          <div class="w-16 h-24 bg-zinc-900 rounded-lg overflow-hidden shrink-0 relative">
+            <img id="dialog-video-thumb" src="" class="w-full h-full object-cover">
+          </div>
+          <div class="space-y-1 flex-1 min-w-0">
+            <h4 id="dialog-video-title" class="font-bold text-white text-sm truncate">Título do Vídeo</h4>
+            <p id="dialog-video-hook" class="text-xs text-vf-muted line-clamp-2">"Gancho do vídeo..."</p>
+            <div class="text-[11px] text-vf-muted pt-1">
+              CTA: <span id="dialog-video-cta" class="text-white font-medium">Link na bio</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Channels selection -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between font-semibold text-white">
+            <span>Canais Sociais de Destino:</span>
+            <button onclick="toggleSelectAllModalChannels()" class="text-xs text-vf-primary hover:underline font-normal">Alternar Todos</button>
+          </div>
+          <div id="dialog-channels-list" class="space-y-2">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+
+        <!-- Slot Timing -->
+        <div class="space-y-2">
+          <span class="font-semibold text-white block">Programação de Envio:</span>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-center gap-2.5 p-3 rounded-xl border border-vf-primary bg-vf-primary-subtle text-white cursor-pointer">
+              <input type="radio" name="modal_schedule_type" value="slot" checked class="accent-purple-500">
+              <div>
+                <div class="font-bold text-xs">Próximo Slot Disponível</div>
+                <div class="text-[11px] text-vf-primary" id="dialog-next-slot-lbl">Hoje às 18:00</div>
+              </div>
+            </label>
+            <label class="flex items-center gap-2.5 p-3 rounded-xl border border-vf bg-vf-card text-vf-muted hover:text-white cursor-pointer">
+              <input type="radio" name="modal_schedule_type" value="now" class="accent-purple-500">
+              <div>
+                <div class="font-bold text-xs">Disparo Imediato</div>
+                <div class="text-[11px] text-vf-muted">Publicar Agora</div>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-6 border-t border-vf bg-vf-muted-subtle flex items-center justify-end gap-3">
+        <button onclick="closePublishModal()" class="px-4 py-2 rounded-xl border border-vf bg-vf-card hover:bg-vf-muted text-xs font-semibold text-white transition">Cancelar</button>
+        <button onclick="confirmSchedulePublish()" class="px-5 py-2 rounded-xl bg-vf-primary hover:opacity-90 text-white text-xs font-bold shadow-md shadow-purple-900/30 flex items-center gap-2 transition">
+          <span>Confirmar Agendamento</span>
+          <svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL: NOVA MARCA (Styled like Shadcn Dialog)                         -->
+  <!-- ===================================================================== -->
+  <div id="create-brand-dialog" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs hidden flex items-center justify-center p-4">
+    <div class="bg-[var(--card)] border border-vf rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150 max-h-[90vh]">
+      
+      <div class="p-6 border-b border-vf flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="size-10 rounded-xl bg-vf-primary-subtle border border-vf-primary-subtle flex items-center justify-center text-vf-primary">
+            <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Nova Marca</h3>
+            <p class="text-xs text-vf-muted mt-0.5">Cadastre uma nova marca comercial. Ajustes avançados e edição ficam dentro do workspace da marca.</p>
+          </div>
+        </div>
+        <button onclick="closeCreateBrandModal()" class="text-vf-muted hover:text-white text-lg">✕</button>
+      </div>
+
+      <div class="p-6 space-y-4 text-xs overflow-y-auto">
+
+        <!-- Name and Handle -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="space-y-1.5">
+            <label class="block font-medium text-white">Nome da Marca *</label>
+            <input type="text" id="brand-dialog-name" placeholder="Ex: Achadinhos da Ju" class="w-full bg-vf-bg border border-vf rounded-xl px-3 py-2 text-white placeholder:text-vf-muted focus:outline-none focus:border-vf-primary transition">
+          </div>
+          <div class="space-y-1.5">
+            <label class="block font-medium text-white">Handle Social (@) *</label>
+            <input type="text" id="brand-dialog-handle" placeholder="Ex: @achadinhosdaju" class="w-full bg-vf-bg border border-vf rounded-xl px-3 py-2 text-white font-mono placeholder:text-vf-muted focus:outline-none focus:border-vf-primary transition">
+          </div>
+        </div>
+
+        <!-- Niche and Discovery Keywords -->
+        <div class="space-y-1.5">
+          <label class="block font-medium text-white">Nicho Editorial *</label>
+          <input type="text" id="brand-dialog-niche" placeholder="Ex: Achadinhos & Utilidades Domésticas, Fitness, Tech..." class="w-full bg-vf-bg border border-vf rounded-xl px-3 py-2 text-white placeholder:text-vf-muted focus:outline-none focus:border-vf-primary transition">
+        </div>
+
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <label class="block font-medium text-white">Palavras-chave p/ Discovery (IA)</label>
+            <span class="text-[10px] text-vf-muted font-mono">Separadas por vírgula</span>
+          </div>
+          <input type="text" id="brand-dialog-keywords" placeholder="Ex: achadinhos shopee, produtos úteis tiktok, unboxing utilidades" class="w-full bg-vf-bg border border-vf rounded-xl px-3 py-2 text-white placeholder:text-vf-muted focus:outline-none focus:border-vf-primary transition">
+          <p class="text-[10px] text-vf-muted">Estas palavras-chave serão sugeridas em 1 clique na ferramenta de Descoberta.</p>
+        </div>
+
+        <!-- Template and Provider -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="space-y-1.5">
+            <label class="block font-medium text-white">Template Visual Padrão</label>
+            <select id="brand-dialog-template" class="w-full bg-vf-bg border border-vf rounded-xl px-3 py-2 text-white focus:outline-none focus:border-vf-primary transition cursor-pointer">
+              <option value="classic-affiliate">classic-affiliate (Achadinhos & CTAs)</option>
+              <option value="modern-minimal">modern-minimal (Cortes & Tech)</option>
+              <option value="bold-neon">bold-neon (Gamer & Culinária)</option>
+              <option value="editorial-news">editorial-news (Notícias & Curiosidades)</option>
+            </select>
+          </div>
+          <div class="space-y-1.5">
+            <label class="block font-medium text-white">Motor de Publicação</label>
+            <select id="brand-dialog-provider" class="w-full bg-vf-bg border border-vf rounded-xl px-3 py-2 text-white focus:outline-none focus:border-vf-primary transition cursor-pointer">
+              <option value="postiz">Postiz (Docker Self-Hosted)</option>
+              <option value="zernio">Zernio (Cloud Provider)</option>
+              <option value="mock">Mock Offline (Testes)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- CTA & Affiliate -->
+        <div class="space-y-1.5">
+          <label class="block font-medium text-white">Chamada para Ação (CTA) Padrão</label>
+          <input type="text" id="brand-dialog-cta" placeholder="Ex: Confira os achadinhos no link da bio! 🛍️" class="w-full bg-vf-bg border border-vf rounded-xl px-3 py-2 text-white placeholder:text-vf-muted focus:outline-none focus:border-vf-primary transition">
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="block font-medium text-white">Link de Afiliado Principal</label>
+          <input type="text" id="brand-dialog-affiliate" placeholder="Ex: https://amzn.to/3meulink" class="w-full bg-vf-bg border border-vf rounded-xl px-3 py-2 text-white font-mono placeholder:text-vf-muted focus:outline-none focus:border-vf-primary transition">
+        </div>
+
+      </div>
+
+      <div class="p-6 border-t border-vf bg-vf-muted-subtle flex items-center justify-end gap-3">
+        <button onclick="closeCreateBrandModal()" class="px-4 py-2 rounded-xl border border-vf bg-vf-card hover:bg-vf-muted text-xs font-semibold text-white transition">Cancelar</button>
+        <button onclick="saveNewBrandSubmit()" class="px-5 py-2 rounded-xl bg-vf-primary hover:opacity-90 text-white text-xs font-bold shadow-md shadow-purple-900/30 flex items-center gap-2 transition">
+          <span>Salvar e Acessar Workspace</span>
+          <svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Toast Notification (Styled as Sonner Toast) -->
+  <div id="sonner-toast" class="fixed bottom-6 right-6 z-50 bg-[var(--card)] border border-vf text-white px-4 py-3 rounded-2xl shadow-xl hidden flex items-center gap-3 animate-in slide-in-from-bottom-5">
+    <span class="size-2 rounded-full bg-emerald-400"></span>
+    <span id="toast-text" class="text-xs font-medium">Ação realizada com sucesso.</span>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- JAVASCRIPT: DOMAIN ENGINE & INTERACTIVE PROTOCOL                      -->
+  <!-- ===================================================================== -->
+  <script>
+    const appState = {
+      currentView: "workspace", // "workspace" or "list"
+      activeProvider: "postiz",
+      activeBrandId: "achadinhos-da-ju",
+      currentTab: "videos",
+      videoFilter: "all",
+
+      providers: {
+        postiz: {
+          name: "Postiz (Docker Self-Hosted)",
+          adapterClass: "PostizPublisherAdapter",
+          endpoint: "http://host.docker.internal:4007",
+          queue: "Temporal Engine (Port 7233)",
+          statusLabel: "● Conectado (HTTP 200)",
+          workspaces: [
+            { id: "cust_postiz_ju_101", name: "Grupo: Achadinhos da Ju" },
+            { id: "cust_postiz_tech_202", name: "Grupo: Cortes Tech Daily" },
+            { id: "cust_postiz_gourmet_303", name: "Grupo: Gourmet Express" }
+          ]
+        },
+        zernio: {
+          name: "Zernio (Cloud Provider)",
+          adapterClass: "ZernioPublisherAdapter",
+          endpoint: "https://api.zernio.com/v1",
+          queue: "Cloud Webhooks",
+          statusLabel: "● API Key Ativa",
+          workspaces: [
+            { id: "z_ws_ju_001", name: "Workspace: Achadinhos Zernio" },
+            { id: "z_ws_tech_002", name: "Workspace: Tech Zernio" },
+            { id: "z_ws_gourmet_003", name: "Workspace: Gourmet Zernio" }
+          ]
+        },
+        mock: {
+          name: "Mock Offline (Desenvolvimento & Testes)",
+          adapterClass: "MockPublisherAdapter",
+          endpoint: "in-memory://fake-port",
+          queue: "Simulador Local",
+          statusLabel: "● Modo Mock Ativo",
+          workspaces: [
+            { id: "mock_ws_default", name: "Mock Local Workspace" }
+          ]
+        }
+      },
+
+      brands: {
+        "achadinhos-da-ju": {
+          id: "achadinhos-da-ju",
+          name: "Achadinhos da Ju",
+          handle: "@achadinhosdaju",
+          niche: "Achadinhos & Utilidades Domésticas",
+          discovery_keywords: ["achadinhos shopee", "produtos úteis tiktok", "unboxing utilidades"],
+          avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+          template_id: "classic-affiliate",
+          default_cta: "Confira os achadinhos no link da bio! 🛍️",
+          default_affiliate_url: "https://amzn.to/3achados",
+          posting_schedule: {
+            frequency: 3,
+            slots: ["10:00", "15:00", "20:00"],
+            timezone: "America/Sao_Paulo"
+          },
+          publishing_profiles: {
+            postiz: { customer_id: "cust_postiz_ju_101" },
+            zernio: { profile_id: "z_ws_ju_001" },
+            mock: { workspace_id: "mock_ws_default" }
+          }
+        },
+        "cortes-tech": {
+          id: "cortes-tech",
+          name: "Cortes Tech Daily",
+          handle: "@cortestech",
+          niche: "Inteligência Artificial & Gadgets",
+          discovery_keywords: ["cortes podcast tech", "novidades ia", "chatgpt dicas", "gadgets 2026"],
+          avatar_url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80",
+          template_id: "modern-minimal",
+          default_cta: "Siga para novidades de IA e Tecnologia! 🤖",
+          default_affiliate_url: "https://techdeals.io/cortes",
+          posting_schedule: {
+            frequency: 2,
+            slots: ["12:00", "18:00"],
+            timezone: "America/Sao_Paulo"
+          },
+          publishing_profiles: {
+            postiz: { customer_id: "cust_postiz_tech_202" },
+            zernio: { profile_id: "z_ws_tech_002" },
+            mock: { workspace_id: "mock_ws_default" }
+          }
+        },
+        "gourmet-express": {
+          id: "gourmet-express",
+          name: "Gourmet Express",
+          handle: "@gourmetexpress",
+          niche: "Culinária Rápida & Airfryer",
+          discovery_keywords: ["receitas airfryer", "almoço em 10 minutos", "sobremesa facil"],
+          avatar_url: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=150&auto=format&fit=crop&q=80",
+          template_id: "bold-neon",
+          default_cta: "Pegue o e-book de 50 receitas práticas no link da bio! 🍳",
+          default_affiliate_url: "https://gourmet.link/ebook",
+          posting_schedule: {
+            frequency: 3,
+            slots: ["11:30", "17:30", "20:30"],
+            timezone: "America/Sao_Paulo"
+          },
+          publishing_profiles: {
+            postiz: { customer_id: "cust_postiz_gourmet_303" },
+            zernio: { profile_id: "z_ws_gourmet_003" },
+            mock: { workspace_id: "mock_ws_default" }
+          }
+        }
+      },
+
+      accountsByProvider: {
+        postiz: {
+          "achadinhos-da-ju": [
+            { id: "pst_ig_1", platform: "instagram", name: "Achadinhos da Ju", handle: "@achadinhosdaju", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&q=80", status: "active" },
+            { id: "pst_tt_1", platform: "tiktok", name: "Achadinhos Ju TikTok", handle: "@achadinhos.ju", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&q=80", status: "active" },
+            { id: "pst_yt_1", platform: "youtube", name: "Ju Achadinhos Shorts", handle: "@juachadinhos", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&q=80", status: "active" }
+          ],
+          "cortes-tech": [
+            { id: "pst_yt_2", platform: "youtube", name: "Cortes Tech Oficial", handle: "@cortestech", avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=80&q=80", status: "active" },
+            { id: "pst_tt_2", platform: "tiktok", name: "Cortes Tech Drops", handle: "@cortes.tech", avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=80&q=80", status: "active" }
+          ],
+          "gourmet-express": [
+            { id: "pst_ig_3", platform: "instagram", name: "Gourmet Express Oficial", handle: "@gourmetexpress", avatar: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=80&q=80", status: "active" },
+            { id: "pst_tt_3", platform: "tiktok", name: "Gourmet Express Drops", handle: "@gourmet.express", avatar: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=80&q=80", status: "active" }
+          ]
+        },
+        zernio: {
+          "achadinhos-da-ju": [
+            { id: "zr_ig_1", platform: "instagram", name: "Ju Promos Zernio", handle: "@achadinhosdaju", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&q=80", status: "active" },
+            { id: "zr_tt_1", platform: "tiktok", name: "Ju TikTok Zernio", handle: "@achadinhos.ju", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&q=80", status: "active" }
+          ],
+          "cortes-tech": [
+            { id: "zr_yt_2", platform: "youtube", name: "Cortes Tech Cloud", handle: "@cortestech", avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=80&q=80", status: "active" }
+          ],
+          "gourmet-express": [
+            { id: "zr_ig_3", platform: "instagram", name: "Gourmet Express Zernio", handle: "@gourmetexpress", avatar: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=80&q=80", status: "active" }
+          ]
+        },
+        mock: {
+          "achadinhos-da-ju": [
+            { id: "mock_ig_1", platform: "instagram", name: "Simulador Instagram", handle: "@mock_achados", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&q=80", status: "active" },
+            { id: "mock_tt_1", platform: "tiktok", name: "Simulador TikTok", handle: "@mock_tiktok", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&q=80", status: "active" }
+          ],
+          "cortes-tech": [
+            { id: "mock_yt_2", platform: "youtube", name: "Simulador YouTube", handle: "@mock_tech", avatar: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=80&q=80", status: "active" }
+          ],
+          "gourmet-express": [
+            { id: "mock_ig_3", platform: "instagram", name: "Simulador Gourmet IG", handle: "@mock_gourmet", avatar: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=80&q=80", status: "active" }
+          ]
+        }
+      },
+
+      videos: [
+        {
+          id: "item_ju_001",
+          brand_id: "achadinhos-da-ju",
+          title: "Mini Processador Elétrico Portátil",
+          hook: "O produto que salvou meus jantares rápidos por menos de 50 reais!",
+          status: "approved",
+          thumbnail: "https://images.unsplash.com/photo-1588854337221-4cf9fa96059c?w=300&auto=format&fit=crop&q=80",
+          publication_records: []
+        },
+        {
+          id: "item_ju_002",
+          brand_id: "achadinhos-da-ju",
+          title: "Luminária de Lua 3D Touch",
+          hook: "Transformei meu quarto com essa luminária que muda de cor!",
+          status: "ready",
+          thumbnail: "https://images.unsplash.com/photo-1517991104123-1d56a6e81ed9?w=300&auto=format&fit=crop&q=80",
+          publication_records: []
+        },
+        {
+          id: "item_ju_003",
+          brand_id: "achadinhos-da-ju",
+          title: "Garrafa Térmica Inteligente com Led",
+          hook: "Você ainda bebe água quente na academia?",
+          status: "scheduled",
+          thumbnail: "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=300&auto=format&fit=crop&q=80",
+          publication_records: [
+            { provider: "postiz", post_id: "post_pst_901", scheduled_at: "2026-09-27T18:00:00Z", channels: ["instagram", "tiktok"] }
+          ]
+        },
+        {
+          id: "item_ju_004",
+          brand_id: "achadinhos-da-ju",
+          title: "Organizador de Cabos Magnético",
+          hook: "Pare de passar raiva com fios embolados na mesa!",
+          status: "published",
+          thumbnail: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&auto=format&fit=crop&q=80",
+          publication_records: [
+            { provider: "postiz", post_id: "post_pst_800", scheduled_at: "2026-09-24T18:00:00Z", published_at: "2026-09-24T18:00:04Z", channels: ["instagram", "tiktok", "youtube"] }
+          ]
+        },
+        {
+          id: "item_tech_001",
+          brand_id: "cortes-tech",
+          title: "A Nova IA que Substitui Desenvolvedores?",
+          hook: "O que a nova atualização do modelo acabou de fazer ao vivo impressionou todos!",
+          status: "approved",
+          thumbnail: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=300&auto=format&fit=crop&q=80",
+          publication_records: []
+        },
+        {
+          id: "item_tech_002",
+          brand_id: "cortes-tech",
+          title: "3 Gadgets Baratos da China que Valem a Pena",
+          hook: "Comprei os 3 aparelhos mais vendidos e testei até o limite.",
+          status: "ready",
+          thumbnail: "https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=300&auto=format&fit=crop&q=80",
+          publication_records: []
+        },
+        {
+          id: "item_gourmet_001",
+          brand_id: "gourmet-express",
+          title: "Batata Rústica na Airfryer Crocante",
+          hook: "O segredo para ficar crocante por fora e macia por dentro!",
+          status: "approved",
+          thumbnail: "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=300&auto=format&fit=crop&q=80",
+          publication_records: []
+        },
+        {
+          id: "item_gourmet_002",
+          brand_id: "gourmet-express",
+          title: "Bolo de Caneca Cremoso em 2 Minutos",
+          hook: "Vontade de doce de madrugada? Faça isso em 2 minutos sem sujar panela!",
+          status: "ready",
+          thumbnail: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=300&auto=format&fit=crop&q=80",
+          publication_records: []
+        }
+      ],
+
+      scheduledPosts: [
+        {
+          post_id: "post_pst_901",
+          brand_id: "achadinhos-da-ju",
+          item_id: "item_ju_003",
+          video_title: "Garrafa Térmica Inteligente com Led",
+          thumbnail: "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=300&auto=format&fit=crop&q=80",
+          scheduled_time: "Amanhã às 18:00",
+          status: "scheduled",
+          channels: ["instagram", "tiktok"],
+          provider: "postiz"
+        },
+        {
+          post_id: "post_pst_800",
+          brand_id: "achadinhos-da-ju",
+          item_id: "item_ju_004",
+          video_title: "Organizador de Cabos Magnético",
+          thumbnail: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&auto=format&fit=crop&q=80",
+          scheduled_time: "24/09 às 18:00 (Publicado)",
+          status: "published",
+          channels: ["instagram", "tiktok", "youtube"],
+          views: "14.2k",
+          likes: "1.8k",
+          provider: "postiz"
+        }
+      ]
+    };
+
+    function init() {
+      renderBrandSelectors();
+      if (appState.currentView === "list") {
+        renderBrandsList();
+      } else {
+        renderBrandCard();
+        renderChannels();
+        renderVideos();
+        renderScheduled();
+        renderSettingsTab();
+        renderScheduleTabConfig();
+        renderNextSlotPills();
+        updateBadges();
+      }
+    }
+
+    function renderBrandSelectors() {
+      const topSelect = document.getElementById("top-brand-select");
+      if (!topSelect) return;
+      topSelect.innerHTML = `
+        <option value="__list__" ${appState.currentView === 'list' ? 'selected' : ''}>📋 Ver Todas as Marcas</option>
+        <optgroup label="Workspaces de Marca">
+          ${Object.values(appState.brands).map(b => 
+            `<option value="${b.id}" ${appState.currentView === 'workspace' && b.id === appState.activeBrandId ? 'selected' : ''}>${b.name}</option>`
+          ).join("")}
+        </optgroup>
+      `;
+    }
+
+    function renderBrandCard() {
+      const brand = appState.brands[appState.activeBrandId];
+      if (!brand) return;
+
+      document.getElementById("breadcrumb-brand-name").textContent = brand.name;
+      document.getElementById("hero-brand-title").textContent = brand.name;
+      document.getElementById("hero-brand-handle").textContent = brand.handle;
+
+      document.getElementById("brand-avatar-img").src = brand.avatar_url;
+      document.getElementById("brand-card-name").textContent = brand.name;
+      document.getElementById("brand-card-id").textContent = `ID: ${brand.id}`;
+      document.getElementById("brand-card-cta").textContent = `"${brand.default_cta}"`;
+      document.getElementById("brand-card-template").textContent = brand.template_id;
+
+      const affLink = document.getElementById("brand-card-affiliate");
+      affLink.textContent = brand.default_affiliate_url;
+      affLink.href = brand.default_affiliate_url;
+
+      document.getElementById("brand-active-prov-tag").textContent = `Motor Ativo: ${appState.providers[appState.activeProvider].name.split(' ')[0]}`;
+      const nicheTag = document.getElementById("brand-card-niche-tag");
+      if (nicheTag) {
+        nicheTag.textContent = brand.niche ? `Nicho: ${brand.niche}` : "Nicho Geral";
+      }
+    }
+
+    function renderChannels() {
+      const container = document.getElementById("channels-container");
+      const providerAccounts = (appState.accountsByProvider[appState.activeProvider] || {})[appState.activeBrandId] || [];
+
+      if (providerAccounts.length === 0) {
+        container.innerHTML = `<div class="col-span-3 text-center py-8 rounded-2xl border border-dashed border-vf text-vf-muted text-xs">Nenhum canal conectado nesta marca. Clique em "Conectar Nova Rede" para vincular.</div>`;
+        return;
+      }
+
+      container.innerHTML = providerAccounts.map(c => `
+        <div class="rounded-2xl border border-vf bg-vf-card p-4 hover:border-vf-primary-subtle transition flex items-center justify-between shadow-2xs">
+          <div class="flex items-center gap-3">
+            <img src="${c.avatar}" class="size-10 rounded-full object-cover border border-vf">
+            <div>
+              <div class="font-bold text-white text-xs flex items-center gap-1.5">
+                <span>${c.name}</span>
+                <span class="text-[9px] font-mono uppercase bg-vf-muted-subtle px-1.5 py-0.2 rounded border border-vf">${c.platform}</span>
+              </div>
+              <span class="text-[11px] font-mono text-vf-muted">${c.handle}</span>
+            </div>
+          </div>
+          <span class="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+            <span class="size-1.5 rounded-full bg-emerald-400"></span> Conectado
+          </span>
+        </div>
+      `).join("");
+    }
+
+    function renderVideos() {
+      const container = document.getElementById("videos-container");
+      const brandVideos = appState.videos.filter(v => v.brand_id === appState.activeBrandId);
+      const filtered = brandVideos.filter(v => {
+        if (appState.videoFilter === "all") return true;
+        return v.status === appState.videoFilter;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="col-span-4 text-center py-10 rounded-2xl border border-dashed border-vf text-vf-muted text-xs">Nenhum vídeo com o filtro "${appState.videoFilter}".</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(v => {
+        let badgeClass = "bg-vf-muted text-vf-muted";
+        let statusLabel = v.status;
+        let actionBtn = "";
+
+        if (v.status === "rendering") {
+          badgeClass = "bg-purple-500/10 text-purple-300 border border-purple-500/20";
+          statusLabel = "Renderizando...";
+          actionBtn = `
+            <div class="w-full py-2 rounded-xl bg-vf-primary-subtle text-vf-primary border border-vf-primary-subtle text-xs font-mono font-medium flex items-center justify-center gap-1.5 shadow-xs">
+              <svg class="size-3.5 animate-spin text-vf-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              <span>Renderizando (IA)...</span>
+            </div>
+          `;
+        } else if (v.status === "ready") {
+          badgeClass = "bg-amber-500/10 text-amber-300 border border-amber-500/20";
+          statusLabel = "Pronto p/ Revisão";
+          actionBtn = `<button onclick="approveVideo('${v.id}')" class="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-sm">
+            <svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Aprovar Vídeo
+          </button>`;
+        } else if (v.status === "approved") {
+          badgeClass = "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20";
+          statusLabel = "Aprovado";
+          actionBtn = `
+            <div class="space-y-1.5">
+              <button onclick="autoScheduleSlot('${v.id}')" class="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-950/40">
+                <svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                Auto-Agendar no Próximo Slot
+              </button>
+              <button onclick="openPublishModal('${v.id}')" class="w-full py-1.5 rounded-xl border border-vf bg-vf-card hover:bg-vf-muted text-vf-muted hover:text-white text-[11px] font-medium transition flex items-center justify-center gap-1">
+                <svg class="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                Personalizar Horário...
+              </button>
+            </div>
+          `;
+        } else if (v.status === "scheduled") {
+          badgeClass = "bg-vf-primary-subtle text-vf-primary border border-vf-primary-subtle";
+          statusLabel = "Agendado";
+          actionBtn = `<button onclick="switchTab('scheduled')" class="w-full py-2 rounded-xl border border-vf bg-vf-card hover:bg-vf-muted text-xs font-medium text-white transition flex items-center justify-center gap-1.5">
+            <svg class="size-3.5 text-vf-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            Ver na Fila
+          </button>`;
+        } else if (v.status === "published") {
+          badgeClass = "bg-blue-500/10 text-blue-300 border border-blue-500/20";
+          statusLabel = "Publicado";
+          actionBtn = `<button onclick="showToast('Abrindo link do post publicado na rede social...')" class="w-full py-2 rounded-xl border border-vf bg-vf-card hover:bg-vf-muted text-xs font-medium text-white transition flex items-center justify-center gap-1.5">
+            <svg class="size-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            Ver Post
+          </button>`;
+        }
+
+        return `
+          <div class="rounded-2xl border border-vf bg-vf-card overflow-hidden flex flex-col justify-between hover:border-vf-primary-subtle transition group shadow-xs">
+            <div class="relative w-full aspect-[9/13] bg-zinc-900 overflow-hidden">
+              <img src="${v.thumbnail}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+              <div class="absolute top-2.5 left-2.5">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeClass}">${statusLabel}</span>
+              </div>
+              <span class="absolute bottom-2 right-2 text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/80 text-white">0:32</span>
+            </div>
+            <div class="p-4 space-y-3">
+              <div>
+                <h4 class="font-bold text-white text-xs truncate" title="${v.title}">${v.title}</h4>
+                <p class="text-[11px] text-vf-muted line-clamp-2 mt-1">${v.hook}</p>
+              </div>
+              <div class="pt-2 border-t border-vf-subtle">
+                ${actionBtn}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderScheduled() {
+      const container = document.getElementById("scheduled-container");
+      const list = appState.scheduledPosts.filter(p => p.brand_id === appState.activeBrandId && p.provider === appState.activeProvider);
+
+      if (list.length === 0) {
+        container.innerHTML = `<div class="text-center py-8 rounded-2xl border border-dashed border-vf text-vf-muted text-xs">Nenhum post agendado no momento.</div>`;
+        return;
+      }
+
+      container.innerHTML = list.map(item => `
+        <div class="rounded-2xl border border-vf bg-vf-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+          <div class="flex items-center gap-3">
+            <img src="${item.thumbnail}" class="w-12 h-16 rounded-xl object-cover border border-vf shrink-0">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <h4 class="font-bold text-white text-xs">${item.video_title}</h4>
+                <span class="text-[9px] font-mono px-2 py-0.5 rounded-full ${item.status === 'scheduled' ? 'bg-vf-primary-subtle text-vf-primary border border-vf-primary-subtle' : 'bg-blue-500/10 text-blue-300 border border-blue-500/20'}">
+                  ${item.status === 'scheduled' ? 'Agendado no ' + appState.providers[appState.activeProvider].name.split(' ')[0] : 'Publicado'}
+                </span>
+              </div>
+              <div class="text-[11px] text-vf-muted flex items-center gap-3">
+                <span class="text-white flex items-center gap-1">
+                  <svg class="size-3 text-vf-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  ${item.scheduled_time}
+                </span>
+                <span>•</span>
+                <span>Canais: <strong class="text-white capitalize">${item.channels.join(', ')}</strong></span>
+              </div>
+              ${item.views ? `<div class="text-[10px] font-mono text-emerald-400">👁️ ${item.views} views • ❤️ ${item.likes} likes</div>` : ''}
+            </div>
+          </div>
+
+          <div class="shrink-0">
+            ${item.status === 'scheduled' ? `
+              <button onclick="cancelSchedule('${item.post_id}', '${item.item_id}')" class="px-3.5 py-1.5 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-300 text-xs font-semibold transition flex items-center gap-1.5">
+                <svg class="size-3 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                Cancelar Agendamento
+              </button>
+            ` : `
+              <button onclick="showToast('Consultando métricas do post via SocialPublisherPort...')" class="px-3 py-1.5 rounded-xl border border-vf bg-vf-card hover:bg-vf-muted text-xs text-vf-muted hover:text-white transition">
+                Atualizar Métricas
+              </button>
+            `}
+          </div>
+        </div>
+      `).join("");
+    }
+
+    // TAB 4: RENDER CONFIG & TECHNICAL SETTINGS
+    function renderSettingsTab() {
+      const brand = appState.brands[appState.activeBrandId];
+      const p = appState.activeProvider;
+      const provInfo = appState.providers[p];
+
+      // Provider Select in Tab 4
+      document.getElementById("config-provider-select").value = p;
+      document.getElementById("tab4-prov-status-pill").textContent = provInfo.statusLabel;
+
+      // Workspaces select for active provider
+      const wsSelect = document.getElementById("config-workspace-select");
+      const currentVal = ((brand.publishing_profiles || {})[p] || {})[Object.keys((brand.publishing_profiles || {})[p] || {})[0]];
+      wsSelect.innerHTML = `
+        <option value="auto">➕ Provisionar novo espaço automaticamente no ${p}</option>
+        ${provInfo.workspaces.map(w => `<option value="${w.id}" ${w.id === currentVal ? 'selected' : ''}>${w.name} (${w.id})</option>`).join("")}
+      `;
+
+      // Technical params
+      document.getElementById("config-tech-adapter-class").textContent = provInfo.adapterClass;
+      document.getElementById("config-tech-endpoint").textContent = provInfo.endpoint;
+      document.getElementById("config-tech-queue").textContent = provInfo.queue;
+
+      // Brand metadata fields
+      document.getElementById("config-brand-name-input").value = brand.name;
+      document.getElementById("config-brand-handle-input").value = brand.handle;
+      document.getElementById("config-brand-niche-input").value = brand.niche || "";
+      document.getElementById("config-brand-keywords-input").value = (brand.discovery_keywords || []).join(", ");
+      document.getElementById("config-brand-template-select").value = brand.template_id;
+      document.getElementById("config-brand-affiliate-input").value = brand.default_affiliate_url;
+      document.getElementById("config-brand-cta-input").value = brand.default_cta;
+    }
+
+    function onConfigProviderChange(newProv) {
+      appState.activeProvider = newProv;
+      renderSettingsTab();
+      renderBrandCard();
+      renderChannels();
+      renderScheduled();
+      updateBadges();
+      showToast(`Provedor alterado para: ${appState.providers[newProv].name}`);
+    }
+
+    function testProviderConnection() {
+      showToast(`Testando conexão com ${appState.providers[appState.activeProvider].name}... Conexão validada com sucesso!`);
+    }
+
+    function saveBrandFullConfig() {
+      const brand = appState.brands[appState.activeBrandId];
+      brand.name = document.getElementById("config-brand-name-input").value;
+      brand.handle = document.getElementById("config-brand-handle-input").value;
+      brand.niche = document.getElementById("config-brand-niche-input").value;
+      const kwStr = document.getElementById("config-brand-keywords-input").value;
+      brand.discovery_keywords = kwStr.split(",").map(s => s.trim()).filter(Boolean);
+      brand.template_id = document.getElementById("config-brand-template-select").value;
+      brand.default_affiliate_url = document.getElementById("config-brand-affiliate-input").value;
+      brand.default_cta = document.getElementById("config-brand-cta-input").value;
+
+      const chosenProv = document.getElementById("config-provider-select").value;
+      const chosenWs = document.getElementById("config-workspace-select").value;
+
+      if (!brand.publishing_profiles) brand.publishing_profiles = {};
+      if (!brand.publishing_profiles[chosenProv]) brand.publishing_profiles[chosenProv] = {};
+
+      const key = chosenProv === 'postiz' ? 'customer_id' : (chosenProv === 'zernio' ? 'profile_id' : 'workspace_id');
+      if (chosenWs === 'auto') {
+        brand.publishing_profiles[chosenProv][key] = `cust_${chosenProv}_${Date.now().toString().slice(-4)}`;
+      } else {
+        brand.publishing_profiles[chosenProv][key] = chosenWs;
+      }
+
+      appState.activeProvider = chosenProv;
+      init();
+      showToast("Configurações da marca salvas com sucesso!");
+    }
+
+    function updateBadges() {
+      const providerAccounts = (appState.accountsByProvider[appState.activeProvider] || {})[appState.activeBrandId] || [];
+      const vCount = appState.videos.filter(v => v.brand_id === appState.activeBrandId).length;
+      const sCount = appState.scheduledPosts.filter(p => p.brand_id === appState.activeBrandId && p.provider === appState.activeProvider).length;
+
+      document.getElementById("tab-badge-channels").textContent = providerAccounts.length;
+      document.getElementById("tab-badge-videos").textContent = vCount;
+      document.getElementById("tab-badge-scheduled").textContent = sCount;
+    }
+
+    // =========================================================================
+    // NAVIGATION & BRANDS LIST VIEW
+    // =========================================================================
+    let brandsSearchFilter = "";
+    let brandsProviderFilter = "all";
+
+    function switchBrand(bId) {
+      if (bId === "__list__") {
+        navigateToBrandsList();
+        return;
+      }
+      navigateToBrandWorkspace(bId);
+    }
+
+    function navigateToBrandsList() {
+      appState.currentView = "list";
+      const wsEl = document.getElementById("view-brand-workspace");
+      const listEl = document.getElementById("view-brands-list");
+      if (wsEl) wsEl.classList.add("hidden");
+      if (listEl) listEl.classList.remove("hidden");
+
+      // Breadcrumb adjustment
+      const sep = document.getElementById("breadcrumb-separator-brand");
+      const bCrumbName = document.getElementById("breadcrumb-brand-name");
+      const link = document.getElementById("breadcrumb-brands-link");
+      if (sep) sep.classList.add("hidden");
+      if (bCrumbName) bCrumbName.classList.add("hidden");
+      if (link) {
+        link.className = "font-semibold text-white cursor-default";
+      }
+
+      renderBrandSelectors();
+      renderBrandsList();
+      showToast("Exibindo catálogo geral de marcas.");
+    }
+
+    function navigateToBrandWorkspace(bId) {
+      appState.currentView = "workspace";
+      if (bId && appState.brands[bId]) {
+        appState.activeBrandId = bId;
+      }
+
+      const wsEl = document.getElementById("view-brand-workspace");
+      const listEl = document.getElementById("view-brands-list");
+      if (listEl) listEl.classList.add("hidden");
+      if (wsEl) wsEl.classList.remove("hidden");
+
+      // Breadcrumb adjustment
+      const sep = document.getElementById("breadcrumb-separator-brand");
+      const bCrumbName = document.getElementById("breadcrumb-brand-name");
+      const link = document.getElementById("breadcrumb-brands-link");
+      if (sep) sep.classList.remove("hidden");
+      if (bCrumbName) bCrumbName.classList.remove("hidden");
+      if (link) {
+        link.className = "text-vf-muted hover:text-white transition cursor-pointer";
+      }
+
+      init();
+      showToast(`Acessando workspace da marca: ${appState.brands[appState.activeBrandId].name}`);
+    }
+
+    function onBrandsFilterChange() {
+      brandsSearchFilter = (document.getElementById("brands-search-input")?.value || "").toLowerCase().trim();
+      brandsProviderFilter = document.getElementById("brands-provider-filter")?.value || "all";
+      renderBrandsList();
+    }
+
+    function clearBrandsFilter() {
+      const searchInput = document.getElementById("brands-search-input");
+      const provSelect = document.getElementById("brands-provider-filter");
+      if (searchInput) searchInput.value = "";
+      if (provSelect) provSelect.value = "all";
+      brandsSearchFilter = "";
+      brandsProviderFilter = "all";
+      renderBrandsList();
+    }
+
+    function renderBrandsList() {
+      const grid = document.getElementById("brands-list-grid");
+      const emptyEl = document.getElementById("brands-list-empty");
+      const countBadge = document.getElementById("brands-count-badge");
+      if (!grid) return;
+
+      const allBrands = Object.values(appState.brands);
+      const filtered = allBrands.filter(b => {
+        const matchesSearch = !brandsSearchFilter || 
+          b.name.toLowerCase().includes(brandsSearchFilter) ||
+          b.handle.toLowerCase().includes(brandsSearchFilter) ||
+          (b.niche && b.niche.toLowerCase().includes(brandsSearchFilter)) ||
+          (b.discovery_keywords && b.discovery_keywords.some(k => k.toLowerCase().includes(brandsSearchFilter)));
+
+        const matchesProvider = brandsProviderFilter === "all" ||
+          (b.publishing_profiles && b.publishing_profiles[brandsProviderFilter]);
+
+        return matchesSearch && matchesProvider;
+      });
+
+      if (countBadge) {
+        countBadge.textContent = `${filtered.length} de ${allBrands.length} ${allBrands.length === 1 ? 'marca' : 'marcas'}`;
+      }
+
+      if (filtered.length === 0) {
+        grid.innerHTML = "";
+        grid.classList.add("hidden");
+        if (emptyEl) emptyEl.classList.remove("hidden");
+        return;
+      }
+
+      if (emptyEl) emptyEl.classList.add("hidden");
+      grid.classList.remove("hidden");
+
+      grid.innerHTML = filtered.map(b => {
+        const channels = (appState.accountsByProvider[appState.activeProvider] || {})[b.id] || [];
+        const videoCount = appState.videos.filter(v => v.brand_id === b.id).length;
+        const slotsCount = b.posting_schedule?.slots?.length || 0;
+        const slotsText = b.posting_schedule?.slots?.join(", ") || "Sem grade";
+        const provName = appState.providers[appState.activeProvider].name.split(' ')[0];
+        const initials = b.name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+
+        const kwsBadges = (b.discovery_keywords || []).slice(0, 3).map(k => 
+          `<span class="text-[10px] font-mono bg-vf-bg px-2 py-0.5 rounded-md text-vf-muted border border-vf-subtle truncate max-w-[130px]">#${k.trim()}</span>`
+        ).join("");
+
+        return `
+          <div class="rounded-2xl border border-vf bg-vf-card/60 backdrop-blur-xs p-5 flex flex-col justify-between hover:border-vf-primary/40 transition-all shadow-sm group">
+            
+            <div class="space-y-4">
+              <!-- Card Header -->
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="relative shrink-0">
+                    <img src="${b.avatar_url}" class="size-11 rounded-xl object-cover border border-vf bg-zinc-800" onerror="this.src=''; this.parentElement.innerHTML='<div class=\\'size-11 rounded-xl bg-vf-primary-subtle text-vf-primary font-bold flex items-center justify-center text-xs border border-vf-primary-subtle\\'>${initials}</div>'">
+                    <span class="absolute -bottom-1 -right-1 size-3.5 rounded-full bg-emerald-500 border-2 border-[var(--card)]"></span>
+                  </div>
+                  <div class="min-w-0">
+                    <h3 class="font-bold text-white text-sm truncate group-hover:text-vf-primary transition">${b.name}</h3>
+                    <p class="font-mono text-xs text-vf-primary font-medium truncate">${b.handle}</p>
+                  </div>
+                </div>
+
+                <span class="shrink-0 font-mono text-[10px] px-2 py-0.5 rounded-full bg-vf-primary-subtle text-vf-primary border border-vf-primary-subtle">
+                  Motor: ${provName}
+                </span>
+              </div>
+
+              <!-- Niche Tag -->
+              <div>
+                <span class="font-mono text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 block truncate w-fit max-w-full">
+                  Nicho: ${b.niche || 'Geral'}
+                </span>
+              </div>
+
+              <!-- Operational Stats Pills -->
+              <div class="grid grid-cols-3 gap-1.5 p-2 rounded-xl bg-vf-muted-subtle border border-vf-subtle text-center">
+                <div class="px-1 py-0.5">
+                  <span class="block text-[10px] text-vf-muted">Canais</span>
+                  <span class="font-bold text-white text-xs">${channels.length}</span>
+                </div>
+                <div class="px-1 py-0.5 border-x border-vf-subtle">
+                  <span class="block text-[10px] text-vf-muted">Acervo</span>
+                  <span class="font-bold text-white text-xs">${videoCount} vídeos</span>
+                </div>
+                <div class="px-1 py-0.5">
+                  <span class="block text-[10px] text-vf-muted">Grade</span>
+                  <span class="font-bold text-emerald-400 text-xs">${slotsCount}/dia</span>
+                </div>
+              </div>
+
+              <!-- CTA Snippet -->
+              <div class="space-y-1">
+                <div class="flex items-center gap-1 text-[11px] text-vf-muted font-medium">
+                  <svg class="size-3 text-vf-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                  <span>CTA Padrão:</span>
+                </div>
+                <p class="text-[11px] text-vf-fg bg-vf-muted-subtle p-2 rounded-lg border border-vf-subtle line-clamp-1">
+                  "${b.default_cta || 'Nenhum CTA configurado'}"
+                </p>
+              </div>
+
+              <!-- Template & Discovery Keywords -->
+              <div class="space-y-1.5 pt-1">
+                <div class="flex items-center justify-between text-[11px]">
+                  <span class="font-mono text-vf-muted flex items-center gap-1">
+                    <svg class="size-3 text-vf-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
+                    ${b.template_id}
+                  </span>
+                  <span class="font-mono text-vf-muted text-[10px]">Grade: ${slotsText}</span>
+                </div>
+                ${kwsBadges ? `<div class="flex flex-wrap gap-1">${kwsBadges}</div>` : ''}
+              </div>
+            </div>
+
+            <!-- Card Actions: Acessar Workspace e Discovery -->
+            <div class="pt-4 mt-4 border-t border-vf-subtle flex items-center gap-2">
+              <button onclick="navigateToBrandWorkspace('${b.id}')" class="flex-1 py-2.5 rounded-xl bg-vf-primary hover:opacity-90 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm shadow-purple-900/30">
+                <span>Acessar Workspace</span>
+                <svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+              </button>
+              <button onclick="openDiscoveryForBrandId('${b.id}')" title="Minerar no Discovery com as palavras-chave desta marca" class="py-2.5 px-3 rounded-xl border border-vf bg-vf-card hover:bg-vf-muted text-vf-muted hover:text-white text-xs font-medium transition flex items-center justify-center gap-1.5 shrink-0">
+                <svg class="size-3.5 text-vf-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16zm-1-11l3-1-1 3-3 1 1-3z"/></svg>
+                <span>Discovery</span>
+              </button>
+            </div>
+
+          </div>
+        `;
+      }).join("");
+    }
+
+    // Modal Nova Marca (Criação Apenas - Edição ocorre exclusivamente no Workspace)
+    function openCreateBrandModal() {
+      document.getElementById("brand-dialog-name").value = "";
+      document.getElementById("brand-dialog-handle").value = "@";
+      document.getElementById("brand-dialog-niche").value = "";
+      document.getElementById("brand-dialog-keywords").value = "";
+      document.getElementById("brand-dialog-template").value = "classic-affiliate";
+      document.getElementById("brand-dialog-provider").value = appState.activeProvider;
+      document.getElementById("brand-dialog-cta").value = "";
+      document.getElementById("brand-dialog-affiliate").value = "";
+
+      document.getElementById("create-brand-dialog").classList.remove("hidden");
+    }
+
+    function closeCreateBrandModal() {
+      document.getElementById("create-brand-dialog").classList.add("hidden");
+    }
+
+    function saveNewBrandSubmit() {
+      const name = document.getElementById("brand-dialog-name").value.trim();
+      const handle = document.getElementById("brand-dialog-handle").value.trim();
+      const niche = document.getElementById("brand-dialog-niche").value.trim();
+      const keywordsRaw = document.getElementById("brand-dialog-keywords").value.trim();
+      const template = document.getElementById("brand-dialog-template").value;
+      const provider = document.getElementById("brand-dialog-provider").value;
+      const cta = document.getElementById("brand-dialog-cta").value.trim();
+      const affiliate = document.getElementById("brand-dialog-affiliate").value.trim();
+
+      if (!name || !handle) {
+        alert("Nome da marca e Handle social são obrigatórios.");
+        return;
+      }
+
+      const keywords = keywordsRaw.split(",").map(k => k.trim()).filter(Boolean);
+      const newId = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || `brand_${Date.now()}`;
+      
+      appState.brands[newId] = {
+        id: newId,
+        name: name,
+        handle: handle.startsWith("@") ? handle : `@${handle}`,
+        niche: niche || "Geral",
+        discovery_keywords: keywords,
+        avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+        template_id: template,
+        default_cta: cta || "Confira o link na bio!",
+        default_affiliate_url: affiliate || "#",
+        posting_schedule: {
+          frequency: 2,
+          slots: ["12:00", "18:00"],
+          timezone: "America/Sao_Paulo"
+        },
+        publishing_profiles: {
+          [provider]: { customer_id: `cust_${provider}_${newId}` }
+        }
+      };
+
+      // Initialize empty channels for all providers
+      Object.keys(appState.providers).forEach(p => {
+        if (!appState.accountsByProvider[p]) appState.accountsByProvider[p] = {};
+        appState.accountsByProvider[p][newId] = [];
+      });
+
+      closeCreateBrandModal();
+      navigateToBrandWorkspace(newId);
+      showToast(`🎉 Marca "${name}" cadastrada! Acessando workspace para configuração...`);
+    }
+
+    function openDiscoveryForBrandId(bId) {
+      const b = appState.brands[bId];
+      if (!b) return;
+      const kws = (b.discovery_keywords || []).join(", ") || b.name;
+      showToast(`🔍 Redirecionando para o Discovery da marca "${b.name}". Termos sugeridos: ${kws}`);
+    }
+
+    // Actions
+    function switchTab(t) {
+      appState.currentTab = t;
+      ['channels', 'videos', 'scheduled', 'settings'].forEach(tab => {
+        const btn = document.getElementById(`tab-btn-${tab}`);
+        const view = document.getElementById(`tab-${tab}`);
+        if (tab === t) {
+          btn.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-vf-card text-white shadow-sm flex items-center gap-2 transition";
+          view.classList.remove("hidden");
+        } else {
+          btn.className = "px-4 py-2 rounded-lg text-xs font-semibold text-vf-muted hover:text-white flex items-center gap-2 transition";
+          view.classList.add("hidden");
+        }
+      });
+      if (t === 'settings') {
+        renderSettingsTab();
+        renderScheduleTabConfig();
+      }
+    }
+
+    function filterVideos(f) {
+      appState.videoFilter = f;
+      ['all', 'ready', 'approved', 'scheduled', 'published'].forEach(status => {
+        const b = document.getElementById(`vf-filter-${status}`);
+        if (status === f) {
+          b.className = "px-3 py-1 rounded-lg bg-vf-card text-white font-medium shadow-xs";
+        } else {
+          b.className = "px-3 py-1 rounded-lg text-vf-muted hover:text-white";
+        }
+      });
+      renderVideos();
+    }
+
+    function approveVideo(vId) {
+      const v = appState.videos.find(i => i.id === vId);
+      if (!v) return;
+      v.status = "approved";
+      renderVideos();
+      showToast(`Vídeo "${v.title}" aprovado para agendamento!`);
+    }
+
+    // =========================================================================
+    // POSTING SCHEDULE & AUTO-SLOT DISCOVERY ENGINE (POSTIZ NATIVE INTEGRATION)
+    // =========================================================================
+    function calculateNextAvailableSlot() {
+      const brand = appState.brands[appState.activeBrandId];
+      const schedule = (brand && brand.posting_schedule) ? brand.posting_schedule : { slots: ["10:00", "15:00", "20:00"] };
+      const slots = (schedule.slots && schedule.slots.length > 0) ? schedule.slots : ["18:00"];
+
+      // Scheduled posts for this brand and provider that are upcoming
+      const scheduledTimes = appState.scheduledPosts
+        .filter(p => p.brand_id === appState.activeBrandId && p.provider === appState.activeProvider && p.status === 'scheduled')
+        .map(p => p.scheduled_time);
+
+      // Check today's slots first
+      for (const slot of slots) {
+        const slotLabel = `Hoje às ${slot}`;
+        if (!scheduledTimes.some(st => st.includes(slotLabel) || st.includes(slot))) {
+          return {
+            label: slotLabel,
+            time: slot,
+            day: "Hoje",
+            iso: `2026-09-26T${slot}:00Z`
+          };
+        }
+      }
+
+      // Check tomorrow's slots
+      for (const slot of slots) {
+        const slotLabel = `Amanhã às ${slot}`;
+        if (!scheduledTimes.some(st => st.includes(slotLabel))) {
+          return {
+            label: slotLabel,
+            time: slot,
+            day: "Amanhã",
+            iso: `2026-09-27T${slot}:00Z`
+          };
+        }
+      }
+
+      // Day after tomorrow fallback
+      return {
+        label: `Em 2 dias às ${slots[0]}`,
+        time: slots[0],
+        day: "Depois de amanhã",
+        iso: `2026-09-28T${slots[0]}:00Z`
+      };
+    }
+
+    function renderNextSlotPills() {
+      const nextSlot = calculateNextAvailableSlot();
+      const pill = document.getElementById("next-slot-pill");
+      if (pill) pill.textContent = nextSlot.label;
+
+      const modalLbl = document.getElementById("dialog-next-slot-lbl");
+      if (modalLbl) modalLbl.textContent = nextSlot.label;
+    }
+
+    // Auto-Schedule a single video in 1 click
+    function autoScheduleSlot(vId) {
+      const v = appState.videos.find(i => i.id === vId);
+      if (!v) return;
+
+      const providerAccounts = (appState.accountsByProvider[appState.activeProvider] || {})[appState.activeBrandId] || [];
+      if (providerAccounts.length === 0) {
+        alert(`Nenhum canal conectado no provedor ativo (${appState.providers[appState.activeProvider].name.split(' ')[0]}). Conecte ao menos um canal na Aba 1 antes de agendar.`);
+        return;
+      }
+
+      const nextSlot = calculateNextAvailableSlot();
+      const channels = providerAccounts.map(a => a.platform);
+      const pId = `post_${appState.activeProvider}_${Date.now().toString().slice(-4)}`;
+
+      v.status = "scheduled";
+      v.publication_records.push({
+        provider: appState.activeProvider,
+        post_id: pId,
+        scheduled_at: nextSlot.iso,
+        channels: channels
+      });
+
+      appState.scheduledPosts.unshift({
+        post_id: pId,
+        brand_id: appState.activeBrandId,
+        item_id: v.id,
+        video_title: v.title,
+        thumbnail: v.thumbnail,
+        scheduled_time: nextSlot.label,
+        status: "scheduled",
+        channels: channels,
+        provider: appState.activeProvider
+      });
+
+      renderVideos();
+      renderScheduled();
+      renderNextSlotPills();
+      updateBadges();
+
+      const provName = appState.providers[appState.activeProvider].name.split(' ')[0];
+      showToast(`⚡ "${v.title}" auto-agendado para ${nextSlot.label} via ${provName}!`);
+    }
+
+    // Auto-Schedule next approved video in batch
+    function autoScheduleNextApprovedVideo() {
+      const approvedVideos = appState.videos.filter(v => v.brand_id === appState.activeBrandId && v.status === "approved");
+      if (approvedVideos.length === 0) {
+        const readyVideos = appState.videos.filter(v => v.brand_id === appState.activeBrandId && v.status === "ready");
+        if (readyVideos.length > 0) {
+          showToast(`Nenhum vídeo aprovado no momento. Aprove um dos ${readyVideos.length} vídeos prontos primeiro!`);
+        } else {
+          showToast("Nenhum vídeo aprovado disponível para agendamento nesta marca.");
+        }
+        return;
+      }
+
+      autoScheduleSlot(approvedVideos[0].id);
+    }
+
+    // Schedule Tab Management in Tab 4
+    function renderScheduleTabConfig() {
+      const brand = appState.brands[appState.activeBrandId];
+      if (!brand.posting_schedule) {
+        brand.posting_schedule = {
+          frequency: 3,
+          slots: ["10:00", "15:00", "20:00"],
+          timezone: "America/Sao_Paulo"
+        };
+      }
+
+      const schedule = brand.posting_schedule;
+      const tzSelect = document.getElementById("config-schedule-tz");
+      if (tzSelect) tzSelect.value = schedule.timezone || "America/Sao_Paulo";
+
+      const sumEl = document.getElementById("schedule-active-summary");
+      if (sumEl) sumEl.textContent = `${schedule.slots.length} envios / dia`;
+
+      [1, 2, 3, 4].forEach(n => {
+        const b = document.getElementById(`freq-btn-${n}`);
+        if (b) {
+          if (schedule.slots.length === n) {
+            b.className = "py-2 rounded-xl border border-vf-primary bg-vf-primary-subtle text-xs font-bold text-vf-primary transition text-center";
+          } else {
+            b.className = "py-2 rounded-xl border border-vf bg-vf-bg text-xs font-semibold text-vf-muted hover:text-white transition text-center";
+          }
+        }
+      });
+
+      renderScheduleSlots();
+      updateMinutesPreview();
+    }
+
+    function renderScheduleSlots() {
+      const brand = appState.brands[appState.activeBrandId];
+      const container = document.getElementById("schedule-slots-container");
+      if (!container) return;
+
+      container.innerHTML = brand.posting_schedule.slots.map((slot, idx) => `
+        <div class="rounded-xl border border-vf bg-vf-bg p-2.5 space-y-1.5 flex flex-col justify-between">
+          <div class="flex items-center justify-between text-[11px] text-vf-muted">
+            <span class="font-mono font-semibold text-white">Slot ${idx + 1}</span>
+            ${brand.posting_schedule.slots.length > 1 ? `
+              <button type="button" onclick="removeScheduleSlot(${idx})" class="text-vf-muted hover:text-red-400 text-xs px-1" title="Remover este horário">✕</button>
+            ` : ''}
+          </div>
+          <input type="time" value="${slot}" onchange="onSlotTimeChange(${idx}, this.value)" class="w-full bg-vf-card border border-vf rounded-lg px-2.5 py-1.5 text-xs font-mono font-semibold text-white focus:outline-none focus:border-vf-primary cursor-pointer">
+        </div>
+      `).join("");
+    }
+
+    function setScheduleFrequency(n) {
+      const brand = appState.brands[appState.activeBrandId];
+      let newSlots = ["18:00"];
+      if (n === 2) newSlots = ["12:00", "18:00"];
+      else if (n === 3) newSlots = ["10:00", "15:00", "20:00"];
+      else if (n === 4) newSlots = ["09:00", "13:00", "17:00", "21:00"];
+
+      brand.posting_schedule.frequency = n;
+      brand.posting_schedule.slots = newSlots;
+      renderScheduleTabConfig();
+      renderNextSlotPills();
+      showToast(`Frequência ajustada para ${n} postagens diárias.`);
+    }
+
+    function addScheduleSlot() {
+      const brand = appState.brands[appState.activeBrandId];
+      const nextHour = (brand.posting_schedule.slots.length * 4 + 8) % 24;
+      const formatted = `${String(nextHour).padStart(2, '0')}:00`;
+      brand.posting_schedule.slots.push(formatted);
+      brand.posting_schedule.slots.sort();
+      renderScheduleTabConfig();
+      renderNextSlotPills();
+    }
+
+    function removeScheduleSlot(idx) {
+      const brand = appState.brands[appState.activeBrandId];
+      if (brand.posting_schedule.slots.length <= 1) {
+        showToast("É necessário manter pelo menos 1 horário na grade.");
+        return;
+      }
+      brand.posting_schedule.slots.splice(idx, 1);
+      renderScheduleTabConfig();
+      renderNextSlotPills();
+    }
+
+    function onSlotTimeChange(idx, val) {
+      const brand = appState.brands[appState.activeBrandId];
+      brand.posting_schedule.slots[idx] = val;
+      brand.posting_schedule.slots.sort();
+      renderScheduleSlots();
+      updateMinutesPreview();
+      renderNextSlotPills();
+    }
+
+    function updateMinutesPreview() {
+      const brand = appState.brands[appState.activeBrandId];
+      const previewEl = document.getElementById("config-schedule-minutes-preview");
+      if (!previewEl || !brand.posting_schedule) return;
+
+      const minutesArr = brand.posting_schedule.slots.map(s => {
+        const parts = s.split(":").map(Number);
+        const mins = parts[0] * 60 + (parts[1] || 0);
+        return `{time: ${mins}}`;
+      });
+
+      previewEl.textContent = `[${minutesArr.join(", ")}]`;
+    }
+
+    function saveScheduleConfig() {
+      const brand = appState.brands[appState.activeBrandId];
+      const tzSelect = document.getElementById("config-schedule-tz");
+      if (tzSelect) brand.posting_schedule.timezone = tzSelect.value;
+      renderScheduleTabConfig();
+      renderNextSlotPills();
+      showToast("Grade de horários salva e sincronizada com o Postiz (POST /integrations/:id/time)!");
+    }
+
+    // Modal Quick Publish
+    let currentPublishVideo = null;
+    function openPublishModal(vId) {
+      currentPublishVideo = appState.videos.find(i => i.id === vId);
+      if (!currentPublishVideo) return;
+
+      document.getElementById("dialog-video-thumb").src = currentPublishVideo.thumbnail;
+      document.getElementById("dialog-video-title").textContent = currentPublishVideo.title;
+      document.getElementById("dialog-video-hook").textContent = `"${currentPublishVideo.hook}"`;
+      document.getElementById("dialog-video-cta").textContent = appState.brands[appState.activeBrandId].default_cta;
+
+      renderNextSlotPills();
+
+      const accs = (appState.accountsByProvider[appState.activeProvider] || {})[appState.activeBrandId] || [];
+      const cont = document.getElementById("dialog-channels-list");
+      cont.innerHTML = accs.map(a => `
+        <label class="flex items-center justify-between p-2 rounded-xl bg-vf-muted-subtle border border-vf text-xs cursor-pointer hover:border-vf-primary transition">
+          <div class="flex items-center gap-2">
+            <input type="checkbox" name="dialog_channel" value="${a.platform}" checked class="accent-purple-500 rounded">
+            <span class="font-medium text-white">${a.name} (${a.platform})</span>
+          </div>
+          <span class="text-[11px] font-mono text-vf-muted">${a.handle}</span>
+        </label>
+      `).join("");
+
+      document.getElementById("quick-publish-dialog").classList.remove("hidden");
+    }
+
+    function closePublishModal() {
+      document.getElementById("quick-publish-dialog").classList.add("hidden");
+      currentPublishVideo = null;
+    }
+
+    function toggleSelectAllModalChannels() {
+      const cbs = document.querySelectorAll('input[name="dialog_channel"]');
+      const allChecked = Array.from(cbs).every(c => c.checked);
+      cbs.forEach(c => c.checked = !allChecked);
+    }
+
+    function confirmSchedulePublish() {
+      if (!currentPublishVideo) return;
+      const checked = Array.from(document.querySelectorAll('input[name="dialog_channel"]:checked')).map(c => c.value);
+      if (checked.length === 0) {
+        alert("Selecione pelo menos um canal de destino.");
+        return;
+      }
+
+      const isNow = document.querySelector('input[name="modal_schedule_type"]:checked')?.value === 'now';
+      const nextSlot = calculateNextAvailableSlot();
+      const pId = `post_${appState.activeProvider}_${Date.now().toString().slice(-4)}`;
+      const timeLabel = isNow ? "Hoje (Imediato)" : nextSlot.label;
+      const timeIso = isNow ? new Date().toISOString() : nextSlot.iso;
+      const statusValue = isNow ? "published" : "scheduled";
+
+      currentPublishVideo.status = statusValue;
+      currentPublishVideo.publication_records.push({
+        provider: appState.activeProvider,
+        post_id: pId,
+        scheduled_at: timeIso,
+        channels: checked
+      });
+
+      appState.scheduledPosts.unshift({
+        post_id: pId,
+        brand_id: appState.activeBrandId,
+        item_id: currentPublishVideo.id,
+        video_title: currentPublishVideo.title,
+        thumbnail: currentPublishVideo.thumbnail,
+        scheduled_time: timeLabel,
+        status: statusValue,
+        channels: checked,
+        provider: appState.activeProvider
+      });
+
+      closePublishModal();
+      renderVideos();
+      renderScheduled();
+      renderNextSlotPills();
+      updateBadges();
+      showToast(isNow ? "Vídeo publicado imediatamente com sucesso!" : `Vídeo agendado para ${nextSlot.label} com sucesso!`);
+    }
+
+    function cancelSchedule(postId, itemId) {
+      if (!confirm("Tem certeza que deseja cancelar este agendamento? O vídeo retornará ao status 'Aprovado' para reagendamento.")) return;
+
+      appState.scheduledPosts = appState.scheduledPosts.filter(p => p.post_id !== postId);
+
+      const v = appState.videos.find(i => i.id === itemId);
+      if (v) {
+        v.status = "approved";
+        v.publication_records.push({ action: "cancelled", cancelled_at: new Date().toISOString(), post_id: postId });
+      }
+
+      renderVideos();
+      renderScheduled();
+      renderNextSlotPills();
+      updateBadges();
+      showToast(`Agendamento cancelado. O vídeo retornou ao estado 'Aprovado'.`);
+    }
+
+    function triggerConnectChannel() {
+      const plat = prompt("Qual rede social deseja conectar? (ex: threads, facebook, tiktok, instagram):", "threads");
+      if (!plat) return;
+
+      const brand = appState.brands[appState.activeBrandId];
+      if (!appState.accountsByProvider[appState.activeProvider][brand.id]) {
+        appState.accountsByProvider[appState.activeProvider][brand.id] = [];
+      }
+
+      appState.accountsByProvider[appState.activeProvider][brand.id].push({
+        id: `conn_${plat}_${Date.now().toString().slice(-3)}`,
+        platform: plat.toLowerCase(),
+        name: `${brand.name} (${plat})`,
+        handle: brand.handle,
+        avatar: brand.avatar_url,
+        status: "active"
+      });
+
+      renderChannels();
+      updateBadges();
+      showToast(`Canal ${plat} conectado via ${appState.providers[appState.activeProvider].name.split(' ')[0]}!`);
+    }
+
+    function syncChannels() {
+      const s = document.getElementById("sync-spinner");
+      s.classList.add("animate-spin");
+      setTimeout(() => {
+        s.classList.remove("animate-spin");
+        renderChannels();
+        showToast("Canais sincronizados com o provedor!");
+      }, 500);
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById("sonner-toast");
+      document.getElementById("toast-text").textContent = msg;
+      t.classList.remove("hidden");
+      setTimeout(() => t.classList.add("hidden"), 3000);
+    }
+
+    // =========================================================================
+    // NEW BATCH DROPDOWN & MANUAL / DISCOVERY INGESTION FLOWS
+    // =========================================================================
+    function toggleNewBatchDropdown() {
+      const menu = document.getElementById("new-batch-dropdown-menu");
+      if (menu) menu.classList.toggle("hidden");
+    }
+
+    // Close dropdown on click outside
+    window.addEventListener("click", (e) => {
+      const btn = document.getElementById("new-batch-dropdown-btn");
+      const menu = document.getElementById("new-batch-dropdown-menu");
+      if (btn && menu && !btn.contains(e.target) && !menu.contains(e.target)) {
+        menu.classList.add("hidden");
+      }
+    });
+
+    function openDiscoveryForBrand() {
+      const brand = appState.brands[appState.activeBrandId];
+      const menu = document.getElementById("new-batch-dropdown-menu");
+      if (menu) menu.classList.add("hidden");
+
+      const kws = (brand.discovery_keywords || []).join(", ") || brand.name;
+      showToast(`🔍 Redirecionando para o Discovery da marca "${brand.name}". Termos sugeridos: ${kws}`);
+    }
+
+    function openManualBatchModal() {
+      const brand = appState.brands[appState.activeBrandId];
+      const menu = document.getElementById("new-batch-dropdown-menu");
+      if (menu) menu.classList.add("hidden");
+
+      document.getElementById("manual-batch-brand-name").textContent = brand.name;
+      document.getElementById("manual-batch-template-name").textContent = brand.template_id;
+      document.getElementById("manual-batch-urls").value = "";
+      document.getElementById("manual-batch-dialog").classList.remove("hidden");
+    }
+
+    function closeManualBatchModal() {
+      const dialog = document.getElementById("manual-batch-dialog");
+      if (dialog) dialog.classList.add("hidden");
+    }
+
+    function submitManualBatch() {
+      const urls = document.getElementById("manual-batch-urls").value.trim().split("\n").filter(Boolean);
+      if (urls.length === 0) {
+        alert("Por favor, cole ao menos um link de vídeo válido.");
+        return;
+      }
+
+      const brand = appState.brands[appState.activeBrandId];
+      const newItems = urls.map((url, i) => ({
+        id: `item_manual_${Date.now().toString().slice(-4)}_${i}`,
+        brand_id: brand.id,
+        title: `Vídeo Importado #${i + 1} (${url.split('/').pop().slice(0, 15) || 'Reel'})`,
+        hook: `Analisando e gerando gancho de retenção com IA para ${brand.name}...`,
+        status: "rendering",
+        thumbnail: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&auto=format&fit=crop&q=80",
+        publication_records: []
+      }));
+
+      // Prepend items to appState.videos
+      appState.videos.unshift(...newItems);
+      closeManualBatchModal();
+      switchTab("videos");
+      renderVideos();
+      updateBadges();
+
+      showToast(`🎬 Lote com ${urls.length} vídeo(s) criado! Renderizando com a identidade de "${brand.name}"...`);
+
+      // Simulate rendering completion to "ready" after 4 seconds
+      setTimeout(() => {
+        newItems.forEach(item => {
+          item.status = "ready";
+          item.hook = `Gancho viral gerado com IA e template "${brand.template_id}" aplicado!`;
+        });
+        renderVideos();
+        updateBadges();
+        showToast(`✅ ${urls.length} vídeo(s) renderizados e prontos para revisão!`);
+      }, 4000);
+    }
+
+    window.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>

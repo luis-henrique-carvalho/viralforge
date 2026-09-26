@@ -311,10 +311,11 @@ through verbatim (the frontend parses per-platform 429 daily limits).
   * `docker-entrypoint.sh` dynamically synchronizes container `appuser` with the host user's UID/GID (`stat -c '%u' /app`) at boot, ensuring all state files (`0o600`) in `data/` and `output/` belong to the developer on the host machine without permission errors.
   * Because backend `uvicorn` in Docker runs without `--reload`, **always run `docker restart clippyme-backend`** after modifying backend Python files so the running uvicorn process reloads updated Pydantic schemas and route handlers.
 - **Social Publishing & Auto-Chaining (Ports & Adapters)**:
-  * `SocialPublisherPort` (`clippyme.domain.social_publisher_port`): Core domain port for social distribution (`publish`, `schedule`, `cancel`, `get_status`, `list_accounts`). No domain or route code may import provider SDKs directly.
-  * `ZernioPublisherAdapter`: Production adapter integrating with Zernio API with presigned streaming upload, SSRF checks, 429 rate-limit mapping to `ValidationError`, and log secret sanitization.
+  * `SocialPublisherPort` (`clippyme.domain.social_publisher_port`): Core domain port for social distribution (`publish`, `schedule`, `cancel`, `get_status`, `list_accounts`, `find_next_slot`, `list_scheduled`, `get_metrics`). No domain or route code may import provider SDKs directly.
+  * `PostizPublisherAdapter`: Primary production adapter integrating with local Postiz container (`host.docker.internal:4007`) with multipart streaming upload, queueing via Temporal, slot discovery (`find-slot`), on-demand metrics and multi-brand customer group isolation.
+  * `ZernioPublisherAdapter`: Alternative/legacy adapter integrating with Zernio API.
   * `MockPublisherAdapter`: Deterministic in-memory test double for offline execution and fast host tests.
-  * Provider Resolution (`get_social_publisher`): Resolves provider via `PUBLISHING_PROVIDER` config, explicit `provider=` argument, or safe mock fallback.
+  * Provider Resolution (`get_social_publisher`): Resolves provider via `PUBLISHING_PROVIDER` config (defaults to `postiz`), explicit `provider=` argument, or safe mock fallback.
   * Intelligent Gap-Filling Scheduling (`get_next_available_slots`): Evaluates candidate dates starting from earliest possible (`now.date()`), filling intermediate cancelled slots before advancing past the tail of the queue (`occupied_dates`). Every account projection is fully isolated.
 - **Asynchronous Discovery & Mining Worker (`DiscoveryWorker`)**:
   * `POST /api/discovery/searches` responds immediately with HTTP 202 Accepted (`QUEUED`).
@@ -375,6 +376,8 @@ injection).
 - `docs/plano-migracao-frontend.md` — Arquitetura da migração frontend para React 19 + Vite 8 + TanStack Router + Shadcn (TweakCN).
 - `docs/publicacao-e-fila-continua.md` — Fila contínua auto-chaining sem colisão e arquitetura Ports & Adapters para publicação social.
 - `docs/viral-studio-template-architecture.md` — Sistema de Templates universais desacoplados, Konva 9:16 e motor dinâmico de GenerationTasks.
+- `docs/integracao-publicacao-postiz.md` — Arquitetura e especificação funcional da integração ViralForge ↔ Postiz (Ports & Adapters, Temporal, zero duplicação SQLite).
+- `docs/gestao-de-marcas-workspace.md` — Especificação do Catálogo Global de Marcas (/viral-studio/brands) e Workspace Dedicado (/viral-studio/brands/$brandId) com 4 abas e integração Postiz/Discovery.
 - `docs/descoberta-assincrona-e-mineracao.md` — Especificação técnica completa da Descoberta Assíncrona, DiscoveryWorker, cancelamento e histórico persistente.
 - `docs/adr/0004-asynchronous-discovery-mining-and-search-persistence.md` — Arquitetura de Descoberta Assíncrona com DiscoveryWorker, persistência em disco e cancelamento em voo.
 - `docs/architecture-history.md` — summary of major refactors (what moved

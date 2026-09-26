@@ -93,9 +93,12 @@ O subsistema de publicação é desenhado com base nos princípios de **Módulos
    - `get_status(external_id: str) -> PublicationReceipt`
 
 2. **Adaptadores (Adapters):**
-   - `ZernioPublisherAdapter`: Implementa a porta consumindo a API oficial do Zernio.
+   - `PostizPublisherAdapter` (Produção Multimarca): Implementa a porta consumindo a API local do Postiz (`POST /public/v1/upload`, `POST /public/v1/posts`, etc.) com orquestração durável via Temporal.
+   - `ZernioPublisherAdapter` (Legado / Alternativo): Implementa a porta consumindo a API oficial do Zernio.
    - `MockPublisherAdapter`: Implementa a porta para testes unitários, CI/CD e desenvolvimento offline sem custos de API.
    - `InternalPublisherAdapter` (V2): Implementa a porta para publicação nativa direta.
+
+> **Adendo (2026-09-26):** A adoção do `PostizPublisherAdapter` como provedor primário multimarca comprova a solidez da decisão tomada nesta ADR: nenhuma linha do domínio do ViralForge precisou ser reescrita para trocar o provedor de publicação de Zernio para Postiz. A especificação completa está documentada em [`docs/integracao-publicacao-postiz.md`](../integracao-publicacao-postiz.md).
 
 3. **Gerenciador de Fila Contínua no Store (`viral_studio_store.py`):**
    - Controla o algoritmo puro `get_next_available_slots(account_id, count, preferred_time)` sem colisões de horários no banco local do ViralForge.

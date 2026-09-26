@@ -5,11 +5,11 @@ ViralForge is an automated studio pipeline that ingests, curates, edits, and dis
 ## Publishing & Distribution
 
 **SocialChannel**:
-A specific authenticated social media profile (e.g. TikTok `@achados`, Instagram `@promo_radar`) belonging to a brand and backed by a publishing provider.
+A specific authenticated social media profile (e.g. TikTok `@achados`, Instagram `@promo_radar`) belonging to a brand and backed by a publishing provider (maps to an Integration in Postiz).
 _Avoid_: SocialAccount, ChannelTarget, ZernioAccount, ProfileTarget
 
 **PublishingProvider**:
-An execution engine (external service like Zernio, direct native API, or internal worker) that delivers media and schedules posts to one or more social platforms.
+An execution engine (external platform like Postiz, legacy Zernio, or direct native API) that delivers media and schedules posts to one or more social platforms.
 _Avoid_: PublisherDriver, SocialIntegration, ZernioService
 
 **PublicationJob**:
@@ -59,7 +59,7 @@ An individual video item within a batch, tracking its lifecycle from download, k
 _Avoid_: ClipItem, BatchRecord, RenderItem
 
 **Brand**:
-A commercial identity owning visual templates, default CTAs, product affiliate links, and a pool of connected SocialChannels.
+A commercial identity owning visual templates, default CTAs, product affiliate links, and a pool of connected SocialChannels (maps to a Customer/Group in Postiz).
 _Avoid_: ChannelGroup, Organization, AccountProfile
 
 **VisualTemplate**:
@@ -113,7 +113,7 @@ The security boundary and masking mechanism ensuring secrets (API keys, auth tok
 _Avoid_: KeyStore, PasswordManager, SecretHolder
 
 **ProviderSelector**:
-The domain configuration directive designating the currently active provider adapter (e.g. `PublishingProvider`: `zernio` | `mock`; `TranscriptionProvider`: `deepgram` | `elevenlabs` | `whisper`).
+The domain configuration directive designating the currently active provider adapter (e.g. `PublishingProvider`: `postiz` | `zernio` | `mock`; `TranscriptionProvider`: `deepgram` | `elevenlabs` | `whisper`).
 _Avoid_: ActiveEngine, DriverToggle, ServiceSwitch
 
 **PlatformSessionCookie**:
@@ -146,5 +146,10 @@ _Avoid_: ScraperDaemon, SearchQueueManager, MinerProcess
 The audit and deduplication record linking an imported `ViralItem` back to the original `DiscoverySearch` and source platform from which it was mined.
 _Avoid_: SourceLink, OriginReference, IngestionTracker
 
+**BrandWorkspace**:
+The dedicated operational hub for a single Brand (`/viral-studio/brands/:brandId`) providing 3 cohesive perspectives: connected SocialChannels (authentication & extraction), Brand Videos (batch curation & quick publishing), and Schedule & Queue (provider timeline & schedule cancellation).
+_Avoid_: BrandDashboard, BrandManager, ChannelView
 
-
+**ScheduleCancellation**:
+The domain action that removes a pending PublicationJob from the active provider while immediately reverting the corresponding ViralItem's editorial state in `batches.json` back to `approved` for seamless re-scheduling.
+_Avoid_: PostUnschedule, AbortPublish, JobDelete

@@ -52,6 +52,10 @@ cycler==0.12.1
     # via matplotlib
 distro==1.9.0
     # via google-genai
+emoji==2.16.0
+    # via
+    #   -r requirements.txt
+    #   pilmoji
 fastapi==0.135.3
     # via -r requirements.txt
 faster-whisper==1.2.1
@@ -74,6 +78,8 @@ google-auth==2.55.0
     # via google-genai
 google-genai==1.75.0
     # via -r requirements.txt
+greenlet==3.5.6
+    # via playwright
 h11==0.16.0
     # via
     #   httpcore
@@ -142,7 +148,9 @@ numpy==2.4.6
     #   matplotlib
     #   mediapipe
     #   ml-dtypes
+    #   numba
     #   onnxruntime
+    #   openai-whisper
     #   opencv-contrib-python
     #   opencv-python
     #   scenedetect
@@ -191,14 +199,14 @@ nvidia-nvtx==13.0.85
     # via cuda-toolkit
 onnxruntime==1.27.0
     # via faster-whisper
+openai-whisper==20250625
+    # via -r requirements.txt
 opencv-contrib-python==4.13.0.92
     # via mediapipe
 opencv-python==4.13.0.92
     # via
     #   -r requirements.txt
     #   ultralytics
-openai-whisper==20250625
-    # via -r requirements.txt
 opt-einsum==3.4.0
     # via jax
 packaging==26.2
@@ -210,10 +218,15 @@ pillow==12.3.0
     # via
     #   -r requirements.txt
     #   matplotlib
+    #   pilmoji
     #   torchvision
     #   ultralytics
+pilmoji==2.0.5
+    # via -r requirements.txt
 platformdirs==4.10.0
     # via scenedetect
+playwright==1.63.0
+    # via -r requirements.txt
 polars==1.41.2
     # via ultralytics
 polars-runtime-32==1.41.2
@@ -238,6 +251,8 @@ pydantic==2.13.4
     #   google-genai
 pydantic-core==2.46.4
     # via pydantic
+pyee==13.0.1
+    # via playwright
 pygments==2.20.0
     # via rich
 pyparsing==3.3.2
@@ -253,11 +268,14 @@ pyyaml==6.0.3
     #   ctranslate2
     #   huggingface-hub
     #   ultralytics
+regex==2026.9.10
+    # via tiktoken
 requests==2.34.2
     # via
     #   -r requirements.txt
     #   google-auth
     #   google-genai
+    #   tiktoken
     #   ultralytics
 rich==15.0.0
     # via
@@ -290,13 +308,14 @@ sympy==1.14.0
     # via torch
 tenacity==9.1.4
     # via google-genai
-tokenizers==0.23.1
-    # via faster-whisper
 tiktoken==0.14.0
     # via openai-whisper
+tokenizers==0.23.1
+    # via faster-whisper
 torch==2.11.0
     # via
     #   -r requirements.txt
+    #   openai-whisper
     #   torchvision
     #   ultralytics
     #   ultralytics-thop
@@ -309,9 +328,12 @@ tqdm==4.67.3
     #   -r requirements.txt
     #   faster-whisper
     #   huggingface-hub
+    #   openai-whisper
     #   scenedetect
 triton==3.6.0
-    # via torch
+    # via
+    #   openai-whisper
+    #   torch
 typer==0.26.7
     # via huggingface-hub
 typing-extensions==4.15.0
@@ -322,6 +344,7 @@ typing-extensions==4.15.0
     #   huggingface-hub
     #   pydantic
     #   pydantic-core
+    #   pyee
     #   starlette
     #   torch
     #   typing-inspection
