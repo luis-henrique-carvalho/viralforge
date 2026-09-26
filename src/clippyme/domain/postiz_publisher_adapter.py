@@ -22,6 +22,20 @@ from clippyme.integrations.postiz_client import PostizClient, PostizError
 
 logger = logging.getLogger("clippyme.postiz_publisher_adapter")
 
+_POSTIZ_STATUS_MAP: Dict[str, str] = {
+    "PUBLISHED": "published",
+    "SUCCESS": "published",
+    "ERROR": "failed",
+    "FAILED": "failed",
+    "QUEUE": "scheduled",
+    "PENDING": "scheduled",
+    "SCHEDULED": "scheduled",
+}
+
+
+def _map_postiz_status(state: str, default: str = "scheduled") -> str:
+    return _POSTIZ_STATUS_MAP.get(state.upper(), default)
+
 
 class PostizPublisherAdapter(SocialPublisherPort):
     """Production adapter integrating self-hosted Postiz publishing engine."""
@@ -80,14 +94,13 @@ class PostizPublisherAdapter(SocialPublisherPort):
                 return PublicationReceipt(
                     item_id=job.item_id,
                     status="failed",
-                    error="No social account / integration ID provided for Postiz dispatch",
+                    error="No SocialChannel / integration ID provided for Postiz dispatch",
                 )
 
             # 3. Create post
             post_type = "now" if publish_now else "schedule"
             date_iso = None if publish_now else job.scheduled_for
             if not publish_now and not date_iso:
-                # Default to immediate if scheduled_for is missing
                 post_type = "now"
 
             post_res = await self._client.create_post(
@@ -102,15 +115,9 @@ class PostizPublisherAdapter(SocialPublisherPort):
 
             # 4. Map response to domain receipt
             post_id = post_res.get("id") or post_res.get("postId")
-            state = str(post_res.get("state") or post_res.get("status") or "").upper()
-
-            receipt_status = "scheduled"
-            if publish_now or state in ("PUBLISHED", "SUCCESS"):
-                receipt_status = "published"
-            elif state in ("QUEUE", "PENDING", "SCHEDULED"):
-                receipt_status = "scheduled"
-            elif state in ("ERROR", "FAILED"):
-                receipt_status = "failed"
+            state = str(post_res.get("state") or post_res.get("status") or "")
+            default_status = "published" if publish_now else "scheduled"
+            receipt_status = _map_postiz_status(state, default=default_status)
 
             return PublicationReceipt(
                 item_id=job.item_id,
@@ -125,10 +132,6 @@ class PostizPublisherAdapter(SocialPublisherPort):
             )
 
         except PostizError as exc:
-            if exc.status_code == 429:
-                raise ValidationError(
-                    f"Postiz rate limit reached (HTTP 429): {exc.body or exc.message}"
-                ) from exc
             logger.error("Postiz dispatch error for item %s: %s", job.item_id, exc)
             return PublicationReceipt(
                 item_id=job.item_id,
@@ -154,12 +157,26 @@ class PostizPublisherAdapter(SocialPublisherPort):
     async def get_status(self, external_id: str) -> PublicationReceipt:
         """Fetch post status from Postiz."""
         try:
-            metrics = await self._client.get_metrics(external_id)
+            post_data = await self._client.get_post(external_id)
+            if not post_data:
+                return PublicationReceipt(
+                    item_id="",
+                    status="failed",
+                    post_id=external_id,
+                    error="Post not found in Postiz",
+                )
+
+            state = str(post_data.get("state") or post_data.get("status") or "")
+            status = _map_postiz_status(state, default="scheduled")
+
             return PublicationReceipt(
                 item_id="",
-                status="published" if metrics else "scheduled",
+                status=status,
                 post_id=external_id,
-                raw_response=metrics,
+                platform_post_id=post_data.get("releaseId"),
+                post_url=post_data.get("releaseURL") or post_data.get("postUrl"),
+                error=post_data.get("error"),
+                raw_response=post_data,
             )
         except Exception as exc:
             return PublicationReceipt(
@@ -170,20 +187,20 @@ class PostizPublisherAdapter(SocialPublisherPort):
             )
 
     async def list_accounts(self, brand_id: Optional[str] = None) -> List[SocialChannel]:
-        """Fetch connected accounts from Postiz, mapping them to domain SocialChannel."""
+        """Fetch connected SocialChannels from Postiz, mapping them to domain SocialChannel."""
         try:
             integrations = await self._client.list_integrations(group_id=brand_id)
             channels: List[SocialChannel] = []
             for item in integrations:
-                cid = item.get("id") or item.get("_id") or ""
+                integration_id = item.get("id") or item.get("_id") or ""
                 provider = item.get("identifier") or item.get("providerIdentifier") or "unknown"
-                name = item.get("name") or item.get("profile") or f"{provider}_{cid[:6]}"
+                name = item.get("name") or item.get("profile") or f"{provider}_{integration_id[:6]}"
                 avatar = item.get("picture") or item.get("avatar") or None
                 disabled = item.get("disabled", False)
 
                 channels.append(
                     SocialChannel(
-                        id=str(cid),
+                        id=str(integration_id),
                         platform=str(provider).lower(),
                         name=str(name),
                         connected=not disabled,

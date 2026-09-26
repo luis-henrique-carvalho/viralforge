@@ -7,23 +7,30 @@ clippyme.domain.viral_studio_store and validation to viral_studio_schemas.
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 from typing import List, Optional
 
 from fastapi import APIRouter, File, HTTPException, Request, Response, UploadFile, status
 
 from clippyme.api.viral_studio_schemas import (
+    AutoScheduleRequest,
     BatchCreateRequest,
     BatchListResponse,
     BatchResponse,
     BrandCreate,
     BrandListResponse,
+    BrandPublishRequest,
     BrandResponse,
     BrandUpdate,
+    BrandWorkspaceResponse,
     ItemRenderRequest,
     ItemRegenerateCopyRequest,
     PreviewSlotsResponse,
+    ScheduleSlotsRequest,
+    ScheduledTimelineResponse,
     SlotProjection,
     SocialAccountResponse,
+    SocialChannelResponse,
     TemplateCreate,
     TemplateListResponse,
     TemplateResponse,
@@ -36,7 +43,13 @@ from clippyme.api.viral_studio_schemas import (
     ViralPublishRequest,
     ViralPublishResponse,
 )
-from clippyme.domain import viral_studio_copy, viral_studio_orchestrator, viral_studio_store
+from clippyme.domain import (
+    brand_workspace_service,
+    viral_studio_copy,
+    viral_studio_orchestrator,
+    viral_studio_store,
+)
+from clippyme.domain.social_publisher_port import get_social_publisher
 
 router = APIRouter(tags=["viral-studio"])
 
@@ -93,6 +106,116 @@ async def upload_brand_avatar(id: str, file: UploadFile = File(...)):
         BrandUpdate(avatar_path=target_path),
     )
     return updated
+
+
+# ---------------------------------------------------------------------------
+# Brand Workspace Endpoints
+# ---------------------------------------------------------------------------
+
+@router.get("/brands/{id}/workspace", response_model=BrandWorkspaceResponse)
+async def get_brand_workspace(id: str):
+    """Retrieve complete workspace state for a brand."""
+    data = await brand_workspace_service.get_workspace_summary(id)
+    return BrandWorkspaceResponse(**data)
+
+
+@router.get("/brands/{id}/channels", response_model=List[SocialChannelResponse])
+async def list_brand_channels(id: str):
+    """List social media channels connected to this brand."""
+    publisher = get_social_publisher()
+    channels = await publisher.list_accounts(brand_id=id)
+    return [
+        SocialChannelResponse(
+            id=ch.id,
+            name=ch.name,
+            platform=ch.platform,
+            avatar_url=ch.avatar_url,
+            connected=ch.connected,
+        )
+        for ch in channels
+    ]
+
+
+@router.post("/brands/{id}/channels/connect-url")
+async def get_brand_channel_connect_url(id: str):
+    """Get channel connection URL for the active publisher provider."""
+    publisher = get_social_publisher()
+    url = await publisher.get_connect_channel_url(brand_id=id)
+    return {"url": url}
+
+
+@router.get("/brands/{id}/videos", response_model=List[ViralItem])
+async def get_brand_videos(id: str, status: Optional[str] = None):
+    """List all video items belonging to a brand across batches."""
+    items = await asyncio.to_thread(brand_workspace_service.get_brand_videos, id, status=status)
+    return [ViralItem(**item) for item in items]
+
+
+@router.post("/brands/{id}/auto-schedule")
+async def auto_schedule_video(id: str, payload: AutoScheduleRequest):
+    """1-Click auto-schedule an approved video into next available slot(s)."""
+    receipts = await brand_workspace_service.auto_schedule_brand_video(
+        brand_id=id,
+        item_id=payload.item_id,
+        channel_ids=payload.channel_ids,
+    )
+    return {
+        "success": True,
+        "item_id": payload.item_id,
+        "receipts": [dataclasses.asdict(r) for r in receipts],
+    }
+
+
+@router.post("/brands/{id}/publish")
+async def publish_brand_video(id: str, payload: BrandPublishRequest):
+    """Publish or schedule a brand video to target channels."""
+    receipts = await brand_workspace_service.publish_brand_video(
+        brand_id=id,
+        item_id=payload.item_id,
+        channel_ids=payload.channel_ids,
+        scheduled_for=payload.scheduled_for,
+        publish_now=payload.publish_now,
+    )
+    return {
+        "success": True,
+        "item_id": payload.item_id,
+        "receipts": [dataclasses.asdict(r) for r in receipts],
+    }
+
+
+@router.post("/brands/{id}/schedule-slots", response_model=BrandResponse)
+async def update_brand_schedule_slots(id: str, payload: ScheduleSlotsRequest):
+    """Update preferred posting schedule slots, timezone, and frequency for a brand."""
+    brand = await asyncio.to_thread(
+        viral_studio_store.update_brand_schedule,
+        brand_id=id,
+        slots=payload.slots,
+        timezone=payload.timezone,
+        frequency=payload.frequency,
+    )
+    return BrandResponse(**brand)
+
+
+@router.get("/brands/{id}/scheduled", response_model=ScheduledTimelineResponse)
+async def list_brand_scheduled(
+    id: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+):
+    """List scheduled and published posts timeline for a brand."""
+    posts = await brand_workspace_service.list_brand_scheduled_posts(
+        brand_id=id,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    return ScheduledTimelineResponse(brand_id=id, posts=posts, total=len(posts))
+
+
+@router.delete("/brands/{id}/scheduled/{post_id}")
+async def cancel_brand_scheduled(id: str, post_id: str):
+    """Cancel a scheduled post in provider and revert item status to APPROVED."""
+    success = await brand_workspace_service.cancel_brand_scheduled_post(brand_id=id, post_id=post_id)
+    return {"success": success, "post_id": post_id}
 
 
 # ---------------------------------------------------------------------------
@@ -366,15 +489,13 @@ async def preview_publish_slots(
     )
 
 
-@router.get("/publishing/accounts", response_model=List[SocialAccountResponse])
+@router.get("/publishing/accounts", response_model=List[SocialChannelResponse])
 async def list_publishing_accounts():
     """List authenticated social channels available for publishing."""
-    from clippyme.domain.social_publisher_port import get_social_publisher
-
     publisher = get_social_publisher()
     accounts = await publisher.list_accounts()
     return [
-        SocialAccountResponse(
+        SocialChannelResponse(
             id=acc.id,
             name=acc.name,
             platform=acc.platform,
@@ -383,6 +504,14 @@ async def list_publishing_accounts():
         )
         for acc in accounts
     ]
+
+
+@router.get("/publications/{id}/metrics")
+async def get_publication_metrics(id: str):
+    """Retrieve live performance metrics for a published post."""
+    publisher = get_social_publisher()
+    metrics = await publisher.get_metrics(id)
+    return {"post_id": id, "metrics": metrics}
 
 
 @router.post("/publish", response_model=ViralPublishResponse)

@@ -108,6 +108,10 @@ class SocialPublisherPort(ABC):
         """List active connected accounts available for posting (optionally filtered by brand)."""
         return []
 
+    async def get_connect_channel_url(self, brand_id: Optional[str] = None) -> str:
+        """Get URL for connecting a new social media channel."""
+        return ""
+
     async def find_next_slot(self, channel_id: str) -> Optional[datetime]:
         """Query next free slot from provider. Returns None for local calculation fallback."""
         return None
@@ -187,29 +191,18 @@ def get_social_publisher(provider: Optional[str] = None) -> SocialPublisherPort:
 
     target_provider = (provider or configured_provider).strip().lower()
 
-    if target_provider == "postiz":
-        if postiz_key or provider == "postiz":
-            from clippyme.domain.postiz_publisher_adapter import PostizPublisherAdapter
-            return PostizPublisherAdapter(base_url=postiz_url, api_key=postiz_key or "dummy_postiz_key")
-        if zernio_key:
-            from clippyme.domain.zernio_publisher_adapter import ZernioPublisherAdapter
-            return ZernioPublisherAdapter(api_key=zernio_key)
-        from clippyme.domain.mock_publisher_adapter import MockPublisherAdapter
-        return MockPublisherAdapter()
+    if target_provider == "postiz" and (postiz_key or provider == "postiz"):
+        from clippyme.domain.postiz_publisher_adapter import PostizPublisherAdapter
+        return PostizPublisherAdapter(base_url=postiz_url, api_key=postiz_key)
 
-    if target_provider == "zernio":
-        if zernio_key or provider == "zernio":
-            from clippyme.domain.zernio_publisher_adapter import ZernioPublisherAdapter
-            return ZernioPublisherAdapter(api_key=zernio_key or "dummy_zernio_key")
-        if postiz_key:
-            from clippyme.domain.postiz_publisher_adapter import PostizPublisherAdapter
-            return PostizPublisherAdapter(base_url=postiz_url, api_key=postiz_key)
-        from clippyme.domain.mock_publisher_adapter import MockPublisherAdapter
-        return MockPublisherAdapter()
+    if target_provider == "zernio" and (zernio_key or provider == "zernio"):
+        from clippyme.domain.zernio_publisher_adapter import ZernioPublisherAdapter
+        return ZernioPublisherAdapter(api_key=zernio_key or "dummy_zernio_key")
 
     if postiz_key:
         from clippyme.domain.postiz_publisher_adapter import PostizPublisherAdapter
         return PostizPublisherAdapter(base_url=postiz_url, api_key=postiz_key)
+
     if zernio_key:
         from clippyme.domain.zernio_publisher_adapter import ZernioPublisherAdapter
         return ZernioPublisherAdapter(api_key=zernio_key)

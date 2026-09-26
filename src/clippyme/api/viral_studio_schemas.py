@@ -80,13 +80,33 @@ class SocialChannelBinding(BaseModel):
 class BrandBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     handle: str = Field(..., min_length=1, max_length=60)
+    niche: Optional[str] = Field(None, max_length=150)
+    discovery_keywords: List[str] = Field(default_factory=list)
     avatar_path: Optional[str] = Field(None, max_length=512)
     avatar_url: Optional[str] = Field(None, max_length=1024)
     logo_path: Optional[str] = Field(None, max_length=512)
     default_cta: str = Field("Confira os achadinhos no link da bio!", max_length=500)
     default_affiliate_url: Optional[str] = Field(None, max_length=2048)
     template_id: str = Field("classic-affiliate", max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
+    posting_schedule: Optional[Dict[str, Any]] = Field(
+        default_factory=lambda: {
+            "frequency": 3,
+            "slots": ["10:00", "15:00", "20:00"],
+            "timezone": "America/Sao_Paulo",
+        }
+    )
     publishing_profiles: Dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("posting_schedule", mode="before")
+    @classmethod
+    def _default_posting_schedule(cls, v: Any) -> Optional[Dict[str, Any]]:
+        if v is None:
+            return {
+                "frequency": 3,
+                "slots": ["10:00", "15:00", "20:00"],
+                "timezone": "America/Sao_Paulo",
+            }
+        return v
 
     @field_validator("name")
     @classmethod
@@ -142,12 +162,15 @@ class BrandCreate(BaseModel):
     id: Optional[str] = Field(None, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
     name: str = Field(..., min_length=1, max_length=100)
     handle: str = Field(..., min_length=1, max_length=60)
+    niche: Optional[str] = Field(None, max_length=150)
+    discovery_keywords: List[str] = Field(default_factory=list)
     avatar_path: Optional[str] = Field(None, max_length=512)
     avatar_url: Optional[str] = Field(None, max_length=1024)
     logo_path: Optional[str] = Field(None, max_length=512)
     default_cta: str = Field("Confira os achadinhos no link da bio!", max_length=500)
     default_affiliate_url: Optional[str] = Field(None, max_length=2048)
     template_id: str = Field("classic-affiliate", max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
+    posting_schedule: Optional[Dict[str, Any]] = None
     publishing_profiles: Dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="before")
@@ -208,12 +231,15 @@ class BrandCreate(BaseModel):
 class BrandUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     handle: Optional[str] = Field(None, min_length=1, max_length=60)
+    niche: Optional[str] = Field(None, max_length=150)
+    discovery_keywords: Optional[List[str]] = None
     avatar_path: Optional[str] = Field(None, max_length=512)
     avatar_url: Optional[str] = Field(None, max_length=1024)
     logo_path: Optional[str] = Field(None, max_length=512)
     default_cta: Optional[str] = Field(None, max_length=500)
     default_affiliate_url: Optional[str] = Field(None, max_length=2048)
     template_id: Optional[str] = Field(None, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
+    posting_schedule: Optional[Dict[str, Any]] = None
     publishing_profiles: Optional[Dict[str, Any]] = None
 
     @field_validator("name")
@@ -283,6 +309,73 @@ class BrandListResponse(BaseModel):
             if "total" not in values and "brands" in values and isinstance(values["brands"], list):
                 values["total"] = len(values["brands"])
         return values
+
+
+# ============================================================================
+# Brand Workspace & Scheduling Schemas
+# ============================================================================
+
+class BrandWorkspaceCounts(BaseModel):
+    total_videos: int = 0
+    approved_videos: int = 0
+    scheduled_posts: int = 0
+    published_posts: int = 0
+
+
+class BrandSocialChannel(BaseModel):
+    id: str
+    platform: str
+    name: str
+    connected: bool = True
+    avatar_url: Optional[str] = None
+
+
+class BrandWorkspaceResponse(BaseModel):
+    brand: Brand
+    provider: str = "postiz"
+    counts: BrandWorkspaceCounts
+    channels: List[BrandSocialChannel] = Field(default_factory=list)
+    template: Optional[Dict[str, Any]] = None
+
+
+class AutoScheduleRequest(BaseModel):
+    item_id: str
+    channel_ids: Optional[List[str]] = None
+
+
+class BrandPublishRequest(BaseModel):
+    item_id: str
+    channel_ids: List[str] = Field(..., min_length=1)
+    scheduled_for: Optional[str] = None
+    publish_now: bool = False
+
+
+class ScheduleSlotsRequest(BaseModel):
+    slots: List[str] = Field(..., min_length=1)
+    timezone: str = "America/Sao_Paulo"
+    frequency: Optional[int] = None
+
+
+class ScheduledTimelinePost(BaseModel):
+    id: str
+    item_id: Optional[str] = None
+    platform: Optional[str] = None
+    channel_id: Optional[str] = None
+    channel_name: Optional[str] = None
+    title: Optional[str] = None
+    content: Optional[str] = None
+    status: str  # "scheduled" | "published" | "failed"
+    scheduled_for: Optional[str] = None
+    published_at: Optional[str] = None
+    post_url: Optional[str] = None
+    error: Optional[str] = None
+    raw_response: Optional[Dict[str, Any]] = None
+
+
+class ScheduledTimelineResponse(BaseModel):
+    brand_id: Optional[str] = None
+    posts: List[ScheduledTimelinePost] = Field(default_factory=list)
+    total: int = 0
 
 
 # ============================================================================
@@ -803,10 +896,11 @@ class BatchCreateRequest(BaseModel):
 
 class ViralItem(BaseModel):
     id: str
+    item_id: Optional[str] = None
     batch_id: Optional[str] = None
     brand_id: Optional[str] = None
     model: Optional[str] = None
-    source_url: str
+    source_url: Optional[str] = None
     product_code: Optional[str] = None
     product_url: Optional[str] = None
     manual_headline: Optional[str] = None
@@ -835,6 +929,16 @@ class ViralItem(BaseModel):
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     model_config = ConfigDict(extra="ignore")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _sync_item_ids(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            if not values.get("id") and values.get("item_id"):
+                values["id"] = values["item_id"]
+            if not values.get("item_id") and values.get("id"):
+                values["item_id"] = values["id"]
+        return values
 
 
 class BatchResponse(BaseModel):
@@ -947,12 +1051,16 @@ class PreviewSlotsResponse(BaseModel):
     projected_slots: List[SlotProjection] = Field(default_factory=list)
 
 
-class SocialAccountResponse(BaseModel):
+class SocialChannelResponse(BaseModel):
     id: str
     name: str
     platform: str
     avatar_url: Optional[str] = None
     connected: bool = True
+
+
+# Backward compatibility alias
+SocialAccountResponse = SocialChannelResponse
 
 
 class ViralPublishResult(BaseModel):

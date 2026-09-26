@@ -276,11 +276,19 @@ DEFAULT_BRAND_DICT: Dict[str, Any] = {
     "id": DEFAULT_BRAND_ID,
     "name": "Vale o Clique?",
     "handle": "@valeoclique",
+    "niche": "Achadinhos & Compras Inteligentes",
+    "discovery_keywords": ["achadinhos shopee", "produtos virais", "unboxing"],
     "avatar_path": None,
+    "avatar_url": None,
     "logo_path": None,
     "default_cta": "Confira os achadinhos no link da bio!",
     "default_affiliate_url": None,
     "template_id": DEFAULT_TEMPLATE_ID,
+    "posting_schedule": {
+        "frequency": 3,
+        "slots": ["10:00", "15:00", "20:00"],
+        "timezone": "America/Sao_Paulo",
+    },
     "publishing_profiles": {},
     "created_at": "2026-09-19T00:00:00Z",
     "updated_at": "2026-09-19T00:00:00Z",
@@ -538,6 +546,146 @@ def delete_brand(brand_id: str) -> bool:
         del brands[brand_id]
         _atomic_write_json(get_brands_path(), brands)
         return True
+
+
+def update_brand_schedule(
+    brand_id: str,
+    slots: List[str],
+    timezone: str = "America/Sao_Paulo",
+    frequency: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Atomically update a brand's daily posting schedule."""
+    if not slots:
+        raise ValidationError("Posting schedule must include at least one slot")
+    schedule = {
+        "frequency": frequency or len(slots),
+        "slots": slots,
+        "timezone": timezone,
+    }
+    return update_brand(brand_id, {"posting_schedule": schedule})
+
+
+def get_items_by_brand(
+    brand_id: str,
+    status: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Query all video items across batches belonging to a specific brand."""
+    if not brand_id:
+        raise ValidationError("brand_id is required")
+
+    target_status = status.upper() if status and status.lower() != "all" else None
+    matching_items: List[Dict[str, Any]] = []
+
+    with _STORE_LOCK:
+        batches = _load_batches_locked()
+        for batch_id, batch in batches.items():
+            batch_brand = batch.get("brand_id")
+            for item in batch.get("items", []):
+                item_brand = item.get("brand_id") or batch_brand
+                if item_brand == brand_id:
+                    item_status = str(item.get("status") or "").upper()
+                    if target_status is None or item_status == target_status:
+                        item_copy = dict(item)
+                        item_copy.setdefault("batch_id", batch_id)
+                        matching_items.append(item_copy)
+
+    # Sort most recent first
+    matching_items.sort(
+        key=lambda x: str(x.get("updated_at") or x.get("created_at") or ""),
+        reverse=True,
+    )
+    return matching_items
+
+
+def find_item_batch(item_id: str) -> tuple[Dict[str, Any], str, Dict[str, Any]]:
+    """Locate item, parent batch ID, and batch dict in batches.json or raise NotFoundError."""
+    with _STORE_LOCK:
+        batches = _load_batches_locked()
+        for batch_id, batch in batches.items():
+            b_id = batch.get("batch_id") or batch.get("id") or batch_id
+            for item in batch.get("items", []):
+                if item.get("id") == item_id or item.get("item_id") == item_id:
+                    return dict(item), str(b_id), dict(batch)
+    raise NotFoundError(f"Video item not found: {item_id}")
+
+
+def update_item_status_by_post_id(
+    post_id: str,
+    new_status: str,
+) -> Optional[Dict[str, Any]]:
+    """Locate item linked to a post_id, update its status and record cancellation audit."""
+    if not post_id:
+        return None
+
+    with _STORE_LOCK:
+        batches = _load_batches_locked()
+        modified = False
+        target_item = None
+        now = _utcnow_iso()
+
+        for batch_id, batch in batches.items():
+            for item in batch.get("items", []):
+                for rec in item.get("publication_records", []):
+                    if rec.get("post_id") == post_id or rec.get("id") == post_id:
+                        item["status"] = new_status
+                        item["updated_at"] = now
+                        if new_status.upper() == "APPROVED":
+                            rec["status"] = "cancelled"
+                            rec["action"] = "cancelled"
+                            rec["cancelled_at"] = now
+                            rec["reason"] = "user_cancelled"
+                            rec["updated_at"] = now
+                        modified = True
+                        target_item = dict(item)
+                        target_item["batch_id"] = batch_id
+                        break
+                if modified:
+                    break
+            if modified:
+                break
+
+        if modified:
+            _atomic_write_json(get_batches_path(), batches)
+        return target_item
+
+
+def append_publication_record(
+    batch_id: Optional[str],
+    item_id: str,
+    record: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Atomically append a publication record to an item in batches.json."""
+    with _STORE_LOCK:
+        batches = _load_batches_locked()
+        found = False
+        for b_id, batch in batches.items():
+            if batch_id and b_id != batch_id and batch.get("id") != batch_id:
+                continue
+            for idx, item in enumerate(batch.get("items", [])):
+                if item.get("id") == item_id or item.get("item_id") == item_id:
+                    records = list(item.get("publication_records") or [])
+                    records.append(record)
+                    item["publication_records"] = records
+                    item["updated_at"] = _utcnow_iso()
+                    batch["items"][idx] = item
+                    batch["updated_at"] = _utcnow_iso()
+                    found = True
+                    break
+            if found:
+                break
+        if not found:
+            raise NotFoundError(f"Item not found: {item_id}")
+        _atomic_write_json(get_batches_path(), batches)
+        return record
+
+
+def update_item_status(
+    batch_id: Optional[str],
+    item_id: str,
+    status: str,
+) -> Dict[str, Any]:
+    """Update status of an item."""
+    return update_item(item_id, {"status": status})
 
 
 # ---------------------------------------------------------------------------

@@ -231,8 +231,7 @@ class PostizClient:
             integrations = []
 
         if group_id:
-            # Double check in-memory filtering if Postiz backend doesn't filter by param
-            filtered = [
+            return [
                 item
                 for item in integrations
                 if item.get("customer") == group_id
@@ -240,8 +239,20 @@ class PostizClient:
                 or item.get("customerId") == group_id
                 or group_id in (item.get("groups") or [])
             ]
-            return filtered if filtered else integrations
         return integrations
+
+    async def get_post(self, post_id: str) -> Dict[str, Any]:
+        """Fetch a specific post by ID.
+
+        Endpoint: GET /public/v1/posts/{post_id}
+        """
+        try:
+            res = await self._request("GET", f"/public/v1/posts/{post_id}")
+            return res if isinstance(res, dict) else {}
+        except PostizError as exc:
+            if exc.status_code == 404:
+                return {}
+            raise
 
     async def delete_post(self, post_id: str) -> bool:
         """Cancel and delete a scheduled post in Postiz.

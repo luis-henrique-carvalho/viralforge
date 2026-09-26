@@ -143,6 +143,10 @@ async def test_postiz_client_list_integrations_and_filter():
     assert len(filtered) == 2
     assert all(i["customer"] == "brand_promo" for i in filtered)
 
+    # Unknown brand returns empty list (strict brand isolation)
+    unknown_filtered = await client.list_integrations(group_id="brand_non_existent")
+    assert unknown_filtered == []
+
 
 @pytest.mark.asyncio
 async def test_postiz_client_delete_post():
@@ -282,11 +286,30 @@ async def test_postiz_publisher_adapter_handles_rate_limit(tmp_path):
         publish_now=True,
     )
 
-    with pytest.raises(ValidationError) as exc_info:
-        await adapter.publish(job)
+    receipt = await adapter.publish(job)
+    assert receipt.status == "failed"
+    assert "429" in receipt.error
+    assert "rate limit" in receipt.error.lower()
 
-    assert "429" in str(exc_info.value)
-    assert "rate limit" in str(exc_info.value).lower()
+
+@pytest.mark.asyncio
+async def test_postiz_publisher_adapter_get_status():
+    mock_client = AsyncMock(spec=PostizClient)
+    mock_client.get_post.return_value = {
+        "id": "post_active_123",
+        "state": "PUBLISHED",
+        "releaseId": "rel_insta_99",
+        "releaseURL": "https://instagram.com/reel/99",
+        "error": None,
+    }
+
+    adapter = PostizPublisherAdapter(client=mock_client)
+    receipt = await adapter.get_status("post_active_123")
+
+    assert receipt.status == "published"
+    assert receipt.post_id == "post_active_123"
+    assert receipt.platform_post_id == "rel_insta_99"
+    assert receipt.post_url == "https://instagram.com/reel/99"
 
 
 @pytest.mark.asyncio

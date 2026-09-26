@@ -191,7 +191,7 @@ class ZernioPublisherAdapter(SocialPublisherPort):
 
         return await asyncio.to_thread(_sync_get)
 
-    async def list_accounts(self) -> List[SocialChannel]:
+    async def list_accounts(self, brand_id: Optional[str] = None) -> List[SocialChannel]:
         """Fetch connected accounts from Zernio and map to SocialChannel DTOs."""
         def _sync_list():
             try:
@@ -229,3 +229,7 @@ class ZernioPublisherAdapter(SocialPublisherPort):
                 return []
 
         return await asyncio.to_thread(_sync_list)
+
+    async def get_connect_channel_url(self, brand_id: Optional[str] = None) -> str:
+        """Return connect URL for Zernio dashboard."""
+        return "https://zernio.com/dashboard/integrations"

@@ -146,6 +146,10 @@ class MockPublisherAdapter(SocialPublisherPort):
             post_url=record.get("post_url"),
         )
 
-    async def list_accounts(self) -> List[SocialChannel]:
+    async def list_accounts(self, brand_id: Optional[str] = None) -> List[SocialChannel]:
         """Return available mock channels."""
         return list(self._accounts)
+
+    async def get_connect_channel_url(self, brand_id: Optional[str] = None) -> str:
+        """Return mock connect URL."""
+        return f"https://mock.social/connect?brand={brand_id or 'default'}"

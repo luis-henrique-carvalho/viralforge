@@ -169,7 +169,8 @@ All API keys, model selection, and cookies are managed **from the dashboard Sett
 | `DEEPGRAM_API_KEY` | Cloud transcription (default) | Falls back to local Faster-Whisper if missing. |
 | `ELEVENLABS_API_KEY` | Alternative cloud transcription (Scribe) | Adds audio-event tags + optional Voice Isolator; also falls back to Faster-Whisper. |
 | `HUGGINGFACE_TOKEN` | Optional gated models for Whisper | |
-| Zernio | Social publishing | Per-platform account IDs auto-discovered via "Discover from Zernio". |
+| `POSTIZ_API_KEY` | Social publishing (Postiz) | Used with self-hosted Postiz cluster for multi-brand publishing and scheduling. |
+| Zernio | Legacy social publishing | Per-platform account IDs auto-discovered via "Discover from Zernio". |
 | Cookies | YouTube age-gated / region-locked content | Upload a Netscape `cookies.txt` from the Settings tab. Stored at `data/cookies.txt`, mode `0600`, max 10 MB. |
 
 Runtime env overrides (rarely needed):
@@ -178,6 +179,9 @@ Runtime env overrides (rarely needed):
 |---|---|---|
 | `CLIPPYME_BIND` | `127.0.0.1` | Host interface both published ports (8000/5176) bind to. `0.0.0.0` exposes the app to the LAN — deliberate choice only. |
 | `CLIPPYME_API_TOKEN` | _(unset)_ | Optional shared-secret auth: when set, every `/api` request must carry it (`X-API-Token` or `Authorization: Bearer`). The dashboard stores it in Settings → API token. Unset = no-op. |
+| `PUBLISHING_PROVIDER` | `postiz` | Active publishing provider: `postiz` (default), `zernio`, or `mock`. |
+| `POSTIZ_BASE_URL` | `http://localhost:4007` | Base URL of self-hosted Postiz server (`http://host.docker.internal:4007` in Docker). |
+| `POSTIZ_API_KEY` | _(unset)_ | API key for Postiz authentication. |
 | `TRANSCRIPTION_PROVIDER` | `deepgram` | Or `elevenlabs` (Scribe), or `whisper` to force local. |
 | `ELEVENLABS_AUDIO_ISOLATION` | `false` | Run the ElevenLabs Voice Isolator before ASR to strip background noise/music on noisy sources. |
 | `CLIPPYME_TRANSCRIBE_AUDIO_ONLY` | `true` | Strip to audio-only FLAC before transcription; `false` sends the full video. |
