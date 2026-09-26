@@ -22,6 +22,8 @@ VALID_CONFIG_KEYS = (
     "ELEVENLABS_API_KEY",
     "TRANSCRIPTION_PROVIDER",
     "PUBLISHING_PROVIDER",
+    "POSTIZ_BASE_URL",
+    "POSTIZ_API_KEY",
     "TWITCH_CLIENT_ID",
     "TWITCH_CLIENT_SECRET",
 )
@@ -174,7 +176,9 @@ def load_persistent_config() -> dict:
         "DEEPGRAM_API_KEY": os.environ.get("DEEPGRAM_API_KEY", ""),
         "ELEVENLABS_API_KEY": os.environ.get("ELEVENLABS_API_KEY", ""),
         "TRANSCRIPTION_PROVIDER": os.environ.get("TRANSCRIPTION_PROVIDER", "deepgram"),
-        "PUBLISHING_PROVIDER": os.environ.get("PUBLISHING_PROVIDER", "zernio"),
+        "PUBLISHING_PROVIDER": os.environ.get("PUBLISHING_PROVIDER", "postiz"),
+        "POSTIZ_BASE_URL": os.environ.get("POSTIZ_BASE_URL", "http://localhost:4007"),
+        "POSTIZ_API_KEY": os.environ.get("POSTIZ_API_KEY", ""),
         "TWITCH_CLIENT_ID": os.environ.get("TWITCH_CLIENT_ID", ""),
         "TWITCH_CLIENT_SECRET": os.environ.get("TWITCH_CLIENT_SECRET", ""),
     }
