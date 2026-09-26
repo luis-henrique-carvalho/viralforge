@@ -386,6 +386,7 @@ def test_render_viral_video_retry_aac_on_copy_error(tmp_path, test_brand, test_t
 # Synthetic Video Real FFmpeg Integration Smoke Test
 # ============================================================================
 
+@pytest.mark.integration
 def test_synthetic_video_render_smoke_test(tmp_path, test_brand, test_template):
     """Real FFmpeg execution creating a synthetic source video and rendering 1080x1920 MP4."""
     if not _has_ffmpeg():
@@ -849,6 +850,7 @@ def test_resolve_font_searches_system_fonts_when_bundled_missing():
         assert font is not None
 
 
+@pytest.mark.integration
 def test_synthetic_video_render_odd_dimensions_smoke_test(tmp_path, test_brand, test_template):
     """Real FFmpeg execution with odd source dimensions (641x361) renders valid 1080x1920 MP4."""
     if not viral_studio_renderer.os.path.isfile("/usr/bin/ffmpeg") and not viral_studio_renderer.os.path.isfile("/usr/local/bin/ffmpeg"):

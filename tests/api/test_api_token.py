@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from clippyme.api import app as app_module
 from clippyme.api.security import configured_api_token, enforce_api_token
 
-ORIGIN = {"Origin": "http://localhost:5175"}
+ORIGIN = {"Origin": "http://localhost:5176"}
 
 
 class _FakeRequest:
@@ -93,7 +93,7 @@ def test_cors_preflight_allows_authorization_header(monkeypatch):
     response = _client().options(
         "/api/history",
         headers={
-            "Origin": "http://localhost:5175",
+            "Origin": "http://localhost:5176",
             "Access-Control-Request-Method": "GET",
             "Access-Control-Request-Headers": "Authorization",
         },

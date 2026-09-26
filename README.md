@@ -93,11 +93,11 @@ docker compose up --build
 ```
 
 - Backend: http://localhost:8000
-- Frontend: http://localhost:5175
+- Frontend: http://localhost:5176
 
-Open the dashboard, drop in a YouTube URL or upload a file, and watch the pipeline run live.
+Open the web app, drop in a YouTube URL or upload a file, and watch the pipeline run live.
 
-> **First run after a pull** that touches `requirements.txt` or `package.json`: `docker compose down -v && docker compose up --build` to clear the stale anonymous volume on `/app/node_modules`.
+> **First run after a pull** that touches `requirements.txt` or `web/package.json`: `docker compose down -v && docker compose up --build` to clear the stale anonymous volume on `/app/node_modules`.
 
 ### NVIDIA GPU profile
 
@@ -135,7 +135,7 @@ docker compose -f docker-compose.yml -f docker-compose.amd.yml exec backend \
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
 ```
 
-Swaps the dashboard from the Vite dev server to a static `vite build` served by **nginx** (same port 5175, same loopback default; the nginx proxy mirrors the dev proxy with 600 s timeouts for long composes and unbuffered upload/video streaming). The default `docker compose up` dev workflow (HMR + bind mount) is untouched. Requires Docker Compose ≥ 2.24.
+Swaps the web frontend from the Vite dev server to a static `vite build` served by **nginx** (same port 5176, same loopback default; the nginx proxy mirrors the dev proxy with 600 s timeouts for long composes and unbuffered upload/video streaming). The default `docker compose up` dev workflow (HMR + bind mount) is untouched. Requires Docker Compose ≥ 2.24.
 
 ---
 
@@ -176,7 +176,7 @@ Runtime env overrides (rarely needed):
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `CLIPPYME_BIND` | `127.0.0.1` | Host interface both published ports (8000/5175) bind to. `0.0.0.0` exposes the app to the LAN — deliberate choice only. |
+| `CLIPPYME_BIND` | `127.0.0.1` | Host interface both published ports (8000/5176) bind to. `0.0.0.0` exposes the app to the LAN — deliberate choice only. |
 | `CLIPPYME_API_TOKEN` | _(unset)_ | Optional shared-secret auth: when set, every `/api` request must carry it (`X-API-Token` or `Authorization: Bearer`). The dashboard stores it in Settings → API token. Unset = no-op. |
 | `TRANSCRIPTION_PROVIDER` | `deepgram` | Or `elevenlabs` (Scribe), or `whisper` to force local. |
 | `ELEVENLABS_AUDIO_ISOLATION` | `false` | Run the ElevenLabs Voice Isolator before ASR to strip background noise/music on noisy sources. |

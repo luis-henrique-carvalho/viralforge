@@ -8,7 +8,12 @@ const sourceDir = fileURLToPath(new URL('./src', import.meta.url))
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const backendTarget = env.VITE_BACKEND_PROXY_TARGET || env.BACKEND_URL || 'http://127.0.0.1:8000'
+  const backendTarget =
+    process.env.VITE_BACKEND_PROXY_TARGET ||
+    process.env.BACKEND_URL ||
+    env.VITE_BACKEND_PROXY_TARGET ||
+    env.BACKEND_URL ||
+    'http://127.0.0.1:8000'
 
   return {
     plugins: [

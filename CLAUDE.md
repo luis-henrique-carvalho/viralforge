@@ -135,7 +135,7 @@ rendered).
 ## Commands
 
 ```bash
-docker compose up --build            # primary run (backend :8000, frontend :5175, CPU)
+docker compose up --build            # primary run (backend :8000, frontend :5176, CPU)
 docker compose -f docker-compose.yml -f docker-compose.amd.yml up --build  # AMD ROCm GPU (gfx1200 / RDNA)
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build  # NVIDIA CUDA GPU
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build  # prod frontend (nginx)

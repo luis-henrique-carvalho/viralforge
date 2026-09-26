@@ -15,7 +15,7 @@ from clippyme.storage.config_store import (
     save_persistent_config,
 )
 
-ORIGIN = {"Origin": "http://localhost:5175"}
+ORIGIN = {"Origin": "http://localhost:5176"}
 
 
 @pytest.fixture(autouse=True)

@@ -24,7 +24,7 @@ import clippyme.api.app as app_module
 
 # Trusted headers satisfying require_trusted_config_request and api token gate
 ORIGIN = {
-    "Origin": "http://localhost:5175",
+    "Origin": "http://localhost:5176",
     "X-Gemini-Key": "dummy-test-key-not-real",
 }
 

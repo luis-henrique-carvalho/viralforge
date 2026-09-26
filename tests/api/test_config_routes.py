@@ -31,7 +31,7 @@ import clippyme.api.config_routes as config_module
 
 # A trusted browser origin (in the default allow-list) — the gate accepts it
 # via its Origin branch without needing a private client IP.
-ORIGIN = {"Origin": "http://localhost:5175"}
+ORIGIN = {"Origin": "http://localhost:5176"}
 
 # Tiny structurally-valid sfnt and a real 1x1 PNG.
 TTF_MAGIC = (

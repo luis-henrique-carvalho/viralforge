@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 import clippyme.api.app as app_module
 import clippyme.domain.viral_studio_store as store_module
 
-ORIGIN = {"Origin": "http://localhost:5175"}
+ORIGIN = {"Origin": "http://localhost:5176"}
 
 
 @pytest.fixture
@@ -30,7 +30,7 @@ def test_cors_patch_preflight(api_client):
     resp = api_client.options(
         "/api/viral-studio/brands/vale-o-clique",
         headers={
-            "Origin": "http://localhost:5175",
+            "Origin": "http://localhost:5176",
             "Access-Control-Request-Method": "PATCH",
             "Access-Control-Request-Headers": "Content-Type",
         },

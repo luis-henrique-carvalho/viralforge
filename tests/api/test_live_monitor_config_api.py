@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from clippyme.api import app as app_module
 
-ORIGIN = {"Origin": "http://localhost:5175"}
+ORIGIN = {"Origin": "http://localhost:5176"}
 
 
 class _FakeMonitor:
