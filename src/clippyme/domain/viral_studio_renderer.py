@@ -582,19 +582,29 @@ def _resolve_or_download_avatar(brand: Union[Brand, Dict[str, Any]]) -> Optional
         os.makedirs(cache_dir, exist_ok=True)
         cached_file = os.path.join(cache_dir, f"{url_hash}.png")
 
-        if os.path.isfile(cached_file) and os.path.getsize(cached_file) > 0:
+        if os.path.isfile(cached_file) and os.path.getsize(cached_file) > 500:
             return cached_file
 
         req = urllib.request.Request(
             avatar_url,
-            headers={"User-Agent": "Mozilla/5.0 (compatible; ClippyMe/1.0; +https://clippyme.app)"},
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "ngrok-skip-browser-warning": "1",
+            },
         )
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        with urllib.request.urlopen(req, timeout=8) as resp:
             data = resp.read()
-            if data:
-                with open(cached_file, "wb") as f:
-                    f.write(data)
-                return cached_file
+            if data and len(data) > 200:
+                # Validate it is actually a valid image format
+                try:
+                    from io import BytesIO
+                    with Image.open(BytesIO(data)) as test_img:
+                        test_img.verify()
+                    with open(cached_file, "wb") as f:
+                        f.write(data)
+                    return cached_file
+                except Exception as img_err:
+                    logger.warning("Downloaded avatar from %s is not a valid image: %s", avatar_url, img_err)
     except Exception as exc:
         logger.warning("Could not download brand avatar from %s: %s", avatar_url, exc)
 

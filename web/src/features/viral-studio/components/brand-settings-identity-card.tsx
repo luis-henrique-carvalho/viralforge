@@ -30,6 +30,7 @@ export function BrandSettingsIdentityCard({
 }: BrandSettingsIdentityCardProps) {
   const [name, setName] = useState(brand.name || '')
   const [handle, setHandle] = useState(brand.handle || '')
+  const [avatarUrl, setAvatarUrl] = useState(brand.avatar_url || '')
   const [niche, setNiche] = useState(brand.niche || '')
   const [keywordsText, setKeywordsText] = useState((brand.discovery_keywords || []).join(', '))
   const [templateId, setTemplateId] = useState(brand.template_id || 'classic-affiliate')
@@ -39,6 +40,7 @@ export function BrandSettingsIdentityCard({
   useEffect(() => {
     setName(brand.name || '')
     setHandle(brand.handle || '')
+    setAvatarUrl(brand.avatar_url || '')
     setNiche(brand.niche || '')
     setKeywordsText((brand.discovery_keywords || []).join(', '))
     setTemplateId(brand.template_id || 'classic-affiliate')
@@ -55,6 +57,7 @@ export function BrandSettingsIdentityCard({
     await onSave({
       name,
       handle: handle.startsWith('@') ? handle : `@${handle}`,
+      avatar_url: avatarUrl.trim() || null,
       niche: niche || null,
       discovery_keywords: keywords,
       template_id: templateId,
@@ -72,7 +75,7 @@ export function BrandSettingsIdentityCard({
             Identidade & Diretrizes Editoriais
           </CardTitle>
           <CardDescription className="text-xs">
-            Configure os metadados da marca, template visual padrão e textos de conversão.
+            Configure os metadados da marca, foto de perfil, template visual padrão e textos de conversão.
           </CardDescription>
         </div>
       </CardHeader>
@@ -107,6 +110,35 @@ export function BrandSettingsIdentityCard({
               onChange={(e) => setHandle(e.target.value)}
               placeholder="Ex: @achadinhosdaju"
               className="text-xs h-9 font-mono"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="brand-avatar"
+            className="text-xs"
+          >
+            URL do Avatar / Foto de Perfil:
+          </Label>
+          <div className="flex items-center gap-3">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt="Avatar da marca"
+                className="size-9 rounded-full object-cover border border-border shadow-xs shrink-0"
+              />
+            ) : (
+              <div className="size-9 rounded-full bg-muted border border-border flex items-center justify-center text-xs font-bold text-muted-foreground shrink-0">
+                {name ? name.charAt(0).toUpperCase() : 'M'}
+              </div>
+            )}
+            <Input
+              id="brand-avatar"
+              value={avatarUrl}
+              onChange={(e) => setAvatarUrl(e.target.value)}
+              placeholder="https://... (sincronizada automaticamente ao conectar conta)"
+              className="text-xs h-9 font-mono flex-1"
             />
           </div>
         </div>

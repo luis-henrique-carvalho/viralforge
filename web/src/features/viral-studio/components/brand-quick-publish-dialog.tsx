@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Send } from 'lucide-react'
+import { Calendar, Loader2, Send, Sparkles } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { toast } from 'sonner'
+import { usePreviewSlots } from '../hooks/use-publishing'
 import type { SocialChannel, ViralItem } from '../data/batch.types'
 
 interface BrandQuickPublishDialogProps {
@@ -40,6 +42,17 @@ export function BrandQuickPublishDialog({
   const [selectedChannels, setSelectedChannels] = useState<string[]>(channels.map((c) => c.id))
   const [publishMode, setPublishMode] = useState<'slot' | 'now' | 'custom'>('slot')
   const [customDateTime, setCustomDateTime] = useState('')
+
+  const primaryChannelId = selectedChannels[0] || channels[0]?.id || 'default'
+  const { data: previewData, isLoading: isLoadingPreview } = usePreviewSlots(
+    primaryChannelId,
+    1,
+    undefined,
+    undefined,
+    video?.brand_id,
+    { enabled: Boolean(video) && publishMode === 'slot' },
+  )
+  const nextSlotFormatted = previewData?.slots?.[0]?.formatted
 
   if (!video) return null
 
@@ -153,6 +166,27 @@ export function BrandQuickPublishDialog({
               </Button>
             </div>
           </div>
+
+          {/* Slot Preview */}
+          {publishMode === 'slot' && (
+            <Alert className="py-2.5 bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-300">
+              <Sparkles className="size-4 text-blue-500" />
+              <AlertTitle className="text-xs font-semibold">Fila Inteligente da Marca</AlertTitle>
+              <AlertDescription className="text-xs flex items-center gap-1.5 pt-0.5">
+                {isLoadingPreview ? (
+                  <span className="flex items-center gap-1">
+                    <Loader2 className="size-3 animate-spin" /> Calculando próximo slot livre...
+                  </span>
+                ) : nextSlotFormatted ? (
+                  <span>
+                    Será agendado para <strong>{nextSlotFormatted}</strong> sem sobreposição.
+                  </span>
+                ) : (
+                  <span>Calculando próximo horário livre da grade...</span>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Custom DateTime Input */}
           {publishMode === 'custom' && (

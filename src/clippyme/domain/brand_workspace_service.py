@@ -217,7 +217,20 @@ async def bind_brand_channels(
 
     current_profile["linked_at"] = datetime.now(timezone.utc).isoformat()
     profiles[provider_name] = current_profile
-    return viral_studio_store.update_brand(brand_id, {"publishing_profiles": profiles})
+    brand_updates: Dict[str, Any] = {"publishing_profiles": profiles}
+
+    # If brand doesn't have an avatar_url or avatar_path, inherit from the first bound channel with an avatar
+    if not brand.get("avatar_path") and not (brand.get("avatar_url") or "").strip():
+        try:
+            ch_list = await port.list_accounts(customer_id=None)
+            for ch in ch_list:
+                if str(ch.id) in target_channel_set and ch.avatar_url:
+                    brand_updates["avatar_url"] = ch.avatar_url
+                    break
+        except Exception as exc:
+            logger.debug("Could not auto-inherit channel avatar on bind: %s", exc)
+
+    return viral_studio_store.update_brand(brand_id, brand_updates)
 
 
 async def get_workspace_summary(brand_id: str) -> Dict[str, Any]:
@@ -227,6 +240,13 @@ async def get_workspace_summary(brand_id: str) -> Dict[str, Any]:
 
     # 1. Fetch connected channels for this brand on its active provider
     channels = await get_brand_channels(brand_id, all_available=False)
+
+    # Auto-populate brand avatar_url if missing and a connected channel has an avatar
+    if not brand.get("avatar_path") and not (brand.get("avatar_url") or "").strip() and channels:
+        for ch in channels:
+            if ch.avatar_url:
+                brand = viral_studio_store.update_brand(brand_id, {"avatar_url": ch.avatar_url})
+                break
 
     # 2. Query items across batches belonging to this brand
     items = viral_studio_store.get_items_by_brand(brand_id=brand_id)
@@ -311,34 +331,42 @@ def _record_receipts(
     """Durably record publication receipts and advance item status."""
     now = datetime.now(timezone.utc).isoformat()
     for idx, receipt in enumerate(receipts):
-        if receipt.status in ("scheduled", "published"):
-            ch_id = (
-                channel_ids[idx]
-                if channel_ids and idx < len(channel_ids)
-                else (receipt.raw_response.get("integrationId") if receipt.raw_response else None)
-            )
-            record = {
-                "id": receipt.post_id or f"post_{item_id}_{receipt.platform_post_id or 'ch'}",
-                "post_id": receipt.post_id,
-                "channel_id": ch_id,
-                "platform_post_id": receipt.platform_post_id,
-                "scheduled_for": scheduled_for or receipt.scheduled_for,
-                "published_at": receipt.published_at,
-                "status": receipt.status,
-                "post_url": receipt.post_url,
-                "updated_at": now,
-            }
-            viral_studio_store.append_publication_record(
-                batch_id=batch_id,
-                item_id=item_id,
-                record=record,
-            )
+        ch_id = (
+            channel_ids[idx]
+            if channel_ids and idx < len(channel_ids)
+            else (receipt.raw_response.get("integrationId") if receipt.raw_response else None)
+        )
+        record = {
+            "id": receipt.post_id or f"post_{item_id}_{receipt.platform_post_id or ch_id or idx}",
+            "post_id": receipt.post_id,
+            "channel_id": ch_id,
+            "platform_post_id": receipt.platform_post_id,
+            "scheduled_for": scheduled_for or receipt.scheduled_for,
+            "published_at": receipt.published_at,
+            "status": receipt.status,
+            "post_url": receipt.post_url,
+            "error": receipt.error,
+            "updated_at": now,
+        }
+        viral_studio_store.append_publication_record(
+            batch_id=batch_id,
+            item_id=item_id,
+            record=record,
+        )
 
     if any(r.status in ("scheduled", "published") for r in receipts):
+        viral_studio_store.update_item(
+            item_id=item_id,
+            updates={
+                "status": "PUBLISHED" if publish_now else "SCHEDULED",
+                "scheduled_for": scheduled_for if not publish_now else None,
+            },
+        )
+    elif all(r.status == "failed" for r in receipts) and receipts:
         viral_studio_store.update_item_status(
             batch_id=batch_id,
             item_id=item_id,
-            status="PUBLISHED" if publish_now else "SCHEDULED",
+            status="FAILED",
         )
 
 
@@ -347,13 +375,19 @@ async def auto_schedule_brand_video(
     item_id: str,
     channel_ids: Optional[List[str]] = None,
 ) -> List[PublicationReceipt]:
-    """1-Click auto-schedule an approved video using the next available slot(s)."""
+    """1-Click auto-schedule an approved video using the brand's posting schedule and next available slot.
+
+    Enforces:
+    - Domain Authority: ViralForge calculates scheduled_for timestamp from brand posting schedule.
+    - Multi-slot daily traversal: uses brand.posting_schedule slots & timezone.
+    - Omnichannel Synchronized Publication: all brand channels are scheduled for the exact same slot.
+    - Publication Failure Isolation: partial successes are saved; failed channels are recorded with error.
+    """
     brand = viral_studio_store.get_brand_or_raise(brand_id)
     item, batch_id, video_path = _validate_item_for_brand(brand_id, item_id, require_approved=True)
 
     provider_name = get_brand_active_provider(brand)
     port = get_social_publisher(provider=provider_name)
-    customer_id = get_brand_customer_id(brand, provider_name)
 
     # Determine target channels
     if not channel_ids:
@@ -363,32 +397,33 @@ async def auto_schedule_brand_video(
     if not channel_ids:
         raise ValidationError(f"No connected social channels found for brand '{brand_id}'")
 
+    # 1. Resolve posting schedule and calculate synchronized slot
+    posting_schedule = brand.get("posting_schedule") or {}
+    slots_list = posting_schedule.get("slots") or ["18:00"]
+    timezone_str = posting_schedule.get("timezone") or "America/Sao_Paulo"
+
+    primary_acc = channel_ids[0] if channel_ids else None
+    avail_slots = viral_studio_store.get_next_available_slots(
+        account_id=primary_acc,
+        brand_id=brand_id,
+        count=1,
+        slots=slots_list,
+        timezone_str=timezone_str,
+    )
+
+    if avail_slots:
+        slot_iso = avail_slots[0].isoformat()
+    else:
+        now_tz = datetime.now(timezone.utc)
+        slot_iso = (now_tz + timedelta(days=1)).replace(hour=18, minute=0, second=0, microsecond=0).isoformat()
+
+    title = item.get("selected_headline") or item.get("headline") or brand.get("name")
+    caption = item.get("caption") or brand.get("default_cta") or ""
+
     receipts: List[PublicationReceipt] = []
-    timezone_str = brand.get("posting_schedule", {}).get("timezone") or "America/Sao_Paulo"
 
+    # 2. Dispatch to Publisher Port for each channel (Omnichannel with Failure Isolation)
     for channel_id in channel_ids:
-        # 1. Discover slot via provider or local schedule
-        slot_dt = await port.find_next_slot(channel_id)
-        if slot_dt is None:
-            # Fallback to local gap-filling scheduling
-            preferred_time = "18:00"
-            slots = brand.get("posting_schedule", {}).get("slots", [])
-            if slots:
-                preferred_time = slots[0]
-            avail_slots = viral_studio_store.get_next_available_slots(
-                account_id=channel_id,
-                count=1,
-                preferred_time=preferred_time,
-                timezone_str=timezone_str,
-            )
-            slot_iso = avail_slots[0].isoformat() if hasattr(avail_slots[0], "isoformat") else str(avail_slots[0])
-        else:
-            slot_iso = slot_dt.isoformat()
-
-        # 2. Build Job
-        title = item.get("selected_headline") or item.get("headline") or brand.get("name")
-        caption = item.get("caption") or brand.get("default_cta") or ""
-
         job = PublicationJob(
             item_id=item_id,
             media_path=video_path,
@@ -399,13 +434,24 @@ async def auto_schedule_brand_video(
             timezone=timezone_str,
             publish_now=False,
         )
+        try:
+            receipt = await port.schedule(job)
+            receipts.append(receipt)
+        except Exception as exc:
+            logger.error("Failed auto-scheduling item %s on channel %s: %s", item_id, channel_id, exc)
+            receipts.append(
+                PublicationReceipt(
+                    item_id=item_id,
+                    status="failed",
+                    post_id=None,
+                    scheduled_for=slot_iso,
+                    error=str(exc),
+                    raw_response={"error": str(exc)},
+                )
+            )
 
-        # 3. Dispatch to Publisher Port
-        receipt = await port.schedule(job)
-        receipts.append(receipt)
-
-    # 4. Record receipts and advance status
-    _record_receipts(batch_id, item_id, receipts, scheduled_for=None, publish_now=False, channel_ids=channel_ids)
+    # 3. Record receipts and update item status
+    _record_receipts(batch_id, item_id, receipts, scheduled_for=slot_iso, publish_now=False, channel_ids=channel_ids)
     return receipts
 
 
@@ -416,7 +462,7 @@ async def publish_brand_video(
     scheduled_for: Optional[str] = None,
     publish_now: bool = False,
 ) -> List[PublicationReceipt]:
-    """Publish or schedule video to specified channels."""
+    """Publish or schedule video to specified channels with failure isolation."""
     brand = viral_studio_store.get_brand_or_raise(brand_id)
     item, batch_id, video_path = _validate_item_for_brand(brand_id, item_id, require_approved=False)
 
@@ -442,9 +488,21 @@ async def publish_brand_video(
             timezone=timezone_str,
             publish_now=publish_now,
         )
-
-        receipt = await (port.publish(job) if publish_now else port.schedule(job))
-        receipts.append(receipt)
+        try:
+            receipt = await (port.publish(job) if publish_now else port.schedule(job))
+            receipts.append(receipt)
+        except Exception as exc:
+            logger.error("Failed publishing/scheduling item %s on channel %s: %s", item_id, channel_id, exc)
+            receipts.append(
+                PublicationReceipt(
+                    item_id=item_id,
+                    status="failed",
+                    post_id=None,
+                    scheduled_for=scheduled_for,
+                    error=str(exc),
+                    raw_response={"error": str(exc)},
+                )
+            )
 
     _record_receipts(batch_id, item_id, receipts, scheduled_for=scheduled_for, publish_now=publish_now, channel_ids=channel_ids)
     return receipts

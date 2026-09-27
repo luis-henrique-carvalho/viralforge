@@ -744,15 +744,19 @@ async def publish_viral_items(
         primary_acc = str(item_platforms[0].get("accountId") or item_platforms[0].get("account_id") or "default")
         item_slot = None
         if schedule_mode == "auto":
+            brand_sched = brand.get("posting_schedule") if isinstance(brand, dict) else {}
+            brand_slots = brand_sched.get("slots") if isinstance(brand_sched, dict) else None
+            brand_tz = (brand_sched.get("timezone") if isinstance(brand_sched, dict) else None) or timezone or "America/Sao_Paulo"
             slots = viral_studio_store.get_next_available_slots(
                 account_id=primary_acc,
-                count=len(item_ids),
-                preferred_time="18:00",
+                brand_id=brand_id,
+                count=1,
+                slots=brand_slots,
                 start_date=start_date,
-                timezone_str=timezone or "America/Sao_Paulo",
+                timezone_str=brand_tz,
             )
-            if idx < len(slots):
-                item_slot = slots[idx].isoformat()
+            if slots:
+                item_slot = slots[0].isoformat()
         elif schedule_mode == "manual":
             item_slot = scheduled_for
 
@@ -963,6 +967,9 @@ async def publish_viral_items(
         "failed": sum(r.get("status") == "failed" for r in results),
     }
 
+
+# Backward-compatible and semantic alias
+publish_batch_videos = publish_viral_items
 
 
 async def cancel_item_schedule(item_id: str, publisher: Optional[Any] = None) -> Dict[str, Any]:

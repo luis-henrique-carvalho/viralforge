@@ -630,6 +630,7 @@ def update_item_status_by_post_id(
                         item["status"] = new_status
                         item["updated_at"] = now
                         if new_status.upper() == "APPROVED":
+                            item["scheduled_for"] = None
                             rec["status"] = "cancelled"
                             rec["action"] = "cancelled"
                             rec["cancelled_at"] = now
@@ -1113,6 +1114,8 @@ def get_item(item_id: str) -> Optional[Dict[str, Any]]:
                 if item.get("id") == item_id or item.get("item_id") == item_id:
                     res = dict(item)
                     res["batch_id"] = batch.get("batch_id") or batch.get("id")
+                    if not res.get("brand_id") and batch.get("brand_id"):
+                        res["brand_id"] = batch.get("brand_id")
                     return res
         return None
 
@@ -1254,19 +1257,21 @@ def append_item_log(item_id: str, log_entry: Dict[str, Any]) -> List[Dict[str, A
 
 
 def get_next_available_slots(
-    account_id: str,
-    count: int,
-    preferred_time: str = "18:00",
+    account_id: Optional[str] = None,
+    count: int = 1,
+    preferred_time: Union[str, List[str]] = "18:00",
     start_date: Optional[str] = None,
     timezone_str: str = "America/Sao_Paulo",
+    slots: Optional[List[str]] = None,
+    brand_id: Optional[str] = None,
 ) -> List[datetime]:
-    """Calculate the next available publishing slots for a specific account without collisions (Auto-Chaining).
+    """Calculate the next available publishing slots without collisions (Auto-Chaining).
 
-    Algorithm:
-    1. Scan stored items in SCHEDULED status matching account_id.
-    2. Extract occupied dates in the target timezone.
-    3. Determine the base date (max(start_date, today) or last occupied date + 1 day).
-    4. Project `count` consecutive daily slots at `preferred_time` skipping any occupied dates.
+    Supports:
+    - Multi-slot daily traversal (e.g. 10:00, 15:00, 20:00) before advancing to next day.
+    - Anti-collision based on already scheduled items in store (scoped by account_id and/or brand_id).
+    - Timezone-aware date/time math.
+    - Chronological resolution: past slots today are discarded; gaps in schedule are filled first.
     """
     if count <= 0:
         return []
@@ -1276,61 +1281,92 @@ def get_next_available_slots(
     except (ZoneInfoNotFoundError, ValueError):
         tz = ZoneInfo("America/Sao_Paulo")
 
-    try:
-        time_parts = (preferred_time or "18:00").strip().split(":")
-        pref_hour = int(time_parts[0])
-        pref_minute = int(time_parts[1]) if len(time_parts) > 1 else 0
-        pref_time = time(hour=pref_hour, minute=pref_minute)
-    except (ValueError, IndexError):
-        pref_time = time(hour=18, minute=0)
+    # Resolve daily time slots
+    raw_slots: List[str] = []
+    if slots and isinstance(slots, list):
+        raw_slots = [str(s).strip() for s in slots if str(s).strip()]
+    elif isinstance(preferred_time, list):
+        raw_slots = [str(s).strip() for s in preferred_time if str(s).strip()]
+    elif isinstance(preferred_time, str) and "," in preferred_time:
+        raw_slots = [s.strip() for s in preferred_time.split(",") if s.strip()]
+    elif preferred_time:
+        raw_slots = [str(preferred_time).strip()]
 
-    now = datetime.now(tz)
+    daily_times: List[time] = []
+    for s_str in raw_slots:
+        try:
+            parts = s_str.split(":")
+            h = int(parts[0])
+            m = int(parts[1]) if len(parts) > 1 else 0
+            s = int(parts[2]) if len(parts) > 2 else 0
+            daily_times.append(time(hour=h, minute=m, second=s))
+        except (ValueError, IndexError):
+            continue
 
-    occupied_dates: set[date] = set()
+    if not daily_times:
+        daily_times = [time(hour=18, minute=0)]
+
+    # Sort slots chronologically within a day, removing duplicates
+    daily_times = sorted(list(dict.fromkeys(daily_times)))
+
+    now = datetime.now(tz).replace(microsecond=0)
+
+    # Collect occupied timestamps matching brand_id and/or account_id
+    occupied_datetimes: set[datetime] = set()
     with _STORE_LOCK:
         batches = _load_batches_locked()
         for batch in batches.values():
+            batch_brand = batch.get("brand_id")
             for item in batch.get("items", []):
-                if item.get("status") != "SCHEDULED":
+                item_status = str(item.get("status") or "").upper()
+                if item_status != "SCHEDULED":
                     continue
-                # Match account_id if specified on item or in its publication records
+
+                item_brand = item.get("brand_id") or batch_brand
+                if brand_id and item_brand != brand_id:
+                    continue
+
                 item_acc = item.get("account_id")
                 records = item.get("publication_records") or []
-                matches_acc = (item_acc == account_id) or not account_id
-                if not matches_acc:
-                    for rec in records:
-                        if rec.get("account_id") == account_id:
-                            matches_acc = True
-                            break
-                if not matches_acc:
-                    continue
+                if account_id:
+                    matches_acc = (item_acc == account_id)
+                    if not matches_acc and records:
+                        for rec in records:
+                            if rec.get("channel_id") == account_id or rec.get("account_id") == account_id:
+                                matches_acc = True
+                                break
+                    if not matches_acc and not item_acc and not records:
+                        matches_acc = True
+                    if not matches_acc and brand_id and item_brand == brand_id:
+                        matches_acc = True
+                    if not matches_acc:
+                        continue
 
-                # Check scheduled_for on item or within records
-                scheduled_iso = item.get("scheduled_for")
-                if not scheduled_iso and records:
-                    for rec in records:
-                        if rec.get("scheduled_for"):
-                            scheduled_iso = rec.get("scheduled_for")
-                            break
-                        res = rec.get("result")
-                        if isinstance(res, dict) and res.get("scheduled_for"):
-                            scheduled_iso = res.get("scheduled_for")
-                            break
-                if not scheduled_iso:
-                    continue
+                scheduled_isos: List[str] = []
+                if item.get("scheduled_for"):
+                    scheduled_isos.append(str(item.get("scheduled_for")))
+                for rec in records:
+                    rec_status = str(rec.get("status") or "").lower()
+                    if rec_status in ("cancelled", "canceled", "failed"):
+                        continue
+                    if rec.get("scheduled_for"):
+                        scheduled_isos.append(str(rec.get("scheduled_for")))
+                    res = rec.get("result")
+                    if isinstance(res, dict) and res.get("scheduled_for"):
+                        scheduled_isos.append(str(res.get("scheduled_for")))
 
-                try:
-                    dt = datetime.fromisoformat(str(scheduled_iso).replace("Z", "+00:00"))
-                    if dt.tzinfo is None:
-                        dt = dt.replace(tzinfo=tz)
-                    else:
-                        dt = dt.astimezone(tz)
-                    if dt.date() >= now.date():
-                        occupied_dates.add(dt.date())
-                except (ValueError, TypeError):
-                    continue
+                for s_iso in scheduled_isos:
+                    try:
+                        dt = datetime.fromisoformat(str(s_iso).replace("Z", "+00:00"))
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=tz)
+                        else:
+                            dt = dt.astimezone(tz)
+                        occupied_datetimes.add(dt.replace(second=0, microsecond=0))
+                    except (ValueError, TypeError):
+                        continue
 
-    # Determine base_date (Gap Filling: start from today or specified start_date)
+    # Determine base date
     if start_date:
         try:
             start_date_obj = (
@@ -1338,29 +1374,29 @@ def get_next_available_slots(
                 if "T" in start_date
                 else datetime.strptime(start_date.strip(), "%Y-%m-%d").date()
             )
-            base_date = max(start_date_obj, now.date())
+            curr_date = max(start_date_obj, now.date())
         except ValueError:
-            base_date = now.date()
+            curr_date = now.date()
     else:
-        target_today = datetime.combine(now.date(), pref_time, tzinfo=tz)
-        if now < target_today:
-            base_date = now.date()
-        else:
-            base_date = now.date() + timedelta(days=1)
+        curr_date = now.date()
 
-
-    slots: List[datetime] = []
-    candidate_date = base_date
+    result_slots: List[datetime] = []
     iterations = 0
-    while len(slots) < count and iterations < 365:
+    while len(result_slots) < count and iterations < 365:
         iterations += 1
-        if candidate_date not in occupied_dates:
-            slot_dt = datetime.combine(candidate_date, pref_time, tzinfo=tz)
-            if slot_dt > now:
-                slots.append(slot_dt)
-        candidate_date += timedelta(days=1)
+        for t in daily_times:
+            candidate_dt = datetime.combine(curr_date, t, tzinfo=tz)
+            if candidate_dt <= now:
+                continue
+            candidate_normalized = candidate_dt.replace(second=0, microsecond=0)
+            if candidate_normalized in occupied_datetimes:
+                continue
+            result_slots.append(candidate_dt)
+            if len(result_slots) == count:
+                break
+        curr_date += timedelta(days=1)
 
-    return slots
+    return result_slots
 
 
 def cancel_item_schedule(item_id: str) -> Dict[str, Any]:

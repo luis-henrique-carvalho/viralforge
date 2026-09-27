@@ -273,12 +273,14 @@ export const viralStudioApi = {
     count: number,
     startDate?: string,
     preferredTime?: string,
+    brandId?: string,
   ): Promise<PreviewSlotsResponse> {
     const params = new URLSearchParams()
     params.set('account_id', accountId)
     params.set('count', String(count))
     if (startDate) params.set('start_date', startDate)
     if (preferredTime) params.set('preferred_time', preferredTime)
+    if (brandId) params.set('brand_id', brandId)
 
     const response = await apiClient.get<PreviewSlotsResponse>(
       `/viral-studio/publishing/preview-slots?${params.toString()}`,

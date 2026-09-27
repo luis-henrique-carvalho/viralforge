@@ -84,6 +84,9 @@ export function ViralPublishDialog({
   const { data: previewData, isLoading: isLoadingPreview } = usePreviewSlots(
     primaryAccountId,
     items.length,
+    undefined,
+    undefined,
+    itemBrandId,
   )
 
   const publishMutation = usePublishItems(batchId)
@@ -161,6 +164,7 @@ export function ViralPublishDialog({
               <PublishModeSelector
                 mode={mode}
                 onChangeMode={setMode}
+                brand={currentBrand}
               />
 
               {mode === 'auto' && (

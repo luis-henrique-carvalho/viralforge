@@ -523,20 +523,40 @@ async def retry_item(id: str):
 async def preview_publish_slots(
     account_id: Optional[str] = None,
     channel_id: Optional[str] = None,
+    brand_id: Optional[str] = None,
     count: int = 1,
     start_date: Optional[str] = None,
     preferred_time: str = "18:00",
     timezone: str = "America/Sao_Paulo",
+    slots: Optional[str] = None,
 ):
-    """Calculate and project collision-free schedule slots for an account."""
+    """Calculate and project collision-free schedule slots for an account/brand."""
     effective_acc_id = account_id or channel_id or "default"
-    slots = await asyncio.to_thread(
+
+    # If brand_id is provided and slots/preferred_time not overridden, load brand posting schedule
+    brand_slots_list = None
+    brand_tz = timezone
+    if brand_id:
+        brand = viral_studio_store.get_brand(brand_id)
+        if brand:
+            brand_sched = brand.get("posting_schedule") or {}
+            if not slots and preferred_time == "18:00" and brand_sched.get("slots"):
+                brand_slots_list = brand_sched.get("slots")
+            if timezone == "America/Sao_Paulo" and brand_sched.get("timezone"):
+                brand_tz = brand_sched.get("timezone")
+
+    if slots:
+        brand_slots_list = [s.strip() for s in slots.split(",") if s.strip()]
+
+    calculated_slots = await asyncio.to_thread(
         viral_studio_store.get_next_available_slots,
         account_id=effective_acc_id,
+        brand_id=brand_id,
         count=count,
         preferred_time=preferred_time,
+        slots=brand_slots_list,
         start_date=start_date,
-        timezone_str=timezone,
+        timezone_str=brand_tz,
     )
     projections = [
         SlotProjection(
@@ -544,7 +564,7 @@ async def preview_publish_slots(
             datetime=slot.isoformat(),
             formatted=slot.strftime("%d/%m às %H:%M"),
         )
-        for idx, slot in enumerate(slots)
+        for idx, slot in enumerate(calculated_slots)
     ]
     return PreviewSlotsResponse(
         account_id=effective_acc_id,

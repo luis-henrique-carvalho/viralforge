@@ -4,15 +4,29 @@ import { Label } from '@/components/ui/label'
 import { Typography } from '@/components/ui/typography'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import type { PublishMode } from '../data/publishing.types'
+import type { Brand } from '../data/batch.types'
 
 export interface PublishModeSelectorProps {
   mode: PublishMode
   onChangeMode: (mode: PublishMode) => void
+  brand?: Brand | null
 }
 
-export function PublishModeSelector({ mode, onChangeMode }: PublishModeSelectorProps) {
+export function PublishModeSelector({ mode, onChangeMode, brand }: PublishModeSelectorProps) {
   const radioIdAuto = useId()
   const radioIdNow = useId()
+
+  const scheduleText = (() => {
+    const sched = brand?.posting_schedule
+    const slots = sched?.slots
+    if (slots && slots.length > 0) {
+      const count = slots.length
+      const countLabel = count === 1 ? '1 post por dia' : `${count} posts por dia`
+      const tz = sched.timezone ? ` (${sched.timezone.split('/').pop()?.replace('_', ' ') || 'BRT'})` : ''
+      return `${countLabel} às ${slots.join(', ')}${tz}, continuando automaticamente a partir do próximo slot livre sem sobreposição.`
+    }
+    return 'Fila inteligente contínua com base na grade da marca, continuando automaticamente a partir do próximo slot livre sem sobreposição.'
+  })()
 
   return (
     <div className="space-y-2">
@@ -49,8 +63,7 @@ export function PublishModeSelector({ mode, onChangeMode }: PublishModeSelectorP
               variant="muted"
               className="leading-relaxed"
             >
-              1 vídeo por dia às 18:00, continuando automaticamente a partir do próximo slot livre
-              sem sobreposição.
+              {scheduleText}
             </Typography>
           </div>
         </div>

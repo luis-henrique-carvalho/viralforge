@@ -18,7 +18,13 @@ export const viralStudioKeys = {
   publishingAccounts: () => [...viralStudioKeys.all, 'publishing', 'accounts'] as const,
   publishingWorkspaces: (provider?: string) =>
     [...viralStudioKeys.all, 'publishing', 'workspaces', provider || 'default'] as const,
-  previewSlots: (accountId: string, count: number, startDate?: string, preferredTime?: string) =>
+  previewSlots: (
+    accountId: string,
+    count: number,
+    startDate?: string,
+    preferredTime?: string,
+    brandId?: string,
+  ) =>
     [
       ...viralStudioKeys.all,
       'publishing',
@@ -27,5 +33,7 @@ export const viralStudioKeys = {
       count,
       startDate,
       preferredTime,
+      brandId,
     ] as const,
 }
+
