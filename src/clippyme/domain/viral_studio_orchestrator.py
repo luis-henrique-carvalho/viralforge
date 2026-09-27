@@ -696,6 +696,60 @@ async def retry_item(item_id: str) -> Dict[str, Any]:
     return viral_studio_store.get_item_or_raise(item_id)
 
 
+def _extract_brand_channel_ids(brand: Optional[Dict[str, Any]]) -> Set[str]:
+    """Extract all bound channel and account IDs for a brand across active profiles."""
+    if not brand:
+        return set()
+    profiles = brand.get("publishing_profiles") or {}
+    if not isinstance(profiles, dict):
+        return set()
+    cids: Set[str] = set()
+    for _, p_data in profiles.items():
+        if isinstance(p_data, dict):
+            for cid in p_data.get("channel_ids") or []:
+                if str(cid).strip():
+                    cids.add(str(cid).strip())
+            acc_id = p_data.get("account_id") or p_data.get("accountId")
+            if acc_id and str(acc_id).strip():
+                cids.add(str(acc_id).strip())
+        elif isinstance(p_data, str) and p_data.strip():
+            cids.add(p_data.strip())
+    return cids
+
+
+def _get_brand_target_platforms(brand: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Resolve configured social target platforms for a brand."""
+    if not brand:
+        return [{"platform": "tiktok", "accountId": "default"}]
+    profiles = brand.get("publishing_profiles") or {}
+    if not isinstance(profiles, dict) or not profiles:
+        return [{"platform": "tiktok", "accountId": "default"}]
+
+    target_platforms: List[Dict[str, Any]] = []
+    for plat_key, prof in profiles.items():
+        if isinstance(prof, dict):
+            ch_ids = prof.get("channel_ids") or []
+            if ch_ids:
+                for cid in ch_ids:
+                    target_platforms.append({
+                        "platform": prof.get("platform") or "instagram",
+                        "accountId": str(cid),
+                        "platformSpecificData": prof.get("platformSpecificData"),
+                    })
+            elif prof.get("account_id") or prof.get("accountId"):
+                target_platforms.append({
+                    "platform": prof.get("platform") or plat_key,
+                    "accountId": str(prof.get("account_id") or prof.get("accountId")),
+                    "platformSpecificData": prof.get("platformSpecificData"),
+                })
+        elif prof:
+            target_platforms.append({
+                "platform": plat_key,
+                "accountId": str(prof),
+            })
+    return target_platforms or [{"platform": "tiktok", "accountId": "default"}]
+
+
 async def publish_viral_items(
     item_ids: List[str],
     platforms: List[Dict[str, Any]],
@@ -721,24 +775,21 @@ async def publish_viral_items(
         brand = viral_studio_store.get_brand(brand_id) if brand_id else None
 
         # Resolve target platforms for this item: explicit platforms or brand's connected profiles
+        brand_channel_ids = _extract_brand_channel_ids(brand)
         item_platforms: List[Dict[str, Any]] = []
+
         if platforms and len(platforms) > 0:
-            item_platforms = platforms
-        elif brand and isinstance(brand.get("publishing_profiles"), dict) and len(brand["publishing_profiles"]) > 0:
-            for plat_key, prof in brand["publishing_profiles"].items():
-                if isinstance(prof, dict):
-                    item_platforms.append({
-                        "platform": prof.get("platform") or plat_key,
-                        "accountId": prof.get("account_id") or prof.get("accountId") or str(prof),
-                        "platformSpecificData": prof.get("platformSpecificData"),
-                    })
-                elif prof:
-                    item_platforms.append({
-                        "platform": plat_key,
-                        "accountId": str(prof),
-                    })
+            if brand_channel_ids:
+                # Security Guard: Filter to only platforms belonging to this item's brand
+                valid_platforms = [
+                    p for p in platforms
+                    if str(p.get("accountId") or p.get("account_id") or "").strip() in brand_channel_ids
+                ]
+                item_platforms = valid_platforms if valid_platforms else _get_brand_target_platforms(brand)
+            else:
+                item_platforms = platforms
         else:
-            item_platforms = [{"platform": "tiktok", "accountId": "default"}]
+            item_platforms = _get_brand_target_platforms(brand)
 
         # Synchronized launch slot across all channels of the brand for this video
         primary_acc = str(item_platforms[0].get("accountId") or item_platforms[0].get("account_id") or "default")

@@ -172,3 +172,85 @@ def test_create_batch_item_invalid_explicit_brand_id_rejected():
             ],
         })
 
+
+@pytest.mark.asyncio
+async def test_publish_viral_items_brand_channel_isolation(tmp_path):
+    """Verify that foreign accounts from another brand are filtered out when publishing an item."""
+    video_file = tmp_path / "test_video.mp4"
+    video_file.write_text("fake video content")
+
+    batch = viral_studio_store.create_batch({
+        "brand_ids": ["achados-br"],
+        "items": [{
+            "item_id": "item-iso-1",
+            "source_url": "https://example.com/v1.mp4",
+            "status": "APPROVED",
+            "rendered_path": str(video_file),
+        }],
+    })
+    item_id = "item-iso-1"
+
+    # Pass a foreign account from another brand ("vale-o-clique-channel") and a valid account for "achados-br" ("ig_achados")
+    res = await viral_studio_orchestrator.publish_viral_items(
+        item_ids=[item_id],
+        platforms=[
+            {"platform": "instagram", "accountId": "cmuislbqc0005lh7pxlkbhrjw"},  # Foreign channel belonging to vale-o-clique
+            {"platform": "instagram", "accountId": "ig_achados"},                   # Valid channel belonging to achados-br
+        ],
+        schedule_mode="now",
+    )
+
+    item = viral_studio_store.get_item_or_raise(item_id)
+    assert item["status"] == "PUBLISHED"
+    # Only the valid account for this brand should have been published
+    assert len(item["publication_records"]) == 1
+    assert item["publication_records"][0]["account_id"] == "ig_achados"
+
+
+@pytest.mark.asyncio
+async def test_publish_viral_items_multi_brand_auto_routing(tmp_path):
+    """Verify that multi-brand batch publishing with empty platforms automatically routes each item to its brand channels."""
+    v1 = tmp_path / "v1.mp4"
+    v2 = tmp_path / "v2.mp4"
+    v1.write_text("video 1")
+    v2.write_text("video 2")
+
+    batch = viral_studio_store.create_batch({
+        "brand_ids": ["vale-o-clique", "achados-br"],
+        "distribution_strategy": "round_robin",
+        "items": [
+            {
+                "item_id": "item-multi-1",
+                "source_url": "https://example.com/v1.mp4",
+                "status": "APPROVED",
+                "rendered_path": str(v1),
+            },
+            {
+                "item_id": "item-multi-2",
+                "source_url": "https://example.com/v2.mp4",
+                "status": "APPROVED",
+                "rendered_path": str(v2),
+            },
+        ],
+    })
+    item1_id = "item-multi-1"  # vale-o-clique
+    item2_id = "item-multi-2"  # achados-br
+
+    res = await viral_studio_orchestrator.publish_viral_items(
+        item_ids=[item1_id, item2_id],
+        platforms=[],  # Empty platforms triggers automatic brand routing
+        schedule_mode="now",
+    )
+
+    item1 = viral_studio_store.get_item_or_raise(item1_id)
+    item2 = viral_studio_store.get_item_or_raise(item2_id)
+
+    assert item1["status"] == "PUBLISHED"
+    assert item2["status"] == "PUBLISHED"
+    # item2 (achados-br) has 2 profiles (instagram: ig_achados, tiktok: tt_achados)
+    assert len(item2["publication_records"]) == 2
+    item2_accounts = {r.get("account_id") for r in item2["publication_records"]}
+    assert "ig_achados" in item2_accounts
+    assert "tt_achados" in item2_accounts
+
+
