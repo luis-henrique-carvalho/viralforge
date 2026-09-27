@@ -1056,7 +1056,24 @@ class SocialChannelResponse(BaseModel):
     name: str
     platform: str
     avatar_url: Optional[str] = None
+    handle: Optional[str] = None
     connected: bool = True
+    provider: Optional[str] = None
+    group_id: Optional[str] = None
+    group_name: Optional[str] = None
+    bound_to_brand_id: Optional[str] = None
+    bound_to_brand_name: Optional[str] = None
+
+
+class WorkspaceSummaryResponse(BaseModel):
+    id: str
+    name: str
+    provider: str
+
+
+class BrandChannelBindRequest(BaseModel):
+    channel_ids: List[str] = Field(default_factory=list)
+    workspace_id: Optional[str] = None
 
 
 # Backward compatibility alias

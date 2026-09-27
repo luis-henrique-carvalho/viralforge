@@ -364,3 +364,66 @@ def test_local_models_probe_filters_embedding_models(monkeypatch):
     assert len(ollama_res["models"]) == 1
     assert ollama_res["models"][0]["name"] == "llama3.2:latest"
 
+
+# --- /api/config/postiz + /api/postiz/integrations --------------------------
+
+def test_postiz_config_roundtrip_and_masking(client):
+    """POST then GET for Postiz settings."""
+    r = client.post(
+        "/api/config/postiz",
+        json={"base_url": "http://localhost:4007", "api_key": "postiz_secret_key_12345678"},
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["configured"] is True
+    assert data["base_url"] == "http://localhost:4007"
+    assert data["api_key_masked"] == "postiz...5678"
+
+    get_r = client.get("/api/config/postiz")
+    assert get_r.status_code == 200
+    assert get_r.json()["api_key_masked"] == "postiz...5678"
+
+
+def test_postiz_integrations_discovery(client, monkeypatch):
+    """GET /api/postiz/integrations requires api_key and returns mapped integrations."""
+    # Not configured -> 400
+    from clippyme.storage.config_store import save_postiz_config
+    save_postiz_config(api_key="")
+    r = client.get("/api/postiz/integrations")
+    assert r.status_code == 400
+
+    # Configure key
+    client.post(
+        "/api/config/postiz",
+        json={"base_url": "http://localhost:4007", "api_key": "valid_key_12345"},
+    )
+
+    class MockPostizClient:
+        def __init__(self, base_url, api_key):
+            self.base_url = base_url
+            self.api_key = api_key
+
+        async def list_integrations(self):
+            return [
+                {
+                    "id": "int_tiktok_01",
+                    "identifier": "tiktok",
+                    "name": "@tiktok_user",
+                    "picture": "https://img.tiktok.com/p.jpg",
+                    "disabled": False,
+                }
+            ]
+
+    import clippyme.integrations.postiz_client as pc_mod
+    monkeypatch.setattr(pc_mod, "PostizClient", MockPostizClient)
+
+    res = client.get("/api/postiz/integrations")
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data["integrations"]) == 1
+    assert data["integrations"][0]["id"] == "int_tiktok_01"
+    assert data["integrations"][0]["platform"] == "tiktok"
+    assert data["integrations"][0]["name"] == "@tiktok_user"
+    assert data["integrations"][0]["connected"] is True
+
+

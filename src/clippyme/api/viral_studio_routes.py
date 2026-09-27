@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+import os
 from typing import List, Optional
 
 from fastapi import APIRouter, File, HTTPException, Request, Response, UploadFile, status
@@ -17,6 +18,7 @@ from clippyme.api.viral_studio_schemas import (
     BatchCreateRequest,
     BatchListResponse,
     BatchResponse,
+    BrandChannelBindRequest,
     BrandCreate,
     BrandListResponse,
     BrandPublishRequest,
@@ -42,6 +44,7 @@ from clippyme.api.viral_studio_schemas import (
     ViralItemUpdate,
     ViralPublishRequest,
     ViralPublishResponse,
+    WorkspaceSummaryResponse,
 )
 from clippyme.domain import (
     brand_workspace_service,
@@ -109,8 +112,25 @@ async def upload_brand_avatar(id: str, file: UploadFile = File(...)):
 
 
 # ---------------------------------------------------------------------------
-# Brand Workspace Endpoints
+# Brand Workspace & Channels Endpoints
 # ---------------------------------------------------------------------------
+
+@router.get("/publishing/workspaces", response_model=List[WorkspaceSummaryResponse])
+async def list_publishing_workspaces(provider: Optional[str] = None):
+    """List available workspaces or customer groups from the active publishing provider."""
+    cfg = viral_studio_store.get_active_publishing_provider() if hasattr(viral_studio_store, "get_active_publishing_provider") else "postiz"
+    provider_name = provider or os.environ.get("PUBLISHING_PROVIDER") or cfg or "postiz"
+    publisher = get_social_publisher(provider=provider_name)
+    workspaces = await publisher.list_workspaces()
+    return [
+        WorkspaceSummaryResponse(
+            id=ws.id,
+            name=ws.name,
+            provider=ws.provider,
+        )
+        for ws in workspaces
+    ]
+
 
 @router.get("/brands/{id}/workspace", response_model=BrandWorkspaceResponse)
 async def get_brand_workspace(id: str):
@@ -121,26 +141,71 @@ async def get_brand_workspace(id: str):
 
 @router.get("/brands/{id}/channels", response_model=List[SocialChannelResponse])
 async def list_brand_channels(id: str):
-    """List social media channels connected to this brand."""
-    publisher = get_social_publisher()
-    channels = await publisher.list_accounts(brand_id=id)
+    """List social media channels bound to this brand from its active provider."""
+    channels = await brand_workspace_service.get_brand_channels(id, all_available=False)
+    brand = viral_studio_store.get_brand_or_raise(id)
+    provider_name = brand_workspace_service.get_brand_active_provider(brand)
     return [
         SocialChannelResponse(
             id=ch.id,
             name=ch.name,
             platform=ch.platform,
             avatar_url=ch.avatar_url,
+            handle=ch.handle,
             connected=ch.connected,
+            provider=provider_name,
+            group_id=ch.group_id,
+            group_name=ch.group_name,
+            bound_to_brand_id=ch.bound_to_brand_id,
+            bound_to_brand_name=ch.bound_to_brand_name,
         )
         for ch in channels
     ]
 
 
+@router.get("/brands/{id}/channels/available", response_model=List[SocialChannelResponse])
+async def list_available_brand_channels(id: str):
+    """List all accounts authenticated in the active provider available for binding to this brand."""
+    channels = await brand_workspace_service.get_brand_channels(id, all_available=True)
+    brand = viral_studio_store.get_brand_or_raise(id)
+    provider_name = brand_workspace_service.get_brand_active_provider(brand)
+    return [
+        SocialChannelResponse(
+            id=ch.id,
+            name=ch.name,
+            platform=ch.platform,
+            avatar_url=ch.avatar_url,
+            handle=ch.handle,
+            connected=ch.connected,
+            provider=provider_name,
+            group_id=ch.group_id,
+            group_name=ch.group_name,
+            bound_to_brand_id=ch.bound_to_brand_id,
+            bound_to_brand_name=ch.bound_to_brand_name,
+        )
+        for ch in channels
+    ]
+
+
+@router.post("/brands/{id}/channels/bind", response_model=BrandResponse)
+async def bind_brand_channels(id: str, req: BrandChannelBindRequest):
+    """Bind selected channel IDs and optionally a workspace_id to this brand."""
+    updated = await brand_workspace_service.bind_brand_channels(
+        brand_id=id,
+        channel_ids=req.channel_ids,
+        workspace_id=req.workspace_id,
+    )
+    return BrandResponse(**updated)
+
+
 @router.post("/brands/{id}/channels/connect-url")
 async def get_brand_channel_connect_url(id: str):
     """Get channel connection URL for the active publisher provider."""
-    publisher = get_social_publisher()
-    url = await publisher.get_connect_channel_url(brand_id=id)
+    brand = viral_studio_store.get_brand_or_raise(id)
+    provider_name = brand_workspace_service.get_brand_active_provider(brand)
+    publisher = get_social_publisher(provider=provider_name)
+    customer_id = brand_workspace_service.get_brand_customer_id(brand, provider_name)
+    url = await publisher.get_connect_channel_url(brand_id=customer_id or id)
     return {"url": url}
 
 

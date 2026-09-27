@@ -56,7 +56,7 @@ async def test_postiz_client_upload_file_success(tmp_path):
     mock_client.request.assert_called_once()
     call_kwargs = mock_client.request.call_args[1]
     assert call_kwargs["method"] == "POST"
-    assert "/public/v1/upload" in call_kwargs["url"]
+    assert "/api/public/v1/upload" in call_kwargs["url"]
 
 
 @pytest.mark.asyncio
@@ -230,7 +230,7 @@ async def test_postiz_publisher_adapter_schedule(tmp_path):
         media_path="uploads/valid_render.mp4",
         date_iso="2026-09-28T15:00:00Z",
         post_type="schedule",
-        settings=None,
+        settings={"post_type": "post"},
     )
 
 

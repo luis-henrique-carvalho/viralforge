@@ -15,6 +15,7 @@ from clippyme.domain.social_publisher_port import (
     PublicationReceipt,
     SocialChannel,
     SocialPublisherPort,
+    WorkspaceSummary,
 )
 
 
@@ -30,22 +31,34 @@ class MockPublisherAdapter(SocialPublisherPort):
                 id="mock_tiktok_01",
                 platform="tiktok",
                 name="@achadinhos_virais",
+                handle="@achadinhos_virais",
                 connected=True,
                 avatar_url="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=80",
+                provider="mock",
+                group_id="ws_mock_main",
+                group_name="Workspace Principal",
             ),
             SocialChannel(
                 id="mock_instagram_01",
                 platform="instagram",
                 name="@valeoclique.promos",
+                handle="@valeoclique.promos",
                 connected=True,
                 avatar_url="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
+                provider="mock",
+                group_id="ws_mock_client_a",
+                group_name="Cliente A (Achadinhos)",
             ),
             SocialChannel(
                 id="mock_youtube_01",
                 platform="youtube",
                 name="Achados em 1 Minuto",
+                handle="@achadosem1minuto",
                 connected=True,
                 avatar_url="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80",
+                provider="mock",
+                group_id="ws_mock_main",
+                group_name="Workspace Principal",
             ),
         ]
 
@@ -146,9 +159,28 @@ class MockPublisherAdapter(SocialPublisherPort):
             post_url=record.get("post_url"),
         )
 
-    async def list_accounts(self, brand_id: Optional[str] = None) -> List[SocialChannel]:
-        """Return available mock channels."""
+    async def list_accounts(
+        self, customer_id: Optional[str] = None, brand_id: Optional[str] = None, **kwargs: Any
+    ) -> List[SocialChannel]:
+        """Return available mock channels, optionally filtered by customer_id or brand_id."""
+        target = customer_id or brand_id
+        if target and target not in ("none", "auto", ""):
+            filtered = [acc for acc in self._accounts if acc.group_id == target]
+            if filtered:
+                return filtered
         return list(self._accounts)
+
+    async def ensure_brand_workspace(self, brand_name: str, brand_id: str) -> Optional[str]:
+        """Return a deterministic mock workspace ID."""
+        return f"ws_mock_{brand_id or 'default'}"
+
+    async def list_workspaces(self) -> List[WorkspaceSummary]:
+        """Return available mock workspaces."""
+        from clippyme.domain.social_publisher_port import WorkspaceSummary
+        return [
+            WorkspaceSummary(id="ws_mock_main", name="Workspace Principal", provider="mock"),
+            WorkspaceSummary(id="ws_mock_client_a", name="Cliente A (Achadinhos)", provider="mock"),
+        ]
 
     async def get_connect_channel_url(self, brand_id: Optional[str] = None) -> str:
         """Return mock connect URL."""

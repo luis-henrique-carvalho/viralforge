@@ -28,6 +28,8 @@ describe('useSettings Hook', () => {
     expect(result.current.hardware).toBeDefined()
     expect(result.current.cookies).toBeDefined()
     expect(result.current.zernio).toBeDefined()
+    expect(result.current.postiz).toBeDefined()
+    expect(result.current.postizIntegrations).toBeInstanceOf(Array)
     expect(result.current.localModels).toBeDefined()
     expect(result.current.fonts).toBeInstanceOf(Array)
     expect(typeof result.current.logoConfigured).toBe('boolean')
@@ -70,10 +72,14 @@ describe('useUpdateSettings Hook & Mutations', () => {
 
     await act(async () => {
       // 1. Config mutations
-      await result.current.updateConfig({ PUBLISHING_PROVIDER: 'zernio' })
+      await result.current.updateConfig({ PUBLISHING_PROVIDER: 'postiz' })
       await result.current.updateZernio({ timezone: 'America/Sao_Paulo' })
       const accounts = await result.current.discoverAccounts()
       expect(accounts.accounts.length).toBeGreaterThan(0)
+
+      await result.current.updatePostiz({ base_url: 'http://localhost:4007', api_key: 'pzi_123' })
+      const integrations = await result.current.discoverPostizIntegrations()
+      expect(integrations.integrations.length).toBeGreaterThan(0)
 
       // 2. Cookie mutations
       await result.current.uploadCookies({
@@ -113,6 +119,18 @@ describe('settingsApi direct unit execution', () => {
       timezone: 'Europe/Rome',
     })
     expect(zernioUpdate).toBeDefined()
+
+    const postiz = await settingsApi.fetchPostizConfig()
+    expect(postiz.base_url).toBeDefined()
+
+    const postizUpdate = await settingsApi.updatePostizConfig({
+      base_url: 'http://localhost:4007',
+      api_key: 'pzi_test',
+    })
+    expect(postizUpdate).toBeDefined()
+
+    const postizIntegrations = await settingsApi.fetchPostizIntegrations()
+    expect(postizIntegrations.integrations).toBeInstanceOf(Array)
 
     const geminiModelsWithKey = await settingsApi.fetchGeminiModels('test_key')
     expect(geminiModelsWithKey).toBeInstanceOf(Array)

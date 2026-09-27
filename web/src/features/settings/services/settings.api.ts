@@ -5,6 +5,8 @@ import type {
   HardwareTelemetry,
   LocalModelsResponse,
   LogoStatusResponse,
+  PostizConfigStatus,
+  PostizIntegrationItem,
   SystemConfig,
   ZernioAccountItem,
   ZernioConfigStatus,
@@ -49,6 +51,28 @@ export const settingsApi = {
     accounts: ZernioAccountItem[]
   }> => {
     const { data } = await apiClient.get<{ accounts: ZernioAccountItem[] }>('/zernio/accounts')
+    return data
+  },
+
+  fetchPostizConfig: async (): Promise<PostizConfigStatus> => {
+    const { data } = await apiClient.get<PostizConfigStatus>('/config/postiz')
+    return data
+  },
+
+  updatePostizConfig: async (payload: {
+    base_url?: string
+    api_key?: string
+  }): Promise<PostizConfigStatus> => {
+    const { data } = await apiClient.post<PostizConfigStatus>('/config/postiz', payload)
+    return data
+  },
+
+  fetchPostizIntegrations: async (): Promise<{
+    integrations: PostizIntegrationItem[]
+  }> => {
+    const { data } = await apiClient.get<{ integrations: PostizIntegrationItem[] }>(
+      '/postiz/integrations',
+    )
     return data
   },
 

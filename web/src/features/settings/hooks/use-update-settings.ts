@@ -34,6 +34,19 @@ export function useConfigMutations() {
     },
   })
 
+  const updatePostizMutation = useMutation({
+    mutationFn: (payload: { base_url?: string; api_key?: string }) =>
+      settingsApi.updatePostizConfig(payload),
+    onSuccess: () => {
+      toast.success('Configurações do Postiz salvas!')
+      queryClient.invalidateQueries({ queryKey: settingsKeys.postiz() })
+      queryClient.invalidateQueries({ queryKey: settingsKeys.postizIntegrations() })
+    },
+    onError: (error) => {
+      handleApiError(error, 'Falha ao salvar configurações do Postiz.')
+    },
+  })
+
   const discoverAccountsMutation = useMutation({
     mutationFn: () => settingsApi.discoverZernioAccounts(),
     onSuccess: (data) => {
@@ -45,13 +58,28 @@ export function useConfigMutations() {
     },
   })
 
+  const discoverPostizIntegrationsMutation = useMutation({
+    mutationFn: () => settingsApi.fetchPostizIntegrations(),
+    onSuccess: (data) => {
+      toast.success(`${data.integrations.length} integrações encontradas no Postiz!`)
+      queryClient.invalidateQueries({ queryKey: settingsKeys.postizIntegrations() })
+    },
+    onError: (error) => {
+      handleApiError(error, 'Falha ao conectar com o Postiz.')
+    },
+  })
+
   return {
     updateConfig: updateConfigMutation.mutateAsync,
     updateZernio: updateZernioMutation.mutateAsync,
+    updatePostiz: updatePostizMutation.mutateAsync,
     discoverAccounts: discoverAccountsMutation.mutateAsync,
+    discoverPostizIntegrations: discoverPostizIntegrationsMutation.mutateAsync,
     isUpdatingConfig: updateConfigMutation.isPending,
     isUpdatingZernio: updateZernioMutation.isPending,
+    isUpdatingPostiz: updatePostizMutation.isPending,
     isDiscoveringAccounts: discoverAccountsMutation.isPending,
+    isDiscoveringPostizIntegrations: discoverPostizIntegrationsMutation.isPending,
   }
 }
 

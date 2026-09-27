@@ -475,3 +475,9 @@ class ZernioConfigRequest(BaseModel):
                     f"account id for {platform!r} must be a string <= 256 chars"
                 )
         return value
+
+
+class PostizConfigRequest(BaseModel):
+    base_url: Optional[str] = Field(None, max_length=512)
+    api_key: Optional[str] = Field(None, max_length=512)
+

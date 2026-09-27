@@ -311,9 +311,19 @@ through verbatim (the frontend parses per-platform 429 daily limits).
   * `docker-entrypoint.sh` dynamically synchronizes container `appuser` with the host user's UID/GID (`stat -c '%u' /app`) at boot, ensuring all state files (`0o600`) in `data/` and `output/` belong to the developer on the host machine without permission errors.
   * Because backend `uvicorn` in Docker runs without `--reload`, **always run `docker restart clippyme-backend`** after modifying backend Python files so the running uvicorn process reloads updated Pydantic schemas and route handlers.
 - **Social Publishing & Auto-Chaining (Ports & Adapters)**:
-  * `SocialPublisherPort` (`clippyme.domain.social_publisher_port`): Core domain port for social distribution (`publish`, `schedule`, `cancel`, `get_status`, `list_accounts`, `find_next_slot`, `list_scheduled`, `get_metrics`). No domain or route code may import provider SDKs directly.
-  * `PostizPublisherAdapter`: Primary production adapter integrating with local Postiz container (`host.docker.internal:4007`) with multipart streaming upload, queueing via Temporal, slot discovery (`find-slot`), on-demand metrics and multi-brand customer group isolation.
-  * `ZernioPublisherAdapter`: Alternative/legacy adapter integrating with Zernio API.
+  * **Regra Estrita de Integração com Serviços Externos (Proibição de Acesso Direto a Banco/Docker CLI)**: É estritamente proibido manipular ou alterar dados de serviços e provedores externos (como Postiz, Zernio, etc.) diretamente via queries SQL no banco de dados (`psql`, etc.) ou comandos no Docker CLI (`docker exec`, etc.). Toda e qualquer interação, integração, sincronização ou mutação de estado de serviços externos DEVE ocorrer exclusivamente por meio de suas APIs HTTP oficiais/autenticadas.
+  * `SocialPublisherPort` (`clippyme.domain.social_publisher_port`): Core domain port for social media distribution (`publish`, `schedule`, `cancel`, `get_status`, `list_accounts`, `ensure_brand_workspace`, `assign_channel_to_workspace`, `find_next_slot`, `list_scheduled`, `get_metrics`). No domain or route code may import provider SDKs directly.
+  * **Isolamento 1:1 de Redes Sociais por Marca**:
+    - Cada conta social autenticada pertence exclusivamente a uma única Marca no ViralForge.
+    - Ao vincular um canal a uma nova marca em `bind_brand_channels`, o sistema desvincula-o automaticamente de marcas anteriores no domínio e sincroniza a movimentação de grupo/perfil no provedor ativo via API HTTP oficial.
+  * **Invariantes do Postiz (`PostizPublisherAdapter`)**:
+    - `POST /api/public/v1/posts`: sempre inclua `settings.post_type: "post"` (ou `"story"`) no payload de publicação/agendamento para redes como Instagram, caso contrário o validador NestJS retorna `HTTP 400 Bad Request`.
+    - O endpoint `POST /api/public/v1/posts` retorna uma lista `[{"postId": "...", "integration": "..."}]`. Trate retornos em lista ou objeto defensivamente para extrair `postId`.
+    - Grupos/customers são identificados via `customer: { id, name }` em `GET /api/public/v1/integrations`.
+  * **Invariantes do Zernio (`ZernioPublisherAdapter`)**:
+    - A base URL é `https://zernio.com/api/v1`. Endpoints como `/profiles` e `/accounts` não devem receber prefixo duplicado `/v1/`.
+    - Em `GET /accounts`, o campo `profileId` retorna `{ _id, name }` (objeto). Extraia `_id` para `group_id` e `name` para `group_name`.
+    - Perfis de marca são garantidos via `POST /profiles` (`json={"name": ...}`) e contas são associadas ao perfil via `PATCH /accounts/:id` (`json={"profileId": ...}`).
   * `MockPublisherAdapter`: Deterministic in-memory test double for offline execution and fast host tests.
   * Provider Resolution (`get_social_publisher`): Resolves provider via `PUBLISHING_PROVIDER` config (defaults to `postiz`), explicit `provider=` argument, or safe mock fallback.
   * Intelligent Gap-Filling Scheduling (`get_next_available_slots`): Evaluates candidate dates starting from earliest possible (`now.date()`), filling intermediate cancelled slots before advancing past the tail of the queue (`occupied_dates`). Every account projection is fully isolated.

@@ -18,6 +18,7 @@ from clippyme.domain.social_publisher_port import (
     PublicationReceipt,
     SocialChannel,
     SocialPublisherPort,
+    WorkspaceSummary,
 )
 from clippyme.integrations.social_publisher import (
     DEFAULT_TIMEZONE,
@@ -191,8 +192,11 @@ class ZernioPublisherAdapter(SocialPublisherPort):
 
         return await asyncio.to_thread(_sync_get)
 
-    async def list_accounts(self, brand_id: Optional[str] = None) -> List[SocialChannel]:
+    async def list_accounts(
+        self, customer_id: Optional[str] = None, brand_id: Optional[str] = None, **kwargs: Any
+    ) -> List[SocialChannel]:
         """Fetch connected accounts from Zernio and map to SocialChannel DTOs."""
+        target_customer = customer_id or brand_id
         def _sync_list():
             try:
                 raw_accounts = self._client.list_accounts()
@@ -203,6 +207,7 @@ class ZernioPublisherAdapter(SocialPublisherPort):
                     acc_id = acc.get("id") or acc.get("_id") or acc.get("accountId")
                     platform = acc.get("platform") or "unknown"
                     name = acc.get("name") or acc.get("username") or acc.get("handle") or str(acc_id)
+                    handle = acc.get("handle") or acc.get("username")
                     avatar = (
                         acc.get("avatar_url")
                         or acc.get("avatarUrl")
@@ -213,14 +218,30 @@ class ZernioPublisherAdapter(SocialPublisherPort):
                         or acc.get("picture")
                         or acc.get("image")
                     )
+                    profile_id_val = acc.get("profileId") or acc.get("profile_id")
+                    if isinstance(profile_id_val, dict):
+                        profile_id = str(profile_id_val.get("_id") or profile_id_val.get("id") or "")
+                        profile_name = profile_id_val.get("name")
+                    elif isinstance(profile_id_val, str) and profile_id_val:
+                        profile_id = profile_id_val
+                        profile_name = acc.get("profileName") or acc.get("profile_name")
+                    else:
+                        profile_id = customer_id
+                        profile_name = None
+
                     if acc_id:
                         channels.append(
                             SocialChannel(
                                 id=str(acc_id),
                                 platform=str(platform).lower(),
                                 name=str(name),
+                                handle=str(handle) if handle else None,
                                 connected=acc.get("connected", True),
                                 avatar_url=str(avatar) if avatar else None,
+                                provider="zernio",
+                                group_id=profile_id if profile_id else None,
+                                group_name=profile_name if profile_name else None,
+                                raw_data=acc,
                             )
                         )
                 return channels
@@ -229,6 +250,60 @@ class ZernioPublisherAdapter(SocialPublisherPort):
                 return []
 
         return await asyncio.to_thread(_sync_list)
+
+    async def ensure_brand_workspace(self, brand_name: str, brand_id: str) -> Optional[str]:
+        """Ensure a profile exists in Zernio for this brand."""
+        def _sync_ensure():
+            try:
+                res = self._client._request("GET", "/profiles")
+                profiles = res.get("profiles") or res if isinstance(res, (list, dict)) else []
+                if isinstance(profiles, dict):
+                    profiles = profiles.get("data", [])
+                norm_name = str(brand_name or "").strip().lower()
+                norm_id = str(brand_id or "").strip().lower()
+                for p in profiles if isinstance(profiles, list) else []:
+                    if isinstance(p, dict):
+                        p_name = str(p.get("name") or "").strip().lower()
+                        p_id = str(p.get("_id") or p.get("id") or "").strip().lower()
+                        if p_name in (norm_name, norm_id) or p_id in (norm_name, norm_id):
+                            return str(p.get("_id") or p.get("id"))
+                created = self._client._request(
+                    "POST",
+                    "/profiles",
+                    json={"name": brand_name or brand_id, "description": f"Perfil para {brand_name or brand_id}"},
+                )
+                if isinstance(created, dict):
+                    prof = created.get("profile") if isinstance(created.get("profile"), dict) else created
+                    return str(prof.get("_id") or prof.get("id") or "")
+                return None
+            except Exception as exc:
+                logger.warning("Error ensuring Zernio profile for brand %s: %s", brand_name, exc)
+                return None
+
+        return await asyncio.to_thread(_sync_ensure)
+
+    async def assign_channel_to_workspace(self, channel_id: str, workspace_id: str) -> bool:
+        """Assign/move a Zernio account to a specific profile via PATCH /accounts/:id."""
+        def _sync_assign():
+            try:
+                self._client._request(
+                    "PATCH",
+                    f"/accounts/{channel_id}",
+                    json={"profileId": workspace_id},
+                )
+                return True
+            except Exception as exc:
+                logger.warning("Error assigning Zernio account %s to profile %s: %s", channel_id, workspace_id, exc)
+                return False
+
+        return await asyncio.to_thread(_sync_assign)
+
+    async def list_workspaces(self) -> List[WorkspaceSummary]:
+        """Return available Zernio workspaces."""
+        from clippyme.domain.social_publisher_port import WorkspaceSummary
+        return [
+            WorkspaceSummary(id="zernio_default", name="Workspace Zernio Padrão", provider="zernio"),
+        ]
 
     async def get_connect_channel_url(self, brand_id: Optional[str] = None) -> str:
         """Return connect URL for Zernio dashboard."""

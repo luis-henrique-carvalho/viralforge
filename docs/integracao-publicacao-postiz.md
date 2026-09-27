@@ -1,6 +1,6 @@
 # Documentação Arquitetural e Funcional: Integração ViralForge ↔ Postiz
 
-**Status:** Aprovado e Alinhado (2026-09-26).  
+**Status:** Concluído e Validado (2026-09-27).  
 **Metodologias aplicadas:**  
 - `/ponytail` (simplicidade radical, zero duplicação de dados, sem abstrações especulativas).  
 - `/domain-modeling` (vocabulário canônico estrito, invariantes de isolamento multimarca).  
@@ -239,11 +239,14 @@ class PostizPublisherAdapter(SocialPublisherPort):
              ]
            }
          ],
-         "settings": {}
+         "settings": {
+           "post_type": "post"
+         }
        }
      ]
    }
    ```
+   *Nota de Resposta:* O Postiz pode responder tanto com um objeto `{"postId": "..."}` quanto com um array de itens criados `[{"postId": "..."}]`. O cliente trata ambas as estruturas transparentemente.
 3. **Mapeamento de Status:**
    * `QUEUE` no Postiz ➔ `status: "scheduled"` no ViralForge.
    * `PUBLISHED` no Postiz ➔ `status: "published"`, captura `releaseURL` e `releaseId`.

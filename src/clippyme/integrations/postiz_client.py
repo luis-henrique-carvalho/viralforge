@@ -60,10 +60,9 @@ class PostizClient:
         if client is not None:
             self._client = client
         else:
-            headers = {"Authorization": self.api_key} if self.api_key else {}
             self._client = httpx.AsyncClient(
                 base_url=self.base_url,
-                headers=headers,
+                headers=self._auth_headers(),
                 timeout=self.timeout,
             )
 
@@ -79,9 +78,13 @@ class PostizClient:
             await self._client.aclose()
 
     def _auth_headers(self) -> Dict[str, str]:
-        if not self.api_key:
-            return {}
-        return {"Authorization": self.api_key}
+        headers = {
+            "ngrok-skip-browser-warning": "1",
+            "User-Agent": "ViralForge/1.0",
+        }
+        if self.api_key:
+            headers["Authorization"] = self.api_key
+        return headers
 
     async def _request(
         self,
@@ -133,7 +136,7 @@ class PostizClient:
     async def upload_file(self, file_path: str) -> Dict[str, Any]:
         """Upload a local video or image file via multipart stream to Postiz.
 
-        Endpoint: POST /public/v1/upload
+        Endpoint: POST /api/public/v1/upload
         Returns:
             {"id": "media-uuid", "path": "uploads/..."}
         """
@@ -145,7 +148,7 @@ class PostizClient:
 
         with open(file_path, "rb") as f:
             files = {"file": (filename, f, content_type)}
-            result = await self._request("POST", "/public/v1/upload", files=files)
+            result = await self._request("POST", "/api/public/v1/upload", files=files)
 
         if not isinstance(result, dict) or not result.get("id"):
             raise PostizError(
@@ -166,7 +169,7 @@ class PostizClient:
     ) -> Dict[str, Any]:
         """Create a scheduled or immediate post in Postiz.
 
-        Endpoint: POST /public/v1/posts
+        Endpoint: POST /api/public/v1/posts
         Conforms to Postiz CreatePostDto payload schema.
         """
         post_value: Dict[str, Any] = {"content": content}
@@ -192,14 +195,14 @@ class PostizClient:
         elif post_type == "now":
             payload["date"] = datetime.now(timezone.utc).isoformat()
 
-        return await self._request("POST", "/public/v1/posts", json=payload)
+        return await self._request("POST", "/api/public/v1/posts", json=payload)
 
     async def find_slot(self, integration_id: str) -> datetime:
         """Find next available publication slot for given integration.
 
-        Endpoint: GET /public/v1/find-slot/{integration_id}
+        Endpoint: GET /api/public/v1/find-slot/{integration_id}
         """
-        res = await self._request("GET", f"/public/v1/find-slot/{integration_id}")
+        res = await self._request("GET", f"/api/public/v1/find-slot/{integration_id}")
         slot_str: Optional[str] = None
         if isinstance(res, dict):
             slot_str = res.get("date") or res.get("slot") or res.get("nextSlot")
@@ -219,10 +222,11 @@ class PostizClient:
     async def list_integrations(self, group_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """List social accounts/integrations configured in Postiz.
 
-        Endpoint: GET /public/v1/integrations
+        Endpoint: GET /api/public/v1/integrations
+        Optional query param: ?group={groupId}
         """
-        params = {"customer": group_id} if group_id else None
-        res = await self._request("GET", "/public/v1/integrations", params=params)
+        params = {"group": group_id} if group_id else None
+        res = await self._request("GET", "/api/public/v1/integrations", params=params)
         if isinstance(res, list):
             integrations = res
         elif isinstance(res, dict) and "integrations" in res:
@@ -231,23 +235,57 @@ class PostizClient:
             integrations = []
 
         if group_id:
-            return [
-                item
-                for item in integrations
-                if item.get("customer") == group_id
-                or item.get("groupId") == group_id
-                or item.get("customerId") == group_id
-                or group_id in (item.get("groups") or [])
-            ]
+            def _matches_group(item: Dict[str, Any], gid: str) -> bool:
+                c = item.get("customer")
+                if isinstance(c, dict):
+                    if c.get("id") == gid or c.get("name") == gid:
+                        return True
+                elif isinstance(c, str) and c == gid:
+                    return True
+                if item.get("groupId") == gid or item.get("customerId") == gid:
+                    return True
+                if gid in (item.get("groups") or []):
+                    return True
+                return False
+
+            return [item for item in integrations if _matches_group(item, str(group_id))]
         return integrations
+
+    async def list_workspaces(self) -> List[Dict[str, str]]:
+        """List all customer groups from Postiz.
+
+        Endpoint: GET /api/public/v1/groups
+        """
+        try:
+            res = await self._request("GET", "/api/public/v1/groups")
+            if isinstance(res, list) and res:
+                return [
+                    {"id": str(g.get("id")), "name": str(g.get("name") or g.get("id"))}
+                    for g in res
+                    if isinstance(g, dict) and g.get("id")
+                ]
+        except PostizError as exc:
+            logger.warning("Postiz /groups endpoint failed, falling back to integrations scan: %s", exc)
+
+        # Fallback to scanning integrations customer field
+        integrations = await self.list_integrations()
+        workspaces: Dict[str, str] = {}
+        for item in integrations:
+            if isinstance(item, dict):
+                c = item.get("customer")
+                if isinstance(c, dict) and c.get("id"):
+                    workspaces[str(c["id"])] = str(c.get("name") or c["id"])
+                elif isinstance(c, str) and c.strip():
+                    workspaces[c.strip()] = c.strip()
+        return [{"id": wid, "name": wname} for wid, wname in workspaces.items()]
 
     async def get_post(self, post_id: str) -> Dict[str, Any]:
         """Fetch a specific post by ID.
 
-        Endpoint: GET /public/v1/posts/{post_id}
+        Endpoint: GET /api/public/v1/posts/{post_id}
         """
         try:
-            res = await self._request("GET", f"/public/v1/posts/{post_id}")
+            res = await self._request("GET", f"/api/public/v1/posts/{post_id}")
             return res if isinstance(res, dict) else {}
         except PostizError as exc:
             if exc.status_code == 404:
@@ -257,10 +295,10 @@ class PostizClient:
     async def delete_post(self, post_id: str) -> bool:
         """Cancel and delete a scheduled post in Postiz.
 
-        Endpoint: DELETE /public/v1/posts/{post_id}
+        Endpoint: DELETE /api/public/v1/posts/{post_id}
         """
         try:
-            await self._request("DELETE", f"/public/v1/posts/{post_id}")
+            await self._request("DELETE", f"/api/public/v1/posts/{post_id}")
             return True
         except PostizError as exc:
             if exc.status_code == 404:
@@ -275,7 +313,7 @@ class PostizClient:
     ) -> List[Dict[str, Any]]:
         """List scheduled and published posts within date window.
 
-        Endpoint: GET /public/v1/posts
+        Endpoint: GET /api/public/v1/posts
         """
         params: Dict[str, Any] = {}
         if customer_id:
@@ -285,7 +323,7 @@ class PostizClient:
         if end_date:
             params["endDate"] = end_date
 
-        res = await self._request("GET", "/public/v1/posts", params=params)
+        res = await self._request("GET", "/api/public/v1/posts", params=params)
         if isinstance(res, list):
             return res
         if isinstance(res, dict) and "posts" in res:
@@ -295,10 +333,10 @@ class PostizClient:
     async def get_metrics(self, post_id: str) -> Dict[str, Any]:
         """Fetch analytics metrics for a specific post.
 
-        Endpoint: GET /public/v1/analytics/post/{post_id}
+        Endpoint: GET /api/public/v1/analytics/post/{post_id}
         """
         try:
-            res = await self._request("GET", f"/public/v1/analytics/post/{post_id}")
+            res = await self._request("GET", f"/api/public/v1/analytics/post/{post_id}")
             return res if isinstance(res, dict) else {}
         except PostizError as exc:
             if exc.status_code == 404:

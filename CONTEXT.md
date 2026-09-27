@@ -5,11 +5,19 @@ ViralForge is an automated studio pipeline that ingests, curates, edits, and dis
 ## Publishing & Distribution
 
 **SocialChannel**:
-A specific authenticated social media profile (e.g. TikTok `@achados`, Instagram `@promo_radar`) belonging to a brand and backed by a publishing provider (maps to an Integration in Postiz).
+A specific authenticated social media profile (e.g. TikTok `@achados`, Instagram `@promo_radar`) backed by a publishing provider, containing group/profile metadata (`group_id`, `group_name`) and domain ownership annotations (`bound_to_brand_id`, `bound_to_brand_name`).
 _Avoid_: SocialAccount, ChannelTarget, ZernioAccount, ProfileTarget
 
+**ProviderWorkspace**:
+An isolated container or customer group in an external publishing provider (maps to `customer` in Postiz or `profile` in Zernio) that scopes social accounts and post queues.
+_Avoid_: AccountGroup, SubAccount, CustomerProfile, TeamSpace
+
+**ExclusiveChannelTransfer**:
+The domain invariant ensuring 1:1 exclusive ownership of every authenticated social account. Binding a `SocialChannel` to Brand B automatically unbinds it from any prior Brand A and synchronizes the account's workspace/profile location on the active `PublishingProvider` via official HTTP API.
+_Avoid_: ChannelStealing, AccountReassignment, MultiBrandOverlap, OverwriteBinding
+
 **PublishingProvider**:
-An execution engine (external platform like Postiz, legacy Zernio, or direct native API) that delivers media and schedules posts to one or more social platforms.
+An execution engine (external platform like Postiz, Zernio, or deterministic Mock) that delivers media and schedules posts to one or more social platforms.
 _Avoid_: PublisherDriver, SocialIntegration, ZernioService
 
 **PublicationJob**:
@@ -59,7 +67,7 @@ An individual video item within a batch, tracking its lifecycle from download, k
 _Avoid_: ClipItem, BatchRecord, RenderItem
 
 **Brand**:
-A commercial identity owning visual templates, default CTAs, product affiliate links, and a pool of connected SocialChannels (maps to a Customer/Group in Postiz).
+A commercial identity owning visual templates, default CTAs, product affiliate links, a posting schedule grid, and an exclusive pool of bound SocialChannels mapped to provider workspaces.
 _Avoid_: ChannelGroup, Organization, AccountProfile
 
 **VisualTemplate**:
@@ -147,7 +155,7 @@ The audit and deduplication record linking an imported `ViralItem` back to the o
 _Avoid_: SourceLink, OriginReference, IngestionTracker
 
 **BrandWorkspace**:
-The dedicated operational hub for a single Brand (`/viral-studio/brands/:brandId`) providing 3 cohesive perspectives: connected SocialChannels (authentication & extraction), Brand Videos (batch curation & quick publishing), and Schedule & Queue (provider timeline & schedule cancellation).
+The dedicated operational hub for a single Brand (`/viral-studio/brands/:brandId`) providing 4 cohesive perspectives: Canais Sociais (channel binding & group status), Vídeos da Marca (batch curation & quick publishing), Agendamento & Fila (provider timeline & schedule cancellation), and Configurações (active engine selection & posting grid).
 _Avoid_: BrandDashboard, BrandManager, ChannelView
 
 **ScheduleCancellation**:

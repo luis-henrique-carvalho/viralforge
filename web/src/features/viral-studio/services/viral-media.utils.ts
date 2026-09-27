@@ -8,9 +8,22 @@ export function getViralVideoUrl(item: ViralItem): string | undefined {
   if (!item.rendered_path) return undefined
   if (!item.id) return undefined
 
-  // If the item has a batch_id, it is served under /videos/viral_studio/{batch_id}/{item_id}/rendered.mp4
-  const batchSegment = item.batch_id ? `${item.batch_id}/` : ''
-  const basePath = `/videos/viral_studio/${batchSegment}${item.id}/rendered.mp4`
+  let basePath = ''
+  if (item.rendered_path.startsWith('/videos/')) {
+    basePath = item.rendered_path
+  } else if (item.rendered_path.includes('/output/')) {
+    const relative = item.rendered_path.substring(
+      item.rendered_path.indexOf('/output/') + '/output/'.length,
+    )
+    basePath = `/videos/${relative}`
+  } else if (item.rendered_path.startsWith('output/')) {
+    const relative = item.rendered_path.substring('output/'.length)
+    basePath = `/videos/${relative}`
+  } else {
+    // If the item has a batch_id, it is served under /videos/viral_studio/{batch_id}/{item_id}/rendered.mp4
+    const batchSegment = item.batch_id ? `${item.batch_id}/` : ''
+    basePath = `/videos/viral_studio/${batchSegment}${item.id}/rendered.mp4`
+  }
 
   const cacheBuster = item.updated_at ? new Date(item.updated_at).getTime() : Date.now()
   return `${basePath}?v=${cacheBuster}`

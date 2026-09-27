@@ -1,6 +1,6 @@
 # Especificação Técnica: Workspace da Gestão de Marcas (Brand Management)
 
-> **Status**: Aprovado via `/grill-me` (2026-09-26)  
+> **Status**: Concluído e Validado (2026-09-27)  
 > **Protótipo Interativo**: [`docs/prototypes/gestao-marcas-workspace.html`](prototypes/gestao-marcas-workspace.html)  
 > **Documentos Relacionados**: [`docs/integracao-publicacao-postiz.md`](integracao-publicacao-postiz.md), [`docs/adr/0001-ports-and-adapters-publishing.md`](adr/0001-ports-and-adapters-publishing.md), [`CONTEXT.md`](../CONTEXT.md)
 
@@ -14,6 +14,7 @@ A Gestão de Marcas no ViralForge evolui de um simples formulário cadastral de 
 1. **Ports & Adapters (Hexagonal) Puro**: O domínio de marcas pertence exclusivamente ao ViralForge. Motores de publicação como **Postiz**, **Zernio** ou **Mock** são meros adaptadores periféricos (`SocialPublisherAdapter`) que implementam a porta `SocialPublisherPort`.
 2. **Zero Acoplamento a Conceitos Proprietários**: O modelo central da entidade `Brand` e a interface do frontend não usam terminologias específicas de um provedor (ex: grupos, customers, internal IDs). Todas as referências a provedores externos são isoladas no dicionário agnóstico `publishing_profiles: Dict[str, Any]`.
 3. **Sem Duplicação de Banco de Dados**: A verdade editorial dos vídeos permanece nos arquivos `batches.json`; os metadados da marca residem em `brands.json`; a fila e a execução do agendamento são consultadas on-demand através da porta do provedor ativo.
+4. **Transferência Exclusiva 1:1 de Canais**: Um canal social pertence a exatamente uma marca por vez em todo o sistema. Ao vincular o canal à Marca B, o ViralForge remove automaticamente a vinculação prévia na Marca A, prevenindo colisões ou duplicações.
 
 ---
 
@@ -152,6 +153,10 @@ class SocialChannel:
     handle: Optional[str] = None
     avatar_url: Optional[str] = None
     provider: str = "postiz"
+    group_id: Optional[str] = None
+    group_name: Optional[str] = None
+    bound_to_brand_id: Optional[str] = None
+    bound_to_brand_name: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 @dataclass
@@ -242,7 +247,8 @@ A API expõe rotas especializadas para o Workspace da Marca, delegando as opera�
 | Método | Endpoint | Descrição |
 |---|---|---|
 | `GET` | `/api/viral-studio/brands/{brand_id}/workspace` | Retorna metadados da marca, resumo do motor ativo e contadores. |
-| `GET` | `/api/viral-studio/brands/{brand_id}/channels` | Chama `port.list_accounts(brand_id)` e retorna as redes sociais conectadas. |
+| `GET` | `/api/viral-studio/brands/{brand_id}/channels` | Chama `port.list_accounts(brand_id)` e retorna as redes sociais conectadas com vínculo e grupos. |
+| `PUT` | `/api/viral-studio/brands/{brand_id}/channels` | Vincula canais à marca com **Transferência Exclusiva Automática 1:1** e provisionamento no provedor. |
 | `POST` | `/api/viral-studio/brands/{brand_id}/channels/connect-url` | Retorna o link de conexão externa retornado por `port.get_connect_channel_url`. |
 | `GET` | `/api/viral-studio/brands/{brand_id}/videos` | Filtra vídeos de `batches.json` onde `item.brand_id == brand_id`. Suporta `?status=approved`. |
 | `POST` | `/api/viral-studio/brands/{brand_id}/publish` | Dispara agendamento: `item_id`, `channels`, opcional `schedule_time` (ou usa `port.find_next_slot`). |

@@ -79,6 +79,21 @@ class SocialChannel:
     name: str
     connected: bool = True
     avatar_url: Optional[str] = None
+    handle: Optional[str] = None
+    provider: str = "postiz"
+    group_id: Optional[str] = None
+    group_name: Optional[str] = None
+    bound_to_brand_id: Optional[str] = None
+    bound_to_brand_name: Optional[str] = None
+    raw_data: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class WorkspaceSummary:
+    """A customer group, organization, or workspace in a publishing provider."""
+    id: str
+    name: str
+    provider: str
 
 
 class SocialPublisherPort(ABC):
@@ -104,9 +119,23 @@ class SocialPublisherPort(ABC):
         """Check status of a publication by its external post ID."""
         ...
 
-    async def list_accounts(self, brand_id: Optional[str] = None) -> List[SocialChannel]:
-        """List active connected accounts available for posting (optionally filtered by brand)."""
+    async def list_accounts(
+        self, customer_id: Optional[str] = None, brand_id: Optional[str] = None, **kwargs: Any
+    ) -> List[SocialChannel]:
+        """List active connected accounts available for posting (optionally filtered by customer/group or brand)."""
         return []
+
+    async def list_workspaces(self) -> List[WorkspaceSummary]:
+        """List available workspaces or customer groups in the publishing provider."""
+        return []
+
+    async def ensure_brand_workspace(self, brand_name: str, brand_id: str) -> Optional[str]:
+        """Ensure an isolated container, profile or group exists on the provider for this brand."""
+        return None
+
+    async def assign_channel_to_workspace(self, channel_id: str, workspace_id: str) -> bool:
+        """Move or assign a connected channel/account to a specific workspace/profile in the provider."""
+        return False
 
     async def get_connect_channel_url(self, brand_id: Optional[str] = None) -> str:
         """Get URL for connecting a new social media channel."""
@@ -150,7 +179,7 @@ def get_social_publisher(provider: Optional[str] = None) -> SocialPublisherPort:
     6. Fallback to MockPublisherAdapter for safe offline execution when no keys are present.
     """
     global _GLOBAL_PUBLISHER
-    if _GLOBAL_PUBLISHER is not None and provider is None:
+    if _GLOBAL_PUBLISHER is not None:
         return _GLOBAL_PUBLISHER
 
     from clippyme.storage.config_store import load_persistent_config, load_zernio_config

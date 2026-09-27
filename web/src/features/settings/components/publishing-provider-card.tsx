@@ -22,26 +22,33 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Typography } from '@/components/ui/typography'
 import { ZernioSettingsSection } from './zernio-settings-section'
+import { PostizSettingsSection } from './postiz-settings-section'
 import { useSettings } from '../hooks/use-settings'
 import { useUpdateSettings } from '../hooks/use-update-settings'
 import { publishingProviderSchema, type PublishingProviderFormData } from '../data/settings.schema'
 import type { PublishingProvider } from '../data/settings.types'
 
 export function PublishingProviderCard() {
-  const { config, zernio, zernioAccounts } = useSettings()
+  const { config, zernio, zernioAccounts, postiz, postizIntegrations } = useSettings()
   const {
     updateConfig,
     updateZernio,
+    updatePostiz,
     discoverAccounts,
+    discoverPostizIntegrations,
     isUpdatingConfig,
     isUpdatingZernio,
+    isUpdatingPostiz,
     isDiscoveringAccounts,
+    isDiscoveringPostizIntegrations,
   } = useUpdateSettings()
 
   const form = useForm<PublishingProviderFormData>({
     resolver: zodResolver(publishingProviderSchema),
     defaultValues: {
-      PUBLISHING_PROVIDER: config?.PUBLISHING_PROVIDER || 'zernio',
+      PUBLISHING_PROVIDER: config?.PUBLISHING_PROVIDER || 'postiz',
+      postizBaseUrl: postiz?.base_url || 'http://localhost:4007',
+      postizApiKey: '',
       zernioApiKey: '',
       tiktokAccountId: '',
       instagramAccountId: '',
@@ -62,9 +69,17 @@ export function PublishingProviderCard() {
     }
   }, [zernio, form])
 
+  useEffect(() => {
+    if (postiz?.base_url) {
+      form.setValue('postizBaseUrl', postiz.base_url, { shouldDirty: false })
+    }
+  }, [postiz, form])
+
   const provider = form.watch('PUBLISHING_PROVIDER')
   const zernioApiKey = form.watch('zernioApiKey') || ''
   const timezone = form.watch('timezone') || 'America/Sao_Paulo'
+  const postizBaseUrl = form.watch('postizBaseUrl') || 'http://localhost:4007'
+  const postizApiKey = form.watch('postizApiKey') || ''
 
   const handleDiscoverAccounts = async () => {
     if (zernioApiKey.trim()) {
@@ -74,9 +89,32 @@ export function PublishingProviderCard() {
     await discoverAccounts()
   }
 
+  const handleDiscoverPostizIntegrations = async () => {
+    if (postizApiKey.trim() || postizBaseUrl.trim()) {
+      await updatePostiz({
+        base_url: postizBaseUrl.trim() || 'http://localhost:4007',
+        ...(postizApiKey.trim() ? { api_key: postizApiKey.trim() } : {}),
+      })
+      form.setValue('postizApiKey', '')
+    }
+    await discoverPostizIntegrations()
+  }
+
   const onSubmit = form.handleSubmit(async (data) => {
     await updateConfig({ PUBLISHING_PROVIDER: data.PUBLISHING_PROVIDER })
-    if (data.PUBLISHING_PROVIDER === 'zernio') {
+    if (data.PUBLISHING_PROVIDER === 'postiz') {
+      const payload: {
+        base_url: string
+        api_key?: string
+      } = {
+        base_url: (data.postizBaseUrl || '').trim() || 'http://localhost:4007',
+      }
+      if (data.postizApiKey && data.postizApiKey.trim()) {
+        payload.api_key = data.postizApiKey.trim()
+      }
+      await updatePostiz(payload)
+      form.setValue('postizApiKey', '')
+    } else if (data.PUBLISHING_PROVIDER === 'zernio') {
       const payload: {
         api_key?: string
         timezone: string
@@ -91,7 +129,7 @@ export function PublishingProviderCard() {
     }
   })
 
-  const isPending = isUpdatingConfig || isUpdatingZernio
+  const isPending = isUpdatingConfig || isUpdatingZernio || isUpdatingPostiz
 
   return (
     <Card className="border-border/80 shadow-xs">
@@ -127,6 +165,7 @@ export function PublishingProviderCard() {
                 <SelectValue placeholder="Selecione o provedor" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="postiz">Postiz (Self-Hosted Docker)</SelectItem>
                 <SelectItem value="zernio">Zernio Social API (Produção Cloud)</SelectItem>
                 <SelectItem value="mock">Mock Offline (Desenvolvimento & Testes)</SelectItem>
               </SelectContent>
@@ -145,6 +184,22 @@ export function PublishingProviderCard() {
                 sucesso. Nenhuma chamada externa para TikTok, Instagram ou YouTube será realizada.
               </AlertDescription>
             </Alert>
+          ) : provider === 'postiz' ? (
+            <PostizSettingsSection
+              baseUrl={postizBaseUrl}
+              setBaseUrl={(val) => form.setValue('postizBaseUrl', val)}
+              apiKey={postizApiKey}
+              setApiKey={(val) => form.setValue('postizApiKey', val)}
+              onDiscover={handleDiscoverPostizIntegrations}
+              onClearKey={async () => {
+                await updatePostiz({ api_key: '' })
+                form.setValue('postizApiKey', '')
+              }}
+              isDiscovering={isDiscoveringPostizIntegrations}
+              isConfigured={Boolean(postiz?.configured)}
+              maskedKey={postiz?.api_key_masked}
+              integrationsList={postizIntegrations}
+            />
           ) : (
             <ZernioSettingsSection
               apiKey={zernioApiKey}

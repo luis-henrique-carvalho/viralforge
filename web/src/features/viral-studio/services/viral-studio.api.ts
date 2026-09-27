@@ -7,10 +7,15 @@ import type {
   BrandCreate,
   BrandListResponse,
   BrandUpdate,
+  BrandWorkspaceSummary,
+  ScheduledPost,
+  ScheduleSlotsUpdate,
+  SocialChannel,
   TemplateListResponse,
   ViralItem,
   ViralItemUpdate,
   VisualTemplate,
+  WorkspaceSummary,
 } from '../data/batch.types'
 import type {
   PreviewSlotsResponse,
@@ -18,6 +23,40 @@ import type {
   ViralPublishRequest,
   ViralPublishResponse,
 } from '../data/publishing.types'
+
+export interface BrandAutoScheduleResponse {
+  success: boolean
+  item_id: string
+  receipts: Array<{
+    item_id: string
+    post_id: string
+    account_id?: string
+    status: string
+    scheduled_time?: string
+    external_url?: string
+    provider?: string
+  }>
+}
+
+export interface BrandPublishResponse {
+  success: boolean
+  item_id: string
+  receipts: Array<{
+    item_id: string
+    post_id: string
+    account_id?: string
+    status: string
+    scheduled_time?: string
+    external_url?: string
+    provider?: string
+  }>
+}
+
+export interface ScheduledTimelineResponse {
+  brand_id: string
+  posts: ScheduledPost[]
+  total: number
+}
 
 export const viralStudioApi = {
   // Batches
@@ -97,6 +136,121 @@ export const viralStudioApi = {
     return response.data
   },
 
+  // Brand Workspace
+  async fetchBrandWorkspace(brandId: string): Promise<BrandWorkspaceSummary> {
+    const response = await apiClient.get<BrandWorkspaceSummary>(
+      `/viral-studio/brands/${brandId}/workspace`,
+    )
+    return response.data
+  },
+
+  async fetchBrandChannels(brandId: string): Promise<SocialChannel[]> {
+    const response = await apiClient.get<SocialChannel[]>(
+      `/viral-studio/brands/${brandId}/channels`,
+    )
+    return response.data
+  },
+
+  async fetchAvailableBrandChannels(brandId: string): Promise<SocialChannel[]> {
+    const response = await apiClient.get<SocialChannel[]>(
+      `/viral-studio/brands/${brandId}/channels/available`,
+    )
+    return response.data
+  },
+
+  async bindBrandChannels(
+    brandId: string,
+    payload: { channel_ids: string[]; workspace_id?: string },
+  ): Promise<Brand> {
+    const response = await apiClient.post<Brand>(
+      `/viral-studio/brands/${brandId}/channels/bind`,
+      payload,
+    )
+    return response.data
+  },
+
+  async getBrandConnectUrl(brandId: string): Promise<{ url: string | null }> {
+    const response = await apiClient.post<{ url: string | null }>(
+      `/viral-studio/brands/${brandId}/channels/connect-url`,
+    )
+    return response.data
+  },
+
+  async fetchBrandVideos(brandId: string, status?: string): Promise<ViralItem[]> {
+    const params = new URLSearchParams()
+    if (status && status !== 'all') params.set('status', status)
+    const url = `/viral-studio/brands/${brandId}/videos${params.toString() ? `?${params.toString()}` : ''}`
+    const response = await apiClient.get<ViralItem[]>(url)
+    return response.data
+  },
+
+  async autoScheduleBrandVideo(
+    brandId: string,
+    itemId: string,
+    channelIds?: string[],
+  ): Promise<BrandAutoScheduleResponse> {
+    const response = await apiClient.post<BrandAutoScheduleResponse>(
+      `/viral-studio/brands/${brandId}/auto-schedule`,
+      { item_id: itemId, channel_ids: channelIds },
+    )
+    return response.data
+  },
+
+  async publishBrandVideo(
+    brandId: string,
+    payload: {
+      item_id: string
+      channel_ids?: string[]
+      scheduled_for?: string
+      publish_now?: boolean
+    },
+  ): Promise<BrandPublishResponse> {
+    const response = await apiClient.post<BrandPublishResponse>(
+      `/viral-studio/brands/${brandId}/publish`,
+      payload,
+    )
+    return response.data
+  },
+
+  async fetchBrandScheduled(
+    brandId: string,
+    startDate?: string,
+    endDate?: string,
+  ): Promise<ScheduledTimelineResponse> {
+    const params = new URLSearchParams()
+    if (startDate) params.set('start_date', startDate)
+    if (endDate) params.set('end_date', endDate)
+    const url = `/viral-studio/brands/${brandId}/scheduled${params.toString() ? `?${params.toString()}` : ''}`
+    const response = await apiClient.get<ScheduledTimelineResponse>(url)
+    return response.data
+  },
+
+  async cancelBrandScheduledPost(
+    brandId: string,
+    postId: string,
+  ): Promise<{ success: boolean; post_id: string }> {
+    const response = await apiClient.delete<{ success: boolean; post_id: string }>(
+      `/viral-studio/brands/${brandId}/scheduled/${postId}`,
+    )
+    return response.data
+  },
+
+  async updateBrandScheduleSlots(brandId: string, payload: ScheduleSlotsUpdate): Promise<Brand> {
+    const response = await apiClient.post<Brand>(
+      `/viral-studio/brands/${brandId}/schedule-slots`,
+      payload,
+    )
+    return response.data
+  },
+
+  async fetchPublishingWorkspaces(provider?: string): Promise<WorkspaceSummary[]> {
+    const url = provider
+      ? `/viral-studio/publishing/workspaces?provider=${encodeURIComponent(provider)}`
+      : '/viral-studio/publishing/workspaces'
+    const response = await apiClient.get<WorkspaceSummary[]>(url)
+    return response.data
+  },
+
   // Templates
   async fetchTemplates(): Promise<TemplateListResponse> {
     const response = await apiClient.get<TemplateListResponse>('/viral-studio/templates')
@@ -108,7 +262,7 @@ export const viralStudioApi = {
     return response.data
   },
 
-  // Publishing
+  // Publishing (legacy)
   async fetchPublishingAccounts(): Promise<SocialAccount[]> {
     const response = await apiClient.get<SocialAccount[]>('/viral-studio/publishing/accounts')
     return response.data

@@ -17,6 +17,7 @@ from clippyme.domain.social_publisher_port import (
     PublicationReceipt,
     SocialChannel,
     SocialPublisherPort,
+    WorkspaceSummary,
 )
 from clippyme.integrations.postiz_client import PostizClient, PostizError
 
@@ -103,6 +104,10 @@ class PostizPublisherAdapter(SocialPublisherPort):
             if not publish_now and not date_iso:
                 post_type = "now"
 
+            settings = dict(job.extra.get("settings") or {})
+            if "post_type" not in settings:
+                settings["post_type"] = "post"
+
             post_res = await self._client.create_post(
                 integration_id=str(integration_id),
                 content=job.effective_content,
@@ -110,12 +115,17 @@ class PostizPublisherAdapter(SocialPublisherPort):
                 media_path=media_path,
                 date_iso=date_iso,
                 post_type=post_type,
-                settings=job.extra.get("settings"),
+                settings=settings,
             )
 
             # 4. Map response to domain receipt
-            post_id = post_res.get("id") or post_res.get("postId")
-            state = str(post_res.get("state") or post_res.get("status") or "")
+            target_res = (
+                post_res[0]
+                if isinstance(post_res, list) and post_res
+                else (post_res if isinstance(post_res, dict) else {})
+            )
+            post_id = target_res.get("postId") or target_res.get("id")
+            state = str(target_res.get("state") or target_res.get("status") or "")
             default_status = "published" if publish_now else "scheduled"
             receipt_status = _map_postiz_status(state, default=default_status)
 
@@ -123,12 +133,12 @@ class PostizPublisherAdapter(SocialPublisherPort):
                 item_id=job.item_id,
                 status=receipt_status,
                 post_id=post_id,
-                platform_post_id=post_res.get("releaseId"),
+                platform_post_id=target_res.get("releaseId"),
                 scheduled_for=job.scheduled_for if not publish_now else None,
                 published_at=datetime.now(timezone.utc).isoformat() if receipt_status == "published" else None,
-                post_url=post_res.get("releaseURL") or post_res.get("postUrl"),
-                error=post_res.get("error"),
-                raw_response=post_res,
+                post_url=target_res.get("releaseURL") or target_res.get("postUrl"),
+                error=target_res.get("error"),
+                raw_response=target_res if isinstance(target_res, dict) else {},
             )
 
         except PostizError as exc:
@@ -186,31 +196,74 @@ class PostizPublisherAdapter(SocialPublisherPort):
                 error=str(exc),
             )
 
-    async def list_accounts(self, brand_id: Optional[str] = None) -> List[SocialChannel]:
-        """Fetch connected SocialChannels from Postiz, mapping them to domain SocialChannel."""
+    async def list_accounts(
+        self, customer_id: Optional[str] = None, brand_id: Optional[str] = None, **kwargs: Any
+    ) -> List[SocialChannel]:
+        """Fetch connected SocialChannels from Postiz, extracting customer group metadata."""
         try:
-            integrations = await self._client.list_integrations(group_id=brand_id)
+            target_group = customer_id or brand_id
+            integrations = await self._client.list_integrations(group_id=target_group)
             channels: List[SocialChannel] = []
             for item in integrations:
                 integration_id = item.get("id") or item.get("_id") or ""
-                provider = item.get("identifier") or item.get("providerIdentifier") or "unknown"
-                name = item.get("name") or item.get("profile") or f"{provider}_{integration_id[:6]}"
+                provider = str(item.get("identifier") or item.get("providerIdentifier") or "unknown").lower()
+                platform = provider.replace("-standalone", "")
+                name = item.get("name") or item.get("profile") or f"{platform}_{integration_id[:6]}"
+                handle = item.get("profile") or item.get("name")
                 avatar = item.get("picture") or item.get("avatar") or None
                 disabled = item.get("disabled", False)
+
+                cust = item.get("customer") or {}
+                group_id = str(cust["id"]) if isinstance(cust, dict) and cust.get("id") else None
+                group_name = str(cust["name"]) if isinstance(cust, dict) and cust.get("name") else None
 
                 channels.append(
                     SocialChannel(
                         id=str(integration_id),
-                        platform=str(provider).lower(),
+                        platform=platform,
                         name=str(name),
+                        handle=str(handle) if handle else None,
                         connected=not disabled,
                         avatar_url=avatar,
+                        provider="postiz",
+                        group_id=group_id,
+                        group_name=group_name,
+                        raw_data=item if isinstance(item, dict) else {},
                     )
                 )
             return channels
         except Exception as exc:
             logger.warning("Error listing Postiz integrations: %s", exc)
             return []
+
+    async def list_workspaces(self) -> List[WorkspaceSummary]:
+        """Fetch distinct customer groups from Postiz."""
+        from clippyme.domain.social_publisher_port import WorkspaceSummary
+        try:
+            ws_list = await self._client.list_workspaces()
+            return [
+                WorkspaceSummary(id=item["id"], name=item["name"], provider="postiz")
+                for item in ws_list
+            ]
+        except Exception as exc:
+            logger.warning("Error listing Postiz workspaces: %s", exc)
+            return []
+
+    async def ensure_brand_workspace(self, brand_name: str, brand_id: str) -> Optional[str]:
+        """Check if an existing Postiz group matches the brand name / id."""
+        try:
+            groups = await self._client.list_workspaces()
+            norm_name = str(brand_name or "").strip().lower()
+            norm_id = str(brand_id or "").strip().lower()
+            for g in groups:
+                g_name = str(g.get("name") or "").strip().lower()
+                g_id = str(g.get("id") or "").strip().lower()
+                if g_name in (norm_name, norm_id) or g_id in (norm_name, norm_id):
+                    return str(g["id"])
+            return None
+        except Exception as exc:
+            logger.warning("Error ensuring Postiz group for brand %s: %s", brand_name, exc)
+            return None
 
     async def find_next_slot(self, channel_id: str) -> Optional[datetime]:
         """Query Postiz find-slot endpoint for the given integration."""
@@ -232,6 +285,11 @@ class PostizPublisherAdapter(SocialPublisherPort):
             logger.warning("Error listing scheduled posts from Postiz: %s", exc)
             return []
 
+    async def get_connect_channel_url(self, brand_id: Optional[str] = None) -> str:
+        """Return connect URL for Postiz integrations dashboard."""
+        base = self._client.base_url.rstrip("/")
+        return f"{base}/settings/integrations"
+
     async def get_metrics(self, external_id: str) -> Dict[str, Any]:
         """Query engagement metrics for a post from Postiz."""
         try:
@@ -239,3 +297,4 @@ class PostizPublisherAdapter(SocialPublisherPort):
         except Exception as exc:
             logger.warning("Error fetching metrics for %s from Postiz: %s", external_id, exc)
             return {}
+

@@ -39,7 +39,9 @@ class MockPublisher(SocialPublisherPort):
         self.published_jobs = []
         self.cancelled_posts = []
 
-    async def list_accounts(self, brand_id: str | None = None) -> list[SocialChannel]:
+    async def list_accounts(
+        self, customer_id: str | None = None, brand_id: str | None = None, **kwargs
+    ) -> list[SocialChannel]:
         return [
             SocialChannel(
                 id="acc_tiktok_1",
@@ -141,7 +143,14 @@ def temp_studio_store(monkeypatch, tmp_path):
             "timezone": "America/Sao_Paulo",
             "frequency": 3,
         },
-        "publishing_profiles": {},
+        "publishing_profiles": {
+            "postiz": {
+                "active": True,
+                "customer_id": "auto",
+                "channel_ids": ["acc_tiktok_1", "acc_insta_1"],
+                "linked_at": "2026-09-27T12:00:00Z",
+            }
+        },
     }
     with open(store_dir / "brands.json", "w") as f:
         json.dump({"brand_test": brand_data}, f)
@@ -237,6 +246,25 @@ def test_get_brand_workspace_summary(temp_studio_store, mock_publisher_env):
     assert data["counts"]["scheduled_posts"] == 0
     assert len(data["channels"]) == 2
     assert data["template"]["id"] == "classic-affiliate"
+
+
+def test_get_brand_workspace_summary_resolves_active_publishing_profile(temp_studio_store, mock_publisher_env):
+    client = TestClient(app)
+    # Update brand with multiple profiles where postiz is active
+    store_dir = temp_studio_store["store_dir"]
+    with open(store_dir / "brands.json", "r") as f:
+        brands = json.load(f)
+    brands["brand_test"]["publishing_profiles"] = {
+        "zernio": {"customer_id": "z_1", "active": False, "linked_at": "2026-09-27T10:00:00Z"},
+        "postiz": {"customer_id": "p_1", "active": True, "linked_at": "2026-09-27T12:00:00Z"},
+    }
+    with open(store_dir / "brands.json", "w") as f:
+        json.dump(brands, f)
+
+    response = client.get("/api/viral-studio/brands/brand_test/workspace")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["provider"] == "postiz"
 
 
 def test_list_brand_channels(temp_studio_store, mock_publisher_env):
@@ -389,3 +417,54 @@ def test_cancel_brand_scheduled_post_reverts_status_to_approved(temp_studio_stor
     item_after = next(i for b in batches for i in b.get("items", []) if i.get("item_id") == "item_1")
     assert item_after["status"] == "APPROVED"
     assert item_after["publication_records"][0]["status"] == "cancelled"
+
+
+def test_brand_channels_isolation_and_binding(temp_studio_store, mock_publisher_env):
+    client = TestClient(app)
+
+    # 1. Create a brand without bound channels
+    brand_unbound = {
+        "name": "Isolated Brand",
+        "handle": "@isolated",
+        "niche": "Security",
+    }
+    create_res = client.post("/api/viral-studio/brands", json=brand_unbound)
+    assert create_res.status_code == 201
+    new_brand_id = create_res.json()["id"]
+
+    # 2. Get active channels for unbound brand -> should return empty list (isolated!)
+    chans_res = client.get(f"/api/viral-studio/brands/{new_brand_id}/channels")
+    assert chans_res.status_code == 200
+    assert chans_res.json() == []
+
+    # 3. Get available channels from publisher -> should return all accounts
+    avail_res = client.get(f"/api/viral-studio/brands/{new_brand_id}/channels/available")
+    assert avail_res.status_code == 200
+    avail_chans = avail_res.json()
+    assert len(avail_chans) == 2
+
+    # 4. Bind only 1 channel to this brand
+    bind_res = client.post(
+        f"/api/viral-studio/brands/{new_brand_id}/channels/bind",
+        json={"channel_ids": ["acc_tiktok_1"]},
+    )
+    assert bind_res.status_code == 200
+    updated_brand = bind_res.json()
+    profiles = updated_brand.get("publishing_profiles") or {}
+    assert len(profiles) >= 1
+    active_profile = next(iter(profiles.values()))
+    assert active_profile.get("channel_ids") == ["acc_tiktok_1"]
+
+    # 5. Get active channels now -> should return only acc_tiktok_1
+    chans_after_bind = client.get(f"/api/viral-studio/brands/{new_brand_id}/channels")
+    assert chans_after_bind.status_code == 200
+    bound_chans = chans_after_bind.json()
+    assert len(bound_chans) == 1
+    assert bound_chans[0]["id"] == "acc_tiktok_1"
+
+
+def test_list_publishing_workspaces(temp_studio_store, mock_publisher_env):
+    client = TestClient(app)
+    res = client.get("/api/viral-studio/publishing/workspaces")
+    assert res.status_code == 200
+    assert isinstance(res.json(), list)

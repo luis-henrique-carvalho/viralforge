@@ -26,19 +26,207 @@ from clippyme.domain import viral_studio_store
 logger = logging.getLogger("clippyme.brand_workspace_service")
 
 
+KNOWN_PROVIDERS = {"postiz", "zernio", "mock"}
+
+
+def get_brand_active_provider(brand: Dict[str, Any]) -> str:
+    """Resolve the active publishing provider for a brand.
+
+    Precedence:
+    1. A profile in brand["publishing_profiles"] with `active: True` matching a known provider.
+    2. The known provider profile with the most recent `linked_at` ISO timestamp.
+    3. The first known provider key in brand["publishing_profiles"].
+    4. Global default publishing provider from persistent config / env.
+    """
+    profiles = brand.get("publishing_profiles") or {}
+    if isinstance(profiles, dict) and profiles:
+        for provider_name, profile_data in profiles.items():
+            clean_name = str(provider_name).strip().lower()
+            if clean_name in KNOWN_PROVIDERS and isinstance(profile_data, dict) and profile_data.get("active") is True:
+                return clean_name
+
+        sorted_profiles = []
+        for provider_name, profile_data in profiles.items():
+            clean_name = str(provider_name).strip().lower()
+            if clean_name in KNOWN_PROVIDERS and isinstance(profile_data, dict):
+                linked_at = profile_data.get("linked_at") or ""
+                sorted_profiles.append((linked_at, clean_name))
+        if sorted_profiles:
+            sorted_profiles.sort(key=lambda x: x[0], reverse=True)
+            if sorted_profiles[0][1]:
+                return sorted_profiles[0][1]
+
+        for k in profiles.keys():
+            clean_name = str(k).strip().lower()
+            if clean_name in KNOWN_PROVIDERS:
+                return clean_name
+
+    from clippyme.storage.config_store import load_persistent_config
+    cfg = load_persistent_config() or {}
+    return (os.environ.get("PUBLISHING_PROVIDER") or cfg.get("PUBLISHING_PROVIDER", "postiz")).strip().lower()
+
+
+def get_brand_customer_id(brand: Dict[str, Any], provider_name: str) -> Optional[str]:
+    """Resolve customer/workspace identifier for a brand on a specific provider."""
+    profiles = brand.get("publishing_profiles") or {}
+    profile_data = profiles.get(provider_name) if isinstance(profiles, dict) else None
+    if isinstance(profile_data, dict):
+        cid = str(
+            profile_data.get("customer_id")
+            or profile_data.get("workspace_id")
+            or ""
+        ).strip()
+        if cid and cid.lower() not in ("auto", "none", "default"):
+            return cid
+    return None
+
+
+async def get_brand_channels(brand_id: str, *, all_available: bool = False) -> List[SocialChannel]:
+    """Retrieve social channels for a brand from its active publisher provider.
+
+    If all_available is True:
+        Returns all accounts authenticated in the active provider, annotated with
+        group metadata and cross-brand binding info (for the selection modal).
+    If all_available is False:
+        Returns only the accounts bound to this specific brand (by channel_ids or workspace_id).
+    """
+    brand = viral_studio_store.get_brand_or_raise(brand_id)
+    provider_name = get_brand_active_provider(brand)
+    port = get_social_publisher(provider=provider_name)
+
+    if all_available:
+        all_accounts = await port.list_accounts(customer_id=None)
+        all_brands = viral_studio_store.list_brands()
+        channel_to_brand: Dict[str, tuple[str, str]] = {}
+        for b in all_brands:
+            b_id = str(b.get("id") or "")
+            b_name = str(b.get("name") or b_id)
+            if b_id == brand_id:
+                continue
+            b_profiles = b.get("publishing_profiles") or {}
+            for _, p_data in (b_profiles.items() if isinstance(b_profiles, dict) else []):
+                if isinstance(p_data, dict):
+                    for cid in p_data.get("channel_ids") or []:
+                        channel_to_brand[str(cid)] = (b_id, b_name)
+
+        enriched: List[SocialChannel] = []
+        for ch in all_accounts:
+            bound_b_id, bound_b_name = channel_to_brand.get(str(ch.id), (None, None))
+            enriched.append(
+                SocialChannel(
+                    id=ch.id,
+                    platform=ch.platform,
+                    name=ch.name,
+                    handle=ch.handle,
+                    connected=ch.connected,
+                    avatar_url=ch.avatar_url,
+                    provider=ch.provider,
+                    group_id=ch.group_id,
+                    group_name=ch.group_name,
+                    bound_to_brand_id=bound_b_id,
+                    bound_to_brand_name=bound_b_name,
+                    raw_data=ch.raw_data,
+                )
+            )
+        return enriched
+
+    profiles = brand.get("publishing_profiles") or {}
+    profile_data = profiles.get(provider_name) if isinstance(profiles, dict) else {}
+    if not isinstance(profile_data, dict):
+        profile_data = {}
+
+    channel_ids = [str(cid).strip() for cid in (profile_data.get("channel_ids") or []) if str(cid).strip()]
+    workspace_id = get_brand_customer_id(brand, provider_name)
+
+    if channel_ids:
+        all_channels = await port.list_accounts(customer_id=None)
+        return [ch for ch in all_channels if str(ch.id) in channel_ids]
+
+    if workspace_id:
+        return await port.list_accounts(customer_id=workspace_id)
+
+    return []
+
+
+async def bind_brand_channels(
+    brand_id: str,
+    channel_ids: List[str],
+    workspace_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Bind specific channel IDs and optionally a workspace_id to the brand's active provider profile.
+    
+    Enforces 1:1 Exclusive Channel Ownership: Any selected channel is automatically
+    unbound from other brands across the system.
+    """
+    brand = viral_studio_store.get_brand_or_raise(brand_id)
+    provider_name = get_brand_active_provider(brand)
+    port = get_social_publisher(provider=provider_name)
+
+    # 1. Enforce 1:1 Exclusive Channel Ownership across all brands
+    target_channel_set = set(str(cid).strip() for cid in channel_ids if str(cid).strip())
+    if target_channel_set:
+        all_brands = viral_studio_store.list_brands()
+        for other_b in all_brands:
+            other_id = str(other_b.get("id") or "")
+            if other_id == brand_id:
+                continue
+            other_profiles = dict(other_b.get("publishing_profiles") or {})
+            changed = False
+            for p_key, p_val in other_profiles.items():
+                if isinstance(p_val, dict):
+                    existing_cids = p_val.get("channel_ids") or []
+                    filtered_cids = [cid for cid in existing_cids if str(cid).strip() not in target_channel_set]
+                    if len(filtered_cids) != len(existing_cids):
+                        p_val["channel_ids"] = filtered_cids
+                        changed = True
+            if changed:
+                viral_studio_store.update_brand(other_id, {"publishing_profiles": other_profiles})
+
+    # 2. Update current brand's profile
+    profiles = dict(brand.get("publishing_profiles") or {})
+    current_profile = dict(profiles.get(provider_name) or {})
+
+    current_profile["active"] = True
+    current_profile["channel_ids"] = list(channel_ids)
+
+    # 3. Ensure workspace / profile on provider
+    clean_req_ws = str(workspace_id).strip() if workspace_id else ""
+    if clean_req_ws and clean_req_ws.lower() not in ("none", "auto"):
+        current_profile["workspace_id"] = clean_req_ws
+        current_profile["customer_id"] = clean_req_ws
+    elif not current_profile.get("workspace_id") or str(current_profile.get("workspace_id")).lower() in ("auto", "none", ""):
+        try:
+            ensured_ws = await port.ensure_brand_workspace(
+                brand_name=brand.get("name", brand_id),
+                brand_id=brand_id,
+            )
+            if ensured_ws:
+                current_profile["workspace_id"] = ensured_ws
+                current_profile["customer_id"] = ensured_ws
+        except Exception as exc:
+            logger.warning("Auto workspace ensure failed for brand %s: %s", brand_id, exc)
+
+    # 4. Move / assign channels to the provider workspace (e.g. Zernio profile)
+    final_ws = current_profile.get("workspace_id")
+    if final_ws and str(final_ws).lower() not in ("none", "auto", ""):
+        for ch_id in channel_ids:
+            try:
+                await port.assign_channel_to_workspace(channel_id=str(ch_id), workspace_id=str(final_ws))
+            except Exception as exc:
+                logger.warning("Failed assigning channel %s to workspace %s: %s", ch_id, final_ws, exc)
+
+    current_profile["linked_at"] = datetime.now(timezone.utc).isoformat()
+    profiles[provider_name] = current_profile
+    return viral_studio_store.update_brand(brand_id, {"publishing_profiles": profiles})
+
+
 async def get_workspace_summary(brand_id: str) -> Dict[str, Any]:
     """Aggregate complete state for the Brand Workspace view."""
     brand = viral_studio_store.get_brand_or_raise(brand_id)
-    port = get_social_publisher()
+    provider_name = get_brand_active_provider(brand)
 
-    # 1. Fetch connected channels for this brand (resolving Postiz customer_id if set)
-    customer_id = (
-        brand.get("publishing_profiles", {})
-        .get("postiz", {})
-        .get("customer_id")
-        or brand_id
-    )
-    channels = await port.list_accounts(brand_id=customer_id)
+    # 1. Fetch connected channels for this brand on its active provider
+    channels = await get_brand_channels(brand_id, all_available=False)
 
     # 2. Query items across batches belonging to this brand
     items = viral_studio_store.get_items_by_brand(brand_id=brand_id)
@@ -51,11 +239,6 @@ async def get_workspace_summary(brand_id: str) -> Dict[str, Any]:
     # 3. Retrieve attached template info
     template_id = brand.get("template_id", "classic-affiliate")
     template = viral_studio_store.get_template(template_id)
-
-    # 4. Active provider identifier
-    from clippyme.storage.config_store import load_persistent_config
-    cfg = load_persistent_config() or {}
-    provider_name = os.environ.get("PUBLISHING_PROVIDER") or cfg.get("PUBLISHING_PROVIDER", "postiz")
 
     return {
         "brand": brand,
@@ -73,6 +256,10 @@ async def get_workspace_summary(brand_id: str) -> Dict[str, Any]:
                 "name": ch.name,
                 "connected": ch.connected,
                 "avatar_url": ch.avatar_url,
+                "handle": ch.handle,
+                "group_id": ch.group_id,
+                "group_name": ch.group_name,
+                "provider": ch.provider,
             }
             for ch in channels
         ],
@@ -164,11 +351,13 @@ async def auto_schedule_brand_video(
     brand = viral_studio_store.get_brand_or_raise(brand_id)
     item, batch_id, video_path = _validate_item_for_brand(brand_id, item_id, require_approved=True)
 
-    port = get_social_publisher()
+    provider_name = get_brand_active_provider(brand)
+    port = get_social_publisher(provider=provider_name)
+    customer_id = get_brand_customer_id(brand, provider_name)
 
     # Determine target channels
     if not channel_ids:
-        accounts = await port.list_accounts(brand_id=brand_id)
+        accounts = await get_brand_channels(brand_id, all_available=False)
         channel_ids = [ch.id for ch in accounts if ch.connected]
 
     if not channel_ids:
@@ -234,7 +423,8 @@ async def publish_brand_video(
     if not channel_ids:
         raise ValidationError("At least one target channel ID is required")
 
-    port = get_social_publisher()
+    provider_name = get_brand_active_provider(brand)
+    port = get_social_publisher(provider=provider_name)
     timezone_str = brand.get("posting_schedule", {}).get("timezone", "America/Sao_Paulo")
     title = item.get("selected_headline") or item.get("headline") or brand.get("name")
     caption = item.get("caption") or brand.get("default_cta") or ""
@@ -262,8 +452,9 @@ async def publish_brand_video(
 
 async def cancel_brand_scheduled_post(brand_id: str, post_id: str) -> bool:
     """Cancel scheduled post in provider and atomically revert item status to APPROVED."""
-    _ = viral_studio_store.get_brand_or_raise(brand_id)
-    port = get_social_publisher()
+    brand = viral_studio_store.get_brand_or_raise(brand_id)
+    provider_name = get_brand_active_provider(brand)
+    port = get_social_publisher(provider=provider_name)
 
     # 1. Cancel in provider
     await port.cancel(post_id)
@@ -290,14 +481,9 @@ async def list_brand_scheduled_posts(
 ) -> List[Dict[str, Any]]:
     """Query scheduled and published posts for brand from active provider."""
     brand = viral_studio_store.get_brand_or_raise(brand_id)
-    port = get_social_publisher()
-
-    customer_id = (
-        brand.get("publishing_profiles", {})
-        .get("postiz", {})
-        .get("customer_id")
-        or brand_id
-    )
+    provider_name = get_brand_active_provider(brand)
+    port = get_social_publisher(provider=provider_name)
+    customer_id = get_brand_customer_id(brand, provider_name)
 
     posts = await port.list_scheduled(
         customer_id=customer_id,
@@ -309,7 +495,7 @@ async def list_brand_scheduled_posts(
         items = viral_studio_store.get_items_by_brand(brand_id=brand_id)
         return [
             {
-                "id": rec.get("post_id") or rec.get("id"),
+                "id": str(rec.get("post_id") or rec.get("id") or f"post_{item.get('item_id', 'unknown')}"),
                 "item_id": item.get("item_id") or item.get("id"),
                 "title": item.get("selected_headline") or item.get("headline"),
                 "content": item.get("caption"),
