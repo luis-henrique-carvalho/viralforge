@@ -119,6 +119,8 @@ export function useCancelBrandScheduledPost(brandId: string) {
     onSuccess: () => {
       toast.success('Agendamento cancelado. O vídeo retornou para o status Aprovado.')
       queryClient.invalidateQueries({ queryKey: viralStudioKeys.brand(brandId) })
+      queryClient.invalidateQueries({ queryKey: viralStudioKeys.brandScheduled(brandId) })
+      queryClient.invalidateQueries({ queryKey: viralStudioKeys.brandVideos(brandId) })
       queryClient.invalidateQueries({ queryKey: viralStudioKeys.batches() })
     },
     onError: (err: Error) => {

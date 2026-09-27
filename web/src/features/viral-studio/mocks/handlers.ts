@@ -1128,18 +1128,23 @@ export const viralStudioHandlers = [
 
   http.get('/api/viral-studio/brands/:id/scheduled', ({ params }) => {
     const { id } = params
+    const schedDate = new Date(Date.now() + 3600 * 1000 * 4).toISOString()
     return HttpResponse.json({
       brand_id: id,
       posts: [
         {
+          id: 'post_mock_101',
           post_id: 'post_mock_101',
           brand_id: id,
           item_id: 'item-1',
           title: 'Suporte Magnético 360',
-          scheduled_time: new Date(Date.now() + 3600 * 1000 * 4).toISOString(),
+          scheduled_for: schedDate,
+          scheduled_time: schedDate,
           status: 'scheduled',
           channels: ['tiktok', 'instagram'],
           thumbnail_url: null,
+          external_url: null,
+          post_url: null,
           metrics: {},
         },
       ],

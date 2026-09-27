@@ -278,9 +278,47 @@ class PostizPublisherAdapter(SocialPublisherPort):
     ) -> List[Dict[str, Any]]:
         """List scheduled posts in Postiz within the given date window."""
         try:
-            return await self._client.list_posts(
+            raw_posts = await self._client.list_posts(
                 customer_id=customer_id, start_date=start_date, end_date=end_date
             )
+            mapped: List[Dict[str, Any]] = []
+            for p in raw_posts:
+                if not isinstance(p, dict):
+                    continue
+                p_id = str(p.get("id") or p.get("_id") or "")
+                date_val = p.get("date") or p.get("publishAt") or p.get("scheduledFor")
+                status_raw = str(p.get("status") or p.get("type") or "scheduled").lower()
+                status = "published" if status_raw in ("now", "published") else "scheduled"
+
+                # Extract content/title and channels
+                content = ""
+                channel_names = []
+                sub_posts = p.get("posts") or []
+                if isinstance(sub_posts, list):
+                    for sp in sub_posts:
+                        if isinstance(sp, dict):
+                            integ = sp.get("integration") or {}
+                            if isinstance(integ, dict) and (integ.get("name") or integ.get("profile")):
+                                channel_names.append(integ.get("name") or integ.get("profile"))
+                            vals = sp.get("value") or []
+                            if isinstance(vals, list):
+                                for v in vals:
+                                    if isinstance(v, dict) and v.get("content"):
+                                        content = v.get("content")
+                                        break
+
+                mapped.append({
+                    "id": p_id,
+                    "post_id": p_id,
+                    "title": content[:60] if content else (f"Post #{p_id[:8]}" if p_id else "Publicação"),
+                    "content": content,
+                    "status": status,
+                    "scheduled_for": date_val,
+                    "scheduled_time": date_val,
+                    "channels": channel_names,
+                    "raw_response": p,
+                })
+            return mapped
         except Exception as exc:
             logger.warning("Error listing scheduled posts from Postiz: %s", exc)
             return []

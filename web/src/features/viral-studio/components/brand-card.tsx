@@ -93,30 +93,32 @@ export function BrandCard({ brand, videoCount = 0 }: BrandCardProps) {
 
       <CardContent className="space-y-3 pb-3 text-xs">
         {/* Resumo Operacional em Pílulas */}
-        <div className="grid grid-cols-3 gap-1.5 rounded-lg bg-muted/30 p-2 border border-border/40 text-center">
-          <div className="space-y-0.5">
-            <span className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
-              <Share2 className="size-2.5" /> Canais
-            </span>
-            <span className="text-xs font-semibold text-foreground">
-              {channelCount > 0 ? `${channelCount} ativos` : '0'}
-            </span>
+        <Card className="bg-muted/30 border-border/40 p-2">
+          <div className="grid grid-cols-3 gap-1.5 text-center">
+            <div className="space-y-0.5">
+              <span className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                <Share2 className="size-2.5" /> Canais
+              </span>
+              <span className="text-xs font-semibold text-foreground">
+                {channelCount > 0 ? `${channelCount} ativos` : '0'}
+              </span>
+            </div>
+            <div className="space-y-0.5 border-x border-border/40">
+              <span className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                <Layers className="size-2.5" /> Vídeos
+              </span>
+              <span className="text-xs font-semibold text-foreground">{videoCount}</span>
+            </div>
+            <div className="space-y-0.5">
+              <span className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                <Calendar className="size-2.5" /> Grade
+              </span>
+              <span className="text-xs font-semibold text-foreground">
+                {schedule.frequency || schedule.slots?.length || 3}x/dia
+              </span>
+            </div>
           </div>
-          <div className="space-y-0.5 border-x border-border/40">
-            <span className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
-              <Layers className="size-2.5" /> Vídeos
-            </span>
-            <span className="text-xs font-semibold text-foreground">{videoCount}</span>
-          </div>
-          <div className="space-y-0.5">
-            <span className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
-              <Calendar className="size-2.5" /> Grade
-            </span>
-            <span className="text-xs font-semibold text-foreground">
-              {schedule.frequency || schedule.slots?.length || 3}x/dia
-            </span>
-          </div>
-        </div>
+        </Card>
 
         {/* CTA Padrão */}
         <div className="space-y-1">

@@ -1,4 +1,5 @@
 import { Search, SlidersHorizontal } from 'lucide-react'
+import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -25,7 +26,7 @@ export function BrandsFilterBar({
   totalFiltered,
 }: BrandsFilterBarProps) {
   return (
-    <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-card/40 p-3 rounded-lg border border-border">
+    <Card className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-card/40 p-3 border-border">
       <div className="relative flex-1 w-full sm:max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
         <Input
@@ -62,6 +63,6 @@ export function BrandsFilterBar({
           {totalFiltered} {totalFiltered === 1 ? 'marca' : 'marcas'}
         </Badge>
       </div>
-    </div>
+    </Card>
   )
 }

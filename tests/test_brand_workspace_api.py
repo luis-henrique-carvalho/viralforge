@@ -389,6 +389,12 @@ def test_list_brand_scheduled_timeline(temp_studio_store, mock_publisher_env):
     timeline = response.json()
     assert timeline["brand_id"] == "brand_test"
     assert len(timeline["posts"]) >= 1
+    post = timeline["posts"][0]
+    assert "id" in post and post["id"]
+    assert "post_id" in post and post["post_id"]
+    assert post["id"] == post["post_id"]
+    assert "scheduled_for" in post
+    assert "scheduled_time" in post
 
 
 def test_cancel_brand_scheduled_post_reverts_status_to_approved(temp_studio_store, mock_publisher_env):
@@ -417,6 +423,13 @@ def test_cancel_brand_scheduled_post_reverts_status_to_approved(temp_studio_stor
     item_after = next(i for b in batches for i in b.get("items", []) if i.get("item_id") == "item_1")
     assert item_after["status"] == "APPROVED"
     assert item_after["publication_records"][0]["status"] == "cancelled"
+
+    # Invariant: Cancelled posts must not be returned in fallback timeline list
+    with patch.object(mock_publisher_env, "list_scheduled", AsyncMock(return_value=[])):
+        timeline_res = client.get("/api/viral-studio/brands/brand_test/scheduled")
+        assert timeline_res.status_code == 200
+        active_posts = timeline_res.json()["posts"]
+        assert not any(p["id"] == post_id for p in active_posts)
 
 
 def test_brand_channels_isolation_and_binding(temp_studio_store, mock_publisher_env):

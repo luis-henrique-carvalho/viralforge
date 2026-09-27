@@ -11,6 +11,7 @@ import {
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Typography } from '@/components/ui/typography'
 import type { ScheduledPost } from '../data/batch.types'
 
@@ -23,8 +24,11 @@ export function BrandSchedulePostItem({ post, onCancelClick }: BrandSchedulePost
   const isScheduled = post.status.toLowerCase() === 'scheduled'
   const isPublished = post.status.toLowerCase() === 'published'
   const metrics = (post.metrics || {}) as Record<string, any>
+  const postId = post.post_id || post.id || ''
+  const scheduledTime = post.scheduled_time || post.scheduled_for || post.published_at
+  const externalUrl = post.external_url || post.post_url
 
-  const formatDateTime = (isoString?: string) => {
+  const formatDateTime = (isoString?: string | null) => {
     if (!isoString) return 'Horário a definir'
     try {
       const d = new Date(isoString)
@@ -45,9 +49,11 @@ export function BrandSchedulePostItem({ post, onCancelClick }: BrandSchedulePost
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {/* Post Info */}
         <div className="flex items-start sm:items-center gap-3 min-w-0">
-          <div className="size-12 rounded-lg bg-muted/40 border border-border flex items-center justify-center shrink-0">
-            <Calendar className="size-6 text-muted-foreground opacity-60" />
-          </div>
+          <Avatar className="size-12 rounded-lg border border-border">
+            <AvatarFallback className="rounded-lg bg-muted/40">
+              <Calendar className="size-6 text-muted-foreground opacity-60" />
+            </AvatarFallback>
+          </Avatar>
 
           <div className="space-y-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -55,7 +61,7 @@ export function BrandSchedulePostItem({ post, onCancelClick }: BrandSchedulePost
                 variant="small"
                 className="font-semibold text-sm truncate"
               >
-                {post.title || `Post #${post.post_id.slice(0, 8)}`}
+                {post.title || (postId ? `Post #${postId.slice(0, 8)}` : 'Publicação')}
               </Typography>
               <Badge
                 variant={isPublished ? 'default' : isScheduled ? 'secondary' : 'outline'}
@@ -74,7 +80,7 @@ export function BrandSchedulePostItem({ post, onCancelClick }: BrandSchedulePost
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1 font-medium text-foreground">
                 <Clock className="size-3 text-muted-foreground" />
-                {formatDateTime(post.scheduled_time)}
+                {formatDateTime(scheduledTime)}
               </span>
 
               {post.channels && post.channels.length > 0 && (
@@ -127,7 +133,7 @@ export function BrandSchedulePostItem({ post, onCancelClick }: BrandSchedulePost
             </Button>
           )}
 
-          {post.external_url && (
+          {externalUrl && (
             <Button
               asChild
               variant="outline"
@@ -135,7 +141,7 @@ export function BrandSchedulePostItem({ post, onCancelClick }: BrandSchedulePost
               className="text-xs h-8 gap-1"
             >
               <a
-                href={post.external_url}
+                href={externalUrl}
                 target="_blank"
                 rel="noopener noreferrer"
               >

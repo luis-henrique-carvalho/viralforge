@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { toast } from 'sonner'
 import type { SocialChannel, ViralItem } from '../data/batch.types'
 
@@ -80,36 +81,38 @@ export function BrandQuickPublishDialog({
           {/* Target Channels */}
           <div className="space-y-2">
             <Label className="text-xs font-semibold">Canais de Destino:</Label>
-            <div className="space-y-1.5 max-h-36 overflow-y-auto rounded-lg border border-border p-2 bg-muted/20">
-              {channels.map((channel) => (
-                <div
-                  key={channel.id}
-                  className="flex items-center gap-2"
-                >
-                  <Checkbox
-                    id={`ch-${channel.id}`}
-                    checked={selectedChannels.includes(channel.id)}
-                    onCheckedChange={(checked) => {
-                      setSelectedChannels((prev) =>
-                        checked ? [...prev, channel.id] : prev.filter((id) => id !== channel.id),
-                      )
-                    }}
-                  />
-                  <label
-                    htmlFor={`ch-${channel.id}`}
-                    className="text-xs flex items-center gap-1.5 cursor-pointer select-none font-medium capitalize"
+            <ScrollArea className="h-36  p-2 bg-muted/20">
+              <div className="space-y-1.5 pr-2">
+                {channels.map((channel) => (
+                  <div
+                    key={channel.id}
+                    className="flex items-center gap-2"
                   >
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] px-1 py-0"
+                    <Checkbox
+                      id={`ch-${channel.id}`}
+                      checked={selectedChannels.includes(channel.id)}
+                      onCheckedChange={(checked) => {
+                        setSelectedChannels((prev) =>
+                          checked ? [...prev, channel.id] : prev.filter((id) => id !== channel.id),
+                        )
+                      }}
+                    />
+                    <label
+                      htmlFor={`ch-${channel.id}`}
+                      className="text-xs flex items-center gap-1.5 cursor-pointer select-none font-medium capitalize"
                     >
-                      {channel.platform}
-                    </Badge>
-                    {channel.name}
-                  </label>
-                </div>
-              ))}
-            </div>
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] px-1 py-0"
+                      >
+                        {channel.platform}
+                      </Badge>
+                      {channel.name}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
           </div>
 
           {/* Mode Selection */}

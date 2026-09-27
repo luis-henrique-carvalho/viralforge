@@ -37,7 +37,7 @@ export function PublishResultsTable({ items, results }: PublishResultsTableProps
         </div>
       </Card>
 
-      <ScrollArea className="border rounded-lg max-h-60">
+      <ScrollArea className="border max-h-60">
         <Table>
           <TableHeader className="bg-muted/40">
             <TableRow>

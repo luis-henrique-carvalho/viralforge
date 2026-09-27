@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Layers, Zap } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Typography } from '@/components/ui/typography'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -102,7 +103,7 @@ export function BrandWorkspaceTabVideos({ brand, onNavigateToTab }: BrandWorkspa
   return (
     <div className="space-y-6">
       {/* Top Controls & Filter Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card/40 p-3 rounded-xl border border-border">
+      <Card className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card/40 p-3 border-border">
         <div className="flex flex-wrap items-center gap-1.5">
           {STATUS_FILTERS.map((f) => (
             <Button
@@ -127,7 +128,7 @@ export function BrandWorkspaceTabVideos({ brand, onNavigateToTab }: BrandWorkspa
             <Zap className="size-3.5 fill-current" />⚡ Auto-Agendar Próximo Slot ({approvedCount})
           </Button>
         )}
-      </div>
+      </Card>
 
       {/* Videos Grid */}
       {isLoading ? (
@@ -137,9 +138,9 @@ export function BrandWorkspaceTabVideos({ brand, onNavigateToTab }: BrandWorkspa
               key={n}
               className="p-4 space-y-3"
             >
-              <div className="aspect-[9/16] bg-muted animate-pulse rounded-lg" />
-              <div className="h-4 bg-muted animate-pulse rounded w-3/4" />
-              <div className="h-3 bg-muted animate-pulse rounded w-1/2" />
+              <Skeleton className="aspect-[9/16] rounded-lg" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
             </Card>
           ))}
         </div>

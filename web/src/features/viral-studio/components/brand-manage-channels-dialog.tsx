@@ -9,8 +9,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Typography } from '@/components/ui/typography'
-import { useBindBrandChannels, useBrandAvailableChannels } from '../hooks/use-brand-workspace'
+import { useBrandAvailableChannels, useBindBrandChannels } from '../hooks/use-brand-workspace'
 import { getBrandActiveProvider } from './brand-settings-motor-card'
 import { BrandChannelRow } from './brand-channel-row'
 import type { Brand, SocialChannel } from '../data/batch.types'
@@ -82,7 +84,7 @@ export function BrandManageChannelsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-4 py-2 text-xs">
+        <div className="flex-1 flex flex-col gap-4 py-2 text-xs min-h-0">
           <div className="flex items-center justify-between pt-1">
             <Typography
               variant="muted"
@@ -125,9 +127,9 @@ export function BrandManageChannelsDialog({
           {isLoading ? (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => (
-                <div
+                <Skeleton
                   key={i}
-                  className="h-14 rounded-lg bg-muted/30 border border-border animate-pulse"
+                  className="h-14 rounded-lg"
                 />
               ))}
             </div>
@@ -149,17 +151,19 @@ export function BrandManageChannelsDialog({
               </Typography>
             </div>
           ) : (
-            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-              {availableChannels.map((channel: SocialChannel) => (
-                <BrandChannelRow
-                  key={channel.id}
-                  channel={channel}
-                  isSelected={selectedIds.includes(channel.id)}
-                  onToggle={toggleChannel}
-                  currentBrandId={brand.id}
-                />
-              ))}
-            </div>
+            <ScrollArea className="h-[300px] pr-3">
+              <div className="space-y-2">
+                {availableChannels.map((channel: SocialChannel) => (
+                  <BrandChannelRow
+                    key={channel.id}
+                    channel={channel}
+                    isSelected={selectedIds.includes(channel.id)}
+                    onToggle={toggleChannel}
+                    currentBrandId={brand.id}
+                  />
+                ))}
+              </div>
+            </ScrollArea>
           )}
         </div>
 

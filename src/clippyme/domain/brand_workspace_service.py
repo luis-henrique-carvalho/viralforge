@@ -493,19 +493,38 @@ async def list_brand_scheduled_posts(
 
     if not posts:
         items = viral_studio_store.get_items_by_brand(brand_id=brand_id)
-        return [
-            {
-                "id": str(rec.get("post_id") or rec.get("id") or f"post_{item.get('item_id', 'unknown')}"),
-                "item_id": item.get("item_id") or item.get("id"),
-                "title": item.get("selected_headline") or item.get("headline"),
-                "content": item.get("caption"),
-                "status": rec.get("status", "scheduled"),
-                "scheduled_for": rec.get("scheduled_for"),
-                "published_at": rec.get("published_at"),
-                "post_url": rec.get("post_url"),
-            }
-            for item in items
-            for rec in item.get("publication_records", [])
-        ]
+        result_posts = []
+        for item in items:
+            for rec in item.get("publication_records", []):
+                rec_status = str(rec.get("status", "")).lower()
+                if rec_status in ("cancelled", "canceled"):
+                    continue
+                p_id = str(rec.get("post_id") or rec.get("id") or f"post_{item.get('item_id', 'unknown')}")
+                sched = rec.get("scheduled_for") or rec.get("scheduled_time")
+                result_posts.append({
+                    "id": p_id,
+                    "post_id": p_id,
+                    "brand_id": brand_id,
+                    "item_id": item.get("item_id") or item.get("id"),
+                    "title": item.get("selected_headline") or item.get("headline") or "Publicação",
+                    "content": item.get("caption") or "",
+                    "status": rec.get("status", "scheduled"),
+                    "scheduled_for": sched,
+                    "scheduled_time": sched,
+                    "published_at": rec.get("published_at"),
+                    "post_url": rec.get("post_url") or rec.get("external_url"),
+                    "external_url": rec.get("post_url") or rec.get("external_url"),
+                    "channels": [rec.get("channel_id")] if rec.get("channel_id") else [],
+                })
+        return result_posts
 
-    return posts
+    # When provider returns posts, ensure brand_id and filter cancelled
+    filtered = []
+    for p in posts:
+        if isinstance(p, dict):
+            if str(p.get("status", "")).lower() in ("cancelled", "canceled"):
+                continue
+            p_copy = dict(p)
+            p_copy.setdefault("brand_id", brand_id)
+            filtered.append(p_copy)
+    return filtered

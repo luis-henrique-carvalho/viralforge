@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Calendar, Clock } from 'lucide-react'
 import { Card } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Typography } from '@/components/ui/typography'
 import {
   useBrandScheduled,
@@ -27,11 +28,16 @@ export function BrandWorkspaceTabSchedule({ brand }: BrandWorkspaceTabSchedulePr
 
   const handleConfirmCancel = async () => {
     if (!postToCancel) return
-    await cancelMutation.mutateAsync(postToCancel.post_id)
+    const targetPostId = postToCancel.post_id || postToCancel.id
+    if (!targetPostId) {
+      setPostToCancel(null)
+      return
+    }
+    await cancelMutation.mutateAsync(targetPostId)
     setPostToCancel(null)
   }
 
-  const formatDateTime = (isoString?: string) => {
+  const formatDateTime = (isoString?: string | null) => {
     if (!isoString) return 'Horário a definir'
     try {
       const d = new Date(isoString)
@@ -50,7 +56,7 @@ export function BrandWorkspaceTabSchedule({ brand }: BrandWorkspaceTabSchedulePr
   return (
     <div className="space-y-6">
       {/* Schedule Header & Next Slot Indicator */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card/40 p-4 rounded-xl border border-border">
+      <Card className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card/40 p-4 border-border">
         <div>
           <Typography
             variant="h4"
@@ -75,7 +81,7 @@ export function BrandWorkspaceTabSchedule({ brand }: BrandWorkspaceTabSchedulePr
             </div>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Timeline List */}
       {isLoading ? (
@@ -85,16 +91,16 @@ export function BrandWorkspaceTabSchedule({ brand }: BrandWorkspaceTabSchedulePr
               key={n}
               className="p-4 space-y-2"
             >
-              <div className="h-4 bg-muted animate-pulse rounded w-1/3" />
-              <div className="h-3 bg-muted animate-pulse rounded w-1/4" />
+              <Skeleton className="h-4 w-1/3" />
+              <Skeleton className="h-3 w-1/4" />
             </Card>
           ))}
         </div>
       ) : posts.length > 0 ? (
         <div className="space-y-3">
-          {posts.map((post) => (
+          {posts.map((post, index) => (
             <BrandSchedulePostItem
-              key={post.post_id}
+              key={post.post_id || post.id || `sched-post-${index}`}
               post={post}
               onCancelClick={setPostToCancel}
             />

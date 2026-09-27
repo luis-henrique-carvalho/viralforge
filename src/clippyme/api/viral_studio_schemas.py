@@ -358,18 +358,54 @@ class ScheduleSlotsRequest(BaseModel):
 
 class ScheduledTimelinePost(BaseModel):
     id: str
+    post_id: Optional[str] = None
+    brand_id: Optional[str] = None
     item_id: Optional[str] = None
     platform: Optional[str] = None
     channel_id: Optional[str] = None
     channel_name: Optional[str] = None
+    channels: List[str] = Field(default_factory=list)
     title: Optional[str] = None
     content: Optional[str] = None
     status: str  # "scheduled" | "published" | "failed"
     scheduled_for: Optional[str] = None
+    scheduled_time: Optional[str] = None
     published_at: Optional[str] = None
     post_url: Optional[str] = None
+    external_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
     error: Optional[str] = None
+    metrics: Dict[str, Any] = Field(default_factory=dict)
     raw_response: Optional[Dict[str, Any]] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_timeline_post(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            d = dict(data)
+            p_id = str(d.get("id") or d.get("post_id") or d.get("_id") or "")
+            if p_id:
+                d["id"] = p_id
+                d["post_id"] = p_id
+            s_time = d.get("scheduled_for") or d.get("scheduled_time") or d.get("date") or d.get("publishAt")
+            if s_time:
+                d["scheduled_for"] = str(s_time)
+                d["scheduled_time"] = str(s_time)
+            url = d.get("post_url") or d.get("external_url") or d.get("url")
+            if url:
+                d["post_url"] = str(url)
+                d["external_url"] = str(url)
+            if "channels" not in d or not d["channels"]:
+                chs = []
+                if d.get("channel_id"):
+                    chs.append(str(d["channel_id"]))
+                elif d.get("platform"):
+                    chs.append(str(d["platform"]))
+                if d.get("channel_name") and d["channel_name"] not in chs:
+                    chs.append(str(d["channel_name"]))
+                d["channels"] = chs
+            return d
+        return data
 
 
 class ScheduledTimelineResponse(BaseModel):
