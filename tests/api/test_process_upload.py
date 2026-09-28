@@ -30,7 +30,7 @@ def client(monkeypatch, tmp_path):
     # /api/process now enforces the trusted-origin gate (CSRF defence); send a
     # default allow-listed Origin so the TestClient is treated like the browser.
     return (
-        TestClient(app_module.app, headers={"Origin": "http://localhost:5175"}),
+        TestClient(app_module.app, headers={"Origin": "http://localhost:5176"}),
         uploads,
         outputs,
     )

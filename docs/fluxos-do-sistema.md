@@ -3,6 +3,8 @@
 > **Documento de Arquitetura Unificada de Fluxos e Jornadas do Usuário**  
 > **Fontes & Referências:**  
 > - [`docs/plano-migracao-frontend.md`](plano-migracao-frontend.md) (Arquitetura React 19 + TanStack Router + Shadcn)  
+> - [`docs/gestao-de-marcas-workspace.md`](gestao-de-marcas-workspace.md) (Catálogo Global e Workspace Operacional da Marca)  
+> - [`docs/integracao-publicacao-postiz.md`](integracao-publicacao-postiz.md) (Integração ViralForge ↔ Postiz com Ports & Adapters)  
 > - [`docs/publicacao-e-fila-continua.md`](publicacao-e-fila-continua.md) (Fila Contínua & Ports and Adapters)  
 > - [`docs/viral-studio-template-architecture.md`](viral-studio-template-architecture.md) (Templates Desacoplados, Konva & GenerationTasks)  
 > - [`docs/adr/0001-ports-and-adapters-publishing.md`](adr/0001-ports-and-adapters-publishing.md)  
@@ -43,11 +45,11 @@ flowchart TD
         E3 --> E4["Aprovação Individual ou em Massa (APPROVED)"]
     end
 
-    subgraph F5["5. PUBLICAÇÃO & FILA CONTÍNUA"]
-        P1["BulkActionsBar ('Publicar')"] --> P2["ViralPublishDialog"]
-        P2 --> P3["Auto-Chaining Slots (Sem Colisão de Horários)"]
-        P3 --> P4["Despacho SocialPublisherPort (Zernio / Nativo / Mock)"]
-        P4 --> P5["Painel de Gestão da Fila (/publishing)"]
+    subgraph F5["5. PUBLICAÇÃO & WORKSPACE DA MARCA"]
+        P1["Aba de Vídeos da Marca ou Lote"] --> P2["Auto-Agendar Slot / Publicar"]
+        P2 --> P3["Cálculo de Slots Livres (Postiz / Fila Contínua)"]
+        P3 --> P4["Despacho SocialPublisherPort (Postiz / Zernio / Mock)"]
+        P4 --> P5["Timeline de Agendamentos & Fila (/viral-studio/brands/:id)"]
     end
 
     F1 --> F2 --> F3 --> F4 --> F5
@@ -216,50 +218,57 @@ flowchart TD
 
 ---
 
-### FLUXO 5: Agendamento Inteligente com Fila Contínua & Publicação
+### FLUXO 5: Agendamento Inteligente & Publicação Social (Workspace da Marca & Postiz)
 
-**Objetivo:** Publicar vídeos aprovados nas redes sociais de forma contínua, sem colisões de horários e com desacoplamento de fornecedores externos.
+**Objetivo:** Publicar vídeos aprovados nas redes sociais de forma contínua, sem colisões de horários e com desacoplamento de fornecedores externos via `SocialPublisherPort`.
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor User as Criador de Conteúdo
+    participant BrandWS as BrandWorkspace (/viral-studio/brands/:brandId)
     participant BatchView as BatchDetailView (/viral-studio/:batchId)
     participant PubDialog as ViralPublishDialog
     participant Router as PublishingRouter (Domínio)
-    participant Store as ViralStudioStore
-    participant Adapter as SocialPublisherPort (Zernio / Nativo / Mock)
-    participant QueueView as /publishing (Fila de Postagens)
+    participant Port as SocialPublisherPort (Postiz / Zernio / Mock)
+    participant Store as ViralStudioStore (batches.json)
 
-    User->>BatchView: Seleciona N vídeos aprovados e clica em "Publicar (N)"
-    BatchView->>PubDialog: Abre diálogo com lista de vídeos selecionados
-    PubDialog->>Router: GET /api/viral-studio/publishing/preview-slots?channel_id=...&count=N
-    Router->>Store: get_next_available_slots(channel_id, count)
-    Store->>Store: Calcula próximos horários livres (Auto-Chaining sem colisão)
-    Store-->>Router: Retorna slots (ex: Seg 18:00, Ter 18:00, Qua 18:00)
-    Router-->>PubDialog: Projeção transparente de datas/horários e canal
-    User->>PubDialog: Revisa cronograma e clica em "Confirmar Agendamento"
-    PubDialog->>Router: POST /api/viral-studio/publish (itens, channel_id)
-    
-    loop Para cada vídeo do lote
-        Router->>Adapter: schedule(job) ou publish(job)
-        Adapter-->>Router: Retorna PublicationReceipt imutável (com post_id externo)
-        Router->>Store: Salva PublicationJob e marca item como SCHEDULED
-        Router-->>PubDialog: Atualiza progresso em tempo real item a item
+    alt Disparo via Workspace da Marca (Tab 2: Vídeos)
+        User->>BrandWS: Clica em "Auto-Agendar" no próximo slot livre
+        BrandWS->>Router: POST /api/viral-studio/brands/{brand_id}/auto-schedule (item_id)
+        Router->>Port: find_next_slot(brand_id)
+        Port-->>Router: Retorna próximo horário vago na grade
+        Router->>Port: schedule(job)
+        Port-->>Router: PublicationReceipt (post_id, state: QUEUE)
+        Router->>Store: Marca item como SCHEDULED
+        Router-->>BrandWS: Confirmação com data/hora e badge atualizado
+    else Disparo em Lote via BatchDetailView
+        User->>BatchView: Seleciona N vídeos aprovados e clica em "Publicar (N)"
+        BatchView->>PubDialog: Abre diálogo com vídeos e canais da marca
+        PubDialog->>Router: GET /api/viral-studio/publishing/preview-slots?brand_id=...&count=N
+        Router->>Port: find_next_slot() ou get_next_available_slots()
+        Router-->>PubDialog: Projeção de datas e horários sem colisão
+        User->>PubDialog: Revisa e confirma
+        loop Para cada vídeo do lote
+            PubDialog->>Router: POST /api/viral-studio/publish (item, channels)
+            Router->>Port: schedule(job)
+            Port-->>Router: PublicationReceipt imutável
+            Router->>Store: Salva PublicationJob e marca item como SCHEDULED
+        end
     end
 
-    PubDialog-->>User: Sucesso com links dos agendamentos
-    User->>QueueView: Navega para /publishing para gerenciar a fila consolidada
-    QueueView->>Router: GET /api/viral-studio/publishing/queue
-    Router-->>QueueView: Lista unificada de agendamentos com opções de reagendar e cancelar
+    User->>BrandWS: Acessa Tab 3 (Agendamentos & Fila)
+    BrandWS->>Router: GET /api/viral-studio/brands/{brand_id}/scheduled
+    Router->>Port: list_scheduled(brand_id)
+    Port-->>BrandWS: Timeline unificada de posts agendados no provedor
 ```
 
 * **Arquitetura de Portas e Adaptadores:**
   - **Porta:** `SocialPublisherPort` (definida no domínio).
-  - **Adaptadores:** `ZernioPublisherAdapter` (oficial), `InternalPublisherAdapter` (futuro nativo), `MockPublisherAdapter` (testes offline).
+  - **Adaptadores:** `PostizPublisherAdapter` (provedor primário multimarca com orquestração Temporal), `ZernioPublisherAdapter` (legado), `MockPublisherAdapter` (testes offline).
 * **Invariantes do Fluxo:**
-  - Se um lote de 3 vídeos for agendado hoje (Seg, Ter, Qua às 18:00), o próximo lote para a mesma conta continuará automaticamente na Quinta às 18:00 (*Zero colisão*).
-  - Em caso de esgotamento de quota ou HTTP 429 no provedor, o sistema reporta o erro transparente por item e oferece canal de fallback.
+  - **Zero Duplicação:** O Postiz é a autoridade canônica dos agendamentos futuros. O ViralForge consulta sob demanda sem crons nem tabelas SQLite redundantes.
+  - **Cancelamento Seguro:** O cancelamento via Workspace (`DELETE /api/viral-studio/brands/{id}/scheduled/{post_id}`) remove o post do Postiz e **imediatamente reverte o vídeo local para `APPROVED`** em `batches.json`, permitindo reagendamento instantâneo.
 
 ---
 
@@ -269,14 +278,15 @@ A navegação entre os fluxos é unificada e tipada com **TanStack Router**:
 
 | Rota | View / Feature | Papel no Fluxo | Ações Principais |
 | :--- | :--- | :--- | :--- |
-| **`/discovery`** | `DiscoveryView` | Fluxo 1: Descoberta de tendências | Busca por palavras/tags, filtro por rede, importar para lote. |
+| **`/discovery`** | `DiscoveryView` | Fluxo 1: Descoberta de tendências | Busca por palavras/tags, filtro por rede, importar para lote com BrandPool. |
 | **`/viral-studio`** | `ViralStudioView` | Fluxo 1 & 4: Gestão de lotes | Criar lote, visualizar cards de lotes com métricas agregadas. |
 | **`/viral-studio/:batchId`** | `BatchDetailView` | Fluxo 4: Curadoria do lote | Grid hero-first de vídeos, filtro por status, seleção múltipla, abrir editor, botão "Publicar (N)". |
+| **`/viral-studio/brands`** | `BrandsCatalogView` | Gestão & Catálogo de Marcas | Listagem em cards com métricas agregadas, busca, filtros de nicho, "+ Nova Marca", atalho para Discovery e link para Workspace. *(Sem botão de edição aqui)*. |
+| **`/viral-studio/brands/:brandId`** | `BrandWorkspaceView` | Workspace Soberano da Marca | 4 Abas: 1. Canais Sociais Conectados (OAuth Postiz); 2. Vídeos da Marca (Aprovar / Publicar); 3. Agendamentos & Fila (Postiz Timeline); 4. Configurações da Marca *(Local exclusivo de edição)*. |
 | **Modal / Dialog** | `ViralEditDialog` | Fluxo 4: Edição fina do item | Seleção de ganchos de IA, edição de cópia, trimming SmartCut, observabilidade de tokens. |
 | **Modal / Dialog** | `TemplateStudio` | Fluxo 2: Estúdio de Templates | Canvas Konva 9:16 interativo, ajuste de altura e bordas, catálogo de tarefas de IA. |
-| **Modal / Dialog** | `ViralPublishDialog`| Fluxo 5: Agendamento | Seletor de canal social, projeção de slots contínuos, disparo em tempo real. |
-| **`/publishing`** | `PublishingQueueView`| Fluxo 5: Central da Fila | Histórico e calendário de agendamentos, filtros por canal, reagendamento e cancelamento. |
-| **`/settings`** | `SettingsView` | Suporte Global | Configuração de chaves de IA (Gemini), provedores locais (Ollama), cookies e telemetria. |
+| **Modal / Dialog** | `ViralPublishDialog`| Fluxo 5: Agendamento | Seletor de canais da marca, projeção de slots contínuos, disparo em tempo real. |
+| **`/settings`** | `SettingsView` | Suporte Global | Configuração de chaves de IA (Gemini), provedores de publicação (`postiz`/`zernio`), cookies e telemetria. |
 
 ---
 

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+import uuid
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -80,12 +81,33 @@ class SocialChannelBinding(BaseModel):
 class BrandBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     handle: str = Field(..., min_length=1, max_length=60)
+    niche: Optional[str] = Field(None, max_length=150)
+    discovery_keywords: List[str] = Field(default_factory=list)
     avatar_path: Optional[str] = Field(None, max_length=512)
+    avatar_url: Optional[str] = Field(None, max_length=1024)
     logo_path: Optional[str] = Field(None, max_length=512)
     default_cta: str = Field("Confira os achadinhos no link da bio!", max_length=500)
     default_affiliate_url: Optional[str] = Field(None, max_length=2048)
     template_id: str = Field("classic-affiliate", max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
+    posting_schedule: Optional[Dict[str, Any]] = Field(
+        default_factory=lambda: {
+            "frequency": 3,
+            "slots": ["10:00", "15:00", "20:00"],
+            "timezone": "America/Sao_Paulo",
+        }
+    )
     publishing_profiles: Dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("posting_schedule", mode="before")
+    @classmethod
+    def _default_posting_schedule(cls, v: Any) -> Optional[Dict[str, Any]]:
+        if v is None:
+            return {
+                "frequency": 3,
+                "slots": ["10:00", "15:00", "20:00"],
+                "timezone": "America/Sao_Paulo",
+            }
+        return v
 
     @field_validator("name")
     @classmethod
@@ -141,11 +163,15 @@ class BrandCreate(BaseModel):
     id: Optional[str] = Field(None, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
     name: str = Field(..., min_length=1, max_length=100)
     handle: str = Field(..., min_length=1, max_length=60)
+    niche: Optional[str] = Field(None, max_length=150)
+    discovery_keywords: List[str] = Field(default_factory=list)
     avatar_path: Optional[str] = Field(None, max_length=512)
+    avatar_url: Optional[str] = Field(None, max_length=1024)
     logo_path: Optional[str] = Field(None, max_length=512)
     default_cta: str = Field("Confira os achadinhos no link da bio!", max_length=500)
     default_affiliate_url: Optional[str] = Field(None, max_length=2048)
     template_id: str = Field("classic-affiliate", max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
+    posting_schedule: Optional[Dict[str, Any]] = None
     publishing_profiles: Dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="before")
@@ -206,11 +232,15 @@ class BrandCreate(BaseModel):
 class BrandUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     handle: Optional[str] = Field(None, min_length=1, max_length=60)
+    niche: Optional[str] = Field(None, max_length=150)
+    discovery_keywords: Optional[List[str]] = None
     avatar_path: Optional[str] = Field(None, max_length=512)
+    avatar_url: Optional[str] = Field(None, max_length=1024)
     logo_path: Optional[str] = Field(None, max_length=512)
     default_cta: Optional[str] = Field(None, max_length=500)
     default_affiliate_url: Optional[str] = Field(None, max_length=2048)
     template_id: Optional[str] = Field(None, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
+    posting_schedule: Optional[Dict[str, Any]] = None
     publishing_profiles: Optional[Dict[str, Any]] = None
 
     @field_validator("name")
@@ -283,38 +313,267 @@ class BrandListResponse(BaseModel):
 
 
 # ============================================================================
-# VisualTemplate Schemas
+# Brand Workspace & Scheduling Schemas
 # ============================================================================
+
+class BrandWorkspaceCounts(BaseModel):
+    total_videos: int = 0
+    approved_videos: int = 0
+    scheduled_posts: int = 0
+    published_posts: int = 0
+
+
+class BrandSocialChannel(BaseModel):
+    id: str
+    platform: str
+    name: str
+    connected: bool = True
+    avatar_url: Optional[str] = None
+
+
+class BrandWorkspaceResponse(BaseModel):
+    brand: Brand
+    provider: str = "postiz"
+    counts: BrandWorkspaceCounts
+    channels: List[BrandSocialChannel] = Field(default_factory=list)
+    template: Optional[Dict[str, Any]] = None
+
+
+class AutoScheduleRequest(BaseModel):
+    item_id: str
+    channel_ids: Optional[List[str]] = None
+
+
+class BrandPublishRequest(BaseModel):
+    item_id: str
+    channel_ids: List[str] = Field(..., min_length=1)
+    scheduled_for: Optional[str] = None
+    publish_now: bool = False
+
+
+class ScheduleSlotsRequest(BaseModel):
+    slots: List[str] = Field(..., min_length=1)
+    timezone: str = "America/Sao_Paulo"
+    frequency: Optional[int] = None
+
+
+class ScheduledTimelinePost(BaseModel):
+    id: str
+    post_id: Optional[str] = None
+    brand_id: Optional[str] = None
+    item_id: Optional[str] = None
+    job_id: Optional[str] = None
+    platform: Optional[str] = None
+    channel_id: Optional[str] = None
+    channel_name: Optional[str] = None
+    channel_handle: Optional[str] = None
+    channel_avatar_url: Optional[str] = None
+    channels: List[str] = Field(default_factory=list)
+    provider: Optional[str] = "postiz"
+    provider_url: Optional[str] = None
+    provider_post_url: Optional[str] = None
+    title: Optional[str] = None
+    content: Optional[str] = None
+    status: str = "scheduled"  # "scheduled" | "published" | "failed" | "QUEUED" | "UPLOADING"
+    scheduled_for: Optional[str] = None
+    scheduled_time: Optional[str] = None
+    published_at: Optional[str] = None
+    post_url: Optional[str] = None
+    external_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    error: Optional[str] = None
+    metrics: Dict[str, Any] = Field(default_factory=dict)
+    raw_response: Optional[Dict[str, Any]] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_timeline_post(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            d = dict(data)
+            p_id = str(d.get("id") or d.get("post_id") or d.get("_id") or "")
+            if not p_id or p_id == "None":
+                p_id = f"post_{d.get('item_id', 'unknown')}_{uuid.uuid4().hex[:8]}"
+            d["id"] = p_id
+            d["post_id"] = p_id
+
+            if not d.get("status"):
+                d["status"] = "scheduled"
+
+            s_time = d.get("scheduled_for") or d.get("scheduled_time") or d.get("date") or d.get("publishAt")
+            if s_time:
+                d["scheduled_for"] = str(s_time)
+                d["scheduled_time"] = str(s_time)
+            url = d.get("post_url") or d.get("external_url") or d.get("url")
+            if url:
+                d["post_url"] = str(url)
+                d["external_url"] = str(url)
+            if "channels" not in d or not d["channels"]:
+                chs = []
+                if d.get("channel_id"):
+                    chs.append(str(d["channel_id"]))
+                elif d.get("platform"):
+                    chs.append(str(d["platform"]))
+                if d.get("channel_name") and d["channel_name"] not in chs:
+                    chs.append(str(d["channel_name"]))
+                d["channels"] = chs
+            return d
+        return data
+
+
+class ScheduledTimelineResponse(BaseModel):
+    brand_id: Optional[str] = None
+    posts: List[ScheduledTimelinePost] = Field(default_factory=list)
+    total: int = 0
+
+
+# ============================================================================
+# Publishing Queue & Dispatch Schemas
+# ============================================================================
+
+class DispatchJobRecord(BaseModel):
+    job_id: str
+    item_id: str
+    brand_id: str
+    brand_name: Optional[str] = None
+    channel_ids: List[str] = Field(default_factory=list)
+    channel_names: List[str] = Field(default_factory=list)
+    provider: str = "postiz"
+    status: str = "QUEUED"  # QUEUED, UPLOADING, SCHEDULED, PUBLISHED, FAILED, PARTIAL_FAILED
+    scheduled_for: Optional[str] = None
+    publish_now: bool = False
+    title: Optional[str] = None
+    caption: Optional[str] = None
+    video_path: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    receipts: List[Dict[str, Any]] = Field(default_factory=list)
+    error: Optional[str] = None
+
+
+class DispatchQueueResponse(BaseModel):
+    jobs: List[DispatchJobRecord] = Field(default_factory=list)
+    total: int = 0
+    active_count: int = 0
+    failed_count: int = 0
+
+
+class DispatchJobAcceptedResponse(BaseModel):
+    success: bool = True
+    job_id: Optional[str] = None
+    item_id: str
+    brand_id: Optional[str] = None
+    status: str = "QUEUED"
+    scheduled_for: Optional[str] = None
+    channels_count: int = 0
+    message: str = "Publicação enfileirada para envio em background"
+    receipts: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+# ============================================================================
+# VisualTemplate & GenerationTask Schemas
+# ============================================================================
+
+class GenerationTask(BaseModel):
+    id: str = Field(..., max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
+    label: str = Field(..., min_length=1, max_length=100)
+    target: str = Field(
+        ...,
+        description="canvas_headline | canvas_badge | canvas_extra_image | post_caption | post_title | post_hashtags | custom_metadata",
+    )
+    instruction: str = Field(..., min_length=1)
+    output_type: str = Field(default="text", description="text | options_list | poll | image_prompt")
+    is_required: bool = True
+
 
 class VisualTemplate(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     id: str = Field("classic-affiliate", max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
     name: str = Field("Classic Affiliate", min_length=1, max_length=100)
+    is_system: bool = False
+
+    # Visual Layer (1080x1920)
     width: int = Field(1080, ge=360, le=3840)
     height: int = Field(1920, ge=640, le=3840)
     background_color: str = Field("#FFFFFF", max_length=9)
-    avatar_enabled: bool = True
-    brand_name_enabled: bool = True
-    headline_enabled: bool = True
-    watermark_enabled: bool = True
-    video_fit: str = Field("contain", pattern=r"^(contain|cover|crop)$")
 
-    # Geometry & Typography settings
+    # Video Box & Geometry
+    video_fit: str = Field("contain", pattern=r"^(contain|cover|crop)$")
+    video_aspect: str = Field("1:1", pattern=r"^(1:1|4:5|16:9|free)$")
+    video_x: Optional[int] = None
+    video_y: int = Field(360, ge=0, le=1920)
+    video_width: Optional[int] = None
+    video_height: int = Field(1000, ge=100, le=1920)
+    video_scale: int = Field(92, ge=10, le=100)
+    video_radius: int = Field(20, ge=0, le=100)
+    video_border_width: int = Field(2, ge=0, le=50)
+    video_border_color: str = Field("#3B82F6", max_length=9)
+    video_shadow: str = Field("deep", pattern=r"^(none|subtle|deep|glow-blue|glow-pink)$")
+
+    # Typography & Header
+    brand_alignment: str = Field("left", pattern=r"^(left|center)$")
+    avatar_enabled: bool = True
     avatar_x: int = Field(60, ge=0, le=3840)
     avatar_y: int = Field(80, ge=0, le=3840)
     avatar_size: int = Field(100, ge=20, le=1000)
+    brand_name_enabled: bool = True
     brand_name_font_size: int = Field(36, ge=10, le=200)
     brand_name_color: str = Field("#111111", max_length=9)
     handle_font_size: int = Field(26, ge=10, le=160)
     handle_color: str = Field("#666666", max_length=9)
+
+    # Dynamic Headline
+    headline_enabled: bool = True
+    headline_font: str = Field("Montserrat-ExtraBold", max_length=100)
     headline_font_size: int = Field(48, ge=12, le=200)
     headline_color: str = Field("#111111", max_length=9)
+    headline_alignment: str = Field("center", pattern=r"^(left|center)$")
+    headline_y: int = Field(130, ge=0, le=1920)
     headline_max_lines: int = Field(3, ge=1, le=8)
     headline_margin_x: int = Field(60, ge=0, le=1000)
     headline_margin_top: int = Field(30, ge=0, le=1000)
+
+    # Niche Badge
+    badge_enabled: bool = False
+    custom_badge_text: Optional[str] = Field(None, max_length=60)
+    custom_badge_bg_color: str = Field("#E11D48", max_length=9)
+    custom_badge_text_color: str = Field("#FFFFFF", max_length=9)
+    badge_y: int = Field(45, ge=0, le=1920)
+
+    # Extra Image / Footer Layer
+    extra_image_enabled: bool = False
+    extra_image_path: Optional[str] = Field(None, max_length=512)
+    extra_image_url: Optional[str] = Field(None, max_length=2048)
+    extra_image_template_type: str = Field("comment", pattern=r"^(comment|follow|deal|fact|custom_upload)$")
+    extra_image_title: Optional[str] = Field(None, max_length=120)
+    extra_image_subtitle: Optional[str] = Field(None, max_length=240)
+    extra_image_bg_color: str = Field("#18181B", max_length=9)
+    extra_image_text_color: str = Field("#FFFFFF", max_length=9)
+    extra_image_border_color: str = Field("#3F3F46", max_length=9)
+    extra_image_x: Optional[int] = None
+    extra_image_y: int = Field(1420, ge=0, le=1920)
+    extra_image_height: int = Field(340, ge=50, le=1200)
+    extra_image_width: int = Field(92, ge=10, le=100)
+    extra_image_radius: int = Field(16, ge=0, le=100)
+
+    # Watermark
+    watermark_enabled: bool = True
     watermark_opacity: float = Field(0.7, ge=0.0, le=1.0)
     watermark_position: str = Field("bottom-right", pattern=r"^(top-left|top-right|bottom-left|bottom-right|center)$")
+
+    # Editorial & Persona
+    niche_type: str = Field("curiosities", max_length=64)
+    persona_role: str = Field("Roteirista investigativo focado em fatos curiosos e mistérios", max_length=500)
+    tone_of_voice: str = Field("Intrigante, misterioso, dinâmico", max_length=200)
+    conversion_goal: str = Field("engagement", pattern=r"^(engagement|affiliate|lead_capture|keyword_direct|infoproduct)$")
+    call_to_action_template: Optional[str] = Field("Qual desses fatos você já sabia? Comente abaixo e siga!", max_length=500)
+    system_prompt_template: Optional[str] = Field(None, max_length=4000)
+    default_hashtags: List[str] = Field(default_factory=list)
+    preferred_model: Optional[str] = Field(None, max_length=128)
+
+    # Modular AI Tasks
+    generation_tasks: List[GenerationTask] = Field(default_factory=list)
 
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -331,37 +590,103 @@ class VisualTemplate(BaseModel):
     def template_id(self) -> str:
         return self.id
 
-    @field_validator("background_color", "brand_name_color", "handle_color", "headline_color")
+    @field_validator(
+        "background_color",
+        "brand_name_color",
+        "handle_color",
+        "headline_color",
+        "video_border_color",
+        "custom_badge_bg_color",
+        "custom_badge_text_color",
+        "extra_image_bg_color",
+        "extra_image_text_color",
+        "extra_image_border_color",
+    )
     @classmethod
     def _check_hex_color(cls, v: str) -> str:
         return _validate_hex(v)
+
+    @field_validator("extra_image_path")
+    @classmethod
+    def _check_asset_path(cls, v: Optional[str]) -> Optional[str]:
+        return validate_safe_asset_path(v)
 
 
 class TemplateCreate(BaseModel):
     id: Optional[str] = Field(None, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
     name: str = Field("Classic Affiliate", min_length=1, max_length=100)
+    is_system: bool = False
     width: int = Field(1080, ge=360, le=3840)
     height: int = Field(1920, ge=640, le=3840)
     background_color: str = Field("#FFFFFF", max_length=9)
-    avatar_enabled: bool = True
-    brand_name_enabled: bool = True
-    headline_enabled: bool = True
-    watermark_enabled: bool = True
+
     video_fit: str = Field("contain", pattern=r"^(contain|cover|crop)$")
+    video_aspect: str = Field("1:1", pattern=r"^(1:1|4:5|16:9|free)$")
+    video_x: Optional[int] = None
+    video_y: int = Field(360, ge=0, le=1920)
+    video_width: Optional[int] = None
+    video_height: int = Field(1000, ge=100, le=1920)
+    video_scale: int = Field(92, ge=10, le=100)
+    video_radius: int = Field(20, ge=0, le=100)
+    video_border_width: int = Field(2, ge=0, le=50)
+    video_border_color: str = Field("#3B82F6", max_length=9)
+    video_shadow: str = Field("deep", pattern=r"^(none|subtle|deep|glow-blue|glow-pink)$")
+
+    brand_alignment: str = Field("left", pattern=r"^(left|center)$")
+    avatar_enabled: bool = True
     avatar_x: int = Field(60, ge=0, le=3840)
     avatar_y: int = Field(80, ge=0, le=3840)
     avatar_size: int = Field(100, ge=20, le=1000)
+    brand_name_enabled: bool = True
     brand_name_font_size: int = Field(36, ge=10, le=200)
     brand_name_color: str = Field("#111111", max_length=9)
     handle_font_size: int = Field(26, ge=10, le=160)
     handle_color: str = Field("#666666", max_length=9)
+
+    headline_enabled: bool = True
+    headline_font: str = Field("Montserrat-ExtraBold", max_length=100)
     headline_font_size: int = Field(48, ge=12, le=200)
     headline_color: str = Field("#111111", max_length=9)
+    headline_alignment: str = Field("center", pattern=r"^(left|center)$")
+    headline_y: int = Field(130, ge=0, le=1920)
     headline_max_lines: int = Field(3, ge=1, le=8)
     headline_margin_x: int = Field(60, ge=0, le=1000)
     headline_margin_top: int = Field(30, ge=0, le=1000)
+
+    badge_enabled: bool = False
+    custom_badge_text: Optional[str] = Field(None, max_length=60)
+    custom_badge_bg_color: str = Field("#E11D48", max_length=9)
+    custom_badge_text_color: str = Field("#FFFFFF", max_length=9)
+    badge_y: int = Field(45, ge=0, le=1920)
+
+    extra_image_enabled: bool = False
+    extra_image_path: Optional[str] = Field(None, max_length=512)
+    extra_image_url: Optional[str] = Field(None, max_length=2048)
+    extra_image_template_type: str = Field("comment", pattern=r"^(comment|follow|deal|fact|custom_upload)$")
+    extra_image_title: Optional[str] = Field(None, max_length=120)
+    extra_image_subtitle: Optional[str] = Field(None, max_length=240)
+    extra_image_bg_color: str = Field("#18181B", max_length=9)
+    extra_image_text_color: str = Field("#FFFFFF", max_length=9)
+    extra_image_border_color: str = Field("#3F3F46", max_length=9)
+    extra_image_x: Optional[int] = None
+    extra_image_y: int = Field(1420, ge=0, le=1920)
+    extra_image_height: int = Field(340, ge=50, le=1200)
+    extra_image_width: int = Field(92, ge=10, le=100)
+    extra_image_radius: int = Field(16, ge=0, le=100)
+
+    watermark_enabled: bool = True
     watermark_opacity: float = Field(0.7, ge=0.0, le=1.0)
     watermark_position: str = Field("bottom-right", pattern=r"^(top-left|top-right|bottom-left|bottom-right|center)$")
+
+    niche_type: str = Field("curiosities", max_length=64)
+    persona_role: str = Field("Roteirista investigativo focado em fatos curiosos e mistérios", max_length=500)
+    tone_of_voice: str = Field("Intrigante, misterioso, dinâmico", max_length=200)
+    conversion_goal: str = Field("engagement", pattern=r"^(engagement|affiliate|lead_capture|keyword_direct|infoproduct)$")
+    call_to_action_template: Optional[str] = Field("Qual desses fatos você já sabia? Comente abaixo e siga!", max_length=500)
+    system_prompt_template: Optional[str] = Field(None, max_length=4000)
+    default_hashtags: List[str] = Field(default_factory=list)
+    preferred_model: Optional[str] = Field(None, max_length=128)
+    generation_tasks: List[GenerationTask] = Field(default_factory=list)
 
     @model_validator(mode="before")
     @classmethod
@@ -384,36 +709,102 @@ class TemplateCreate(BaseModel):
             raise ValueError("Template name must not be blank")
         return v
 
-    @field_validator("background_color", "brand_name_color", "handle_color", "headline_color")
+    @field_validator(
+        "background_color",
+        "brand_name_color",
+        "handle_color",
+        "headline_color",
+        "video_border_color",
+        "custom_badge_bg_color",
+        "custom_badge_text_color",
+        "extra_image_bg_color",
+        "extra_image_text_color",
+        "extra_image_border_color",
+    )
     @classmethod
     def _check_hex_color(cls, v: str) -> str:
         return _validate_hex(v)
 
+    @field_validator("extra_image_path")
+    @classmethod
+    def _check_asset_path(cls, v: Optional[str]) -> Optional[str]:
+        return validate_safe_asset_path(v)
+
 
 class TemplateUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
+    is_system: Optional[bool] = None
     width: Optional[int] = Field(None, ge=360, le=3840)
     height: Optional[int] = Field(None, ge=640, le=3840)
     background_color: Optional[str] = Field(None, max_length=9)
-    avatar_enabled: Optional[bool] = None
-    brand_name_enabled: Optional[bool] = None
-    headline_enabled: Optional[bool] = None
-    watermark_enabled: Optional[bool] = None
+
     video_fit: Optional[str] = Field(None, pattern=r"^(contain|cover|crop)$")
+    video_aspect: Optional[str] = Field(None, pattern=r"^(1:1|4:5|16:9|free)$")
+    video_x: Optional[int] = None
+    video_y: Optional[int] = Field(None, ge=0, le=1920)
+    video_width: Optional[int] = None
+    video_height: Optional[int] = Field(None, ge=100, le=1920)
+    video_scale: Optional[int] = Field(None, ge=10, le=100)
+    video_radius: Optional[int] = Field(None, ge=0, le=100)
+    video_border_width: Optional[int] = Field(None, ge=0, le=50)
+    video_border_color: Optional[str] = Field(None, max_length=9)
+    video_shadow: Optional[str] = Field(None, pattern=r"^(none|subtle|deep|glow-blue|glow-pink)$")
+
+    brand_alignment: Optional[str] = Field(None, pattern=r"^(left|center)$")
+    avatar_enabled: Optional[bool] = None
     avatar_x: Optional[int] = Field(None, ge=0, le=3840)
     avatar_y: Optional[int] = Field(None, ge=0, le=3840)
     avatar_size: Optional[int] = Field(None, ge=20, le=1000)
+    brand_name_enabled: Optional[bool] = None
     brand_name_font_size: Optional[int] = Field(None, ge=10, le=200)
     brand_name_color: Optional[str] = Field(None, max_length=9)
     handle_font_size: Optional[int] = Field(None, ge=10, le=160)
     handle_color: Optional[str] = Field(None, max_length=9)
+
+    headline_enabled: Optional[bool] = None
+    headline_font: Optional[str] = Field(None, max_length=100)
     headline_font_size: Optional[int] = Field(None, ge=12, le=200)
     headline_color: Optional[str] = Field(None, max_length=9)
+    headline_alignment: Optional[str] = Field(None, pattern=r"^(left|center)$")
+    headline_y: Optional[int] = Field(None, ge=0, le=1920)
     headline_max_lines: Optional[int] = Field(None, ge=1, le=8)
     headline_margin_x: Optional[int] = Field(None, ge=0, le=1000)
     headline_margin_top: Optional[int] = Field(None, ge=0, le=1000)
+
+    badge_enabled: Optional[bool] = None
+    custom_badge_text: Optional[str] = Field(None, max_length=60)
+    custom_badge_bg_color: Optional[str] = Field(None, max_length=9)
+    custom_badge_text_color: Optional[str] = Field(None, max_length=9)
+    badge_y: Optional[int] = Field(None, ge=0, le=1920)
+
+    extra_image_enabled: Optional[bool] = None
+    extra_image_path: Optional[str] = Field(None, max_length=512)
+    extra_image_url: Optional[str] = Field(None, max_length=2048)
+    extra_image_template_type: Optional[str] = Field(None, pattern=r"^(comment|follow|deal|fact|custom_upload)$")
+    extra_image_title: Optional[str] = Field(None, max_length=120)
+    extra_image_subtitle: Optional[str] = Field(None, max_length=240)
+    extra_image_bg_color: Optional[str] = Field(None, max_length=9)
+    extra_image_text_color: Optional[str] = Field(None, max_length=9)
+    extra_image_border_color: Optional[str] = Field(None, max_length=9)
+    extra_image_x: Optional[int] = None
+    extra_image_y: Optional[int] = Field(None, ge=0, le=1920)
+    extra_image_height: Optional[int] = Field(None, ge=50, le=1200)
+    extra_image_width: Optional[int] = Field(None, ge=10, le=100)
+    extra_image_radius: Optional[int] = Field(None, ge=0, le=100)
+
     watermark_opacity: Optional[float] = Field(None, ge=0.0, le=1.0)
     watermark_position: Optional[str] = Field(None, pattern=r"^(top-left|top-right|bottom-left|bottom-right|center)$")
+    watermark_enabled: Optional[bool] = None
+
+    niche_type: Optional[str] = Field(None, max_length=64)
+    persona_role: Optional[str] = Field(None, max_length=500)
+    tone_of_voice: Optional[str] = Field(None, max_length=200)
+    conversion_goal: Optional[str] = Field(None, pattern=r"^(engagement|affiliate|lead_capture|keyword_direct|infoproduct)$")
+    call_to_action_template: Optional[str] = Field(None, max_length=500)
+    system_prompt_template: Optional[str] = Field(None, max_length=4000)
+    default_hashtags: Optional[List[str]] = None
+    preferred_model: Optional[str] = Field(None, max_length=128)
+    generation_tasks: Optional[List[GenerationTask]] = None
 
     @field_validator("name")
     @classmethod
@@ -425,12 +816,28 @@ class TemplateUpdate(BaseModel):
             raise ValueError("Template name must not be blank")
         return v
 
-    @field_validator("background_color", "brand_name_color", "handle_color", "headline_color")
+    @field_validator(
+        "background_color",
+        "brand_name_color",
+        "handle_color",
+        "headline_color",
+        "video_border_color",
+        "custom_badge_bg_color",
+        "custom_badge_text_color",
+        "extra_image_bg_color",
+        "extra_image_text_color",
+        "extra_image_border_color",
+    )
     @classmethod
     def _check_hex_color(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
             return None
         return _validate_hex(v)
+
+    @field_validator("extra_image_path")
+    @classmethod
+    def _check_asset_path(cls, v: Optional[str]) -> Optional[str]:
+        return validate_safe_asset_path(v)
 
 
 class TemplateResponse(VisualTemplate):
@@ -448,6 +855,30 @@ class TemplateListResponse(BaseModel):
             if "total" not in values and "templates" in values and isinstance(values["templates"], list):
                 values["total"] = len(values["templates"])
         return values
+
+
+class TestGenerationRequest(BaseModel):
+    __test__ = False
+    template: Optional[VisualTemplate] = None
+    template_id: Optional[str] = None
+    brand_id: Optional[str] = None
+    sample_transcript: Optional[str] = Field(None, max_length=10000)
+    sample_title: Optional[str] = Field(None, max_length=500)
+    model: Optional[str] = Field(None, max_length=128)
+
+
+class TestGenerationResponse(BaseModel):
+    __test__ = False
+    model_config = ConfigDict(populate_by_name=True)
+
+    generated_copy: AICopyData = Field(..., alias="copy")
+    prompt: str
+    raw_response: str
+    telemetry: Dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    def copy(self) -> AICopyData:
+        return self.generated_copy
 
 
 # ============================================================================
@@ -468,12 +899,27 @@ class ViralItemStatus(str, Enum):
 
 
 class AICopyData(BaseModel):
-    product: str = Field(..., min_length=1, max_length=200)
-    product_description: str = Field("", max_length=1000)
-    headlines: List[str] = Field(..., min_length=1, max_length=10)
-    selected_headline: str = Field(..., min_length=1, max_length=300)
-    caption: str = Field(..., max_length=2200)
+    product: Optional[str] = Field(None, max_length=200)
+    product_description: Optional[str] = Field("", max_length=1000)
+    headlines: List[str] = Field(default_factory=list)
+    selected_headline: Optional[str] = Field(None, max_length=300)
+    caption: str = Field("", max_length=4000)
     hashtags: List[str] = Field(default_factory=list)
+    social_title: Optional[str] = Field(None, max_length=200)
+    custom_outputs: Dict[str, Any] = Field(default_factory=dict)
+    model: Optional[str] = None
+    telemetry: Dict[str, Any] = Field(default_factory=dict)
+
+
+from typing import Literal
+from clippyme.domain.discovery.schemas import (
+    DiscoveryFilter,
+    DiscoveryItem,
+    DiscoveryResult,
+    ImportProvenance,
+    PlatformType as DiscoveryPlatformType,
+    SortOrder as DiscoverySortOrder,
+)
 
 
 class ViralItemInput(BaseModel):
@@ -483,6 +929,7 @@ class ViralItemInput(BaseModel):
     manual_headline: Optional[str] = Field(None, max_length=300)
     additional_instructions: Optional[str] = Field(None, max_length=1000)
     model: Optional[str] = Field(None, max_length=128)
+    provenance: Optional[ImportProvenance] = None
 
     @field_validator("source_url")
     @classmethod
@@ -499,18 +946,36 @@ class ViralItemInput(BaseModel):
 
 
 class BatchCreateRequest(BaseModel):
-    brand_id: str = Field(..., min_length=1, max_length=64)
+    brand_id: Optional[str] = Field(None, max_length=64)
+    brand_ids: Optional[List[str]] = Field(None, max_length=64)
+    distribution_strategy: Literal["round_robin", "sequential"] = "round_robin"
     template_id: Optional[str] = Field(None, max_length=64)
     model: Optional[str] = Field(None, max_length=128)
     items: List[ViralItemInput] = Field(..., min_length=1, max_length=100)
 
-    @field_validator("brand_id")
+    @model_validator(mode="before")
     @classmethod
-    def _clean_brand_id(cls, v: str) -> str:
-        v = (v or "").strip()
-        if not v:
-            raise ValueError("brand_id must not be blank")
-        return v
+    def _normalize_brands(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            raw_brand_id = values.get("brand_id")
+            raw_brand_ids = values.get("brand_ids")
+
+            cleaned_brand_ids: List[str] = []
+            if raw_brand_ids and isinstance(raw_brand_ids, list):
+                cleaned_brand_ids = [str(b).strip() for b in raw_brand_ids if b and str(b).strip()]
+
+            if not cleaned_brand_ids and raw_brand_id and str(raw_brand_id).strip():
+                cleaned_brand_ids = [str(raw_brand_id).strip()]
+
+            if not cleaned_brand_ids:
+                raise ValueError("At least one brand must be specified (via brand_id or brand_ids)")
+
+            values["brand_ids"] = cleaned_brand_ids
+            if not values.get("brand_id") or not str(values.get("brand_id")).strip():
+                values["brand_id"] = cleaned_brand_ids[0]
+            else:
+                values["brand_id"] = str(values["brand_id"]).strip()
+        return values
 
     @field_validator("template_id")
     @classmethod
@@ -523,10 +988,11 @@ class BatchCreateRequest(BaseModel):
 
 class ViralItem(BaseModel):
     id: str
+    item_id: Optional[str] = None
     batch_id: Optional[str] = None
     brand_id: Optional[str] = None
     model: Optional[str] = None
-    source_url: str
+    source_url: Optional[str] = None
     product_code: Optional[str] = None
     product_url: Optional[str] = None
     manual_headline: Optional[str] = None
@@ -534,6 +1000,7 @@ class ViralItem(BaseModel):
     selected_headline: Optional[str] = None
     caption: Optional[str] = None
     ai_copy: Optional[AICopyData] = None
+    provenance: Optional[ImportProvenance] = None
     status: ViralItemStatus = ViralItemStatus.PENDING
     source_path: Optional[str] = None
     rendered_path: Optional[str] = None
@@ -555,11 +1022,23 @@ class ViralItem(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
+    @model_validator(mode="before")
+    @classmethod
+    def _sync_item_ids(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            if not values.get("id") and values.get("item_id"):
+                values["id"] = values["item_id"]
+            if not values.get("item_id") and values.get("id"):
+                values["item_id"] = values["id"]
+        return values
+
 
 class BatchResponse(BaseModel):
     id: str
     batch_id: str
     brand_id: str
+    brand_ids: Optional[List[str]] = None
+    distribution_strategy: Optional[str] = "round_robin"
     template_id: Optional[str] = None
     model: Optional[str] = None
     status: str = "PENDING"
@@ -664,12 +1143,33 @@ class PreviewSlotsResponse(BaseModel):
     projected_slots: List[SlotProjection] = Field(default_factory=list)
 
 
-class SocialAccountResponse(BaseModel):
+class SocialChannelResponse(BaseModel):
     id: str
     name: str
     platform: str
     avatar_url: Optional[str] = None
+    handle: Optional[str] = None
     connected: bool = True
+    provider: Optional[str] = None
+    group_id: Optional[str] = None
+    group_name: Optional[str] = None
+    bound_to_brand_id: Optional[str] = None
+    bound_to_brand_name: Optional[str] = None
+
+
+class WorkspaceSummaryResponse(BaseModel):
+    id: str
+    name: str
+    provider: str
+
+
+class BrandChannelBindRequest(BaseModel):
+    channel_ids: List[str] = Field(default_factory=list)
+    workspace_id: Optional[str] = None
+
+
+# Backward compatibility alias
+SocialAccountResponse = SocialChannelResponse
 
 
 class ViralPublishResult(BaseModel):
@@ -680,6 +1180,8 @@ class ViralPublishResult(BaseModel):
     published_at: Optional[str] = None
     scheduled_for: Optional[str] = None
     post_url: Optional[str] = None
+    account_id: Optional[str] = None
+    platform: Optional[str] = None
     error: Optional[str] = None
 
 
@@ -715,8 +1217,9 @@ DEFAULT_TEMPLATE_ID = "classic-affiliate"
 DEFAULT_BRAND_ID = "vale-o-clique"
 
 DEFAULT_TEMPLATE = VisualTemplate(
-    id=DEFAULT_TEMPLATE_ID,
-    name="Classic Affiliate",
+    id="classic-affiliate",
+    name="Achadinhos & Afiliados",
+    is_system=True,
     width=1080,
     height=1920,
     background_color="#FFFFFF",
@@ -725,6 +1228,14 @@ DEFAULT_TEMPLATE = VisualTemplate(
     headline_enabled=True,
     watermark_enabled=True,
     video_fit="contain",
+    video_aspect="1:1",
+    video_y=360,
+    video_height=1000,
+    video_scale=92,
+    video_radius=16,
+    video_border_width=2,
+    video_border_color="#F97316",
+    video_shadow="deep",
     avatar_x=60,
     avatar_y=80,
     avatar_size=100,
@@ -732,14 +1243,311 @@ DEFAULT_TEMPLATE = VisualTemplate(
     brand_name_color="#111111",
     handle_font_size=26,
     handle_color="#666666",
+    headline_font="Montserrat-ExtraBold",
     headline_font_size=48,
     headline_color="#111111",
+    headline_y=130,
     headline_max_lines=3,
     headline_margin_x=60,
     headline_margin_top=30,
+    badge_enabled=True,
+    custom_badge_text="ACHADINHO 🔥",
+    custom_badge_bg_color="#F97316",
+    custom_badge_text_color="#FFFFFF",
+    badge_y=45,
+    extra_image_enabled=True,
+    extra_image_template_type="deal",
+    extra_image_y=1420,
+    extra_image_height=340,
+    extra_image_width=92,
+    extra_image_radius=16,
     watermark_opacity=0.7,
     watermark_position="bottom-right",
+    niche_type="affiliate",
+    conversion_goal="affiliate",
+    persona_role="Especialista em curadoria de produtos virais e achadinhos úteis para o dia a dia",
+    tone_of_voice="Entusiasmado, prático, direto e persuasivo",
+    call_to_action_template="Comente QUERO ou clique no link da bio para garantir o seu com desconto!",
+    default_hashtags=["#achadinhos", "#shopee", "#utilidades", "#comprinhas", "#dicas", "#publi"],
+    generation_tasks=[
+        GenerationTask(
+            id="headline",
+            label="Headline no Vídeo",
+            target="canvas_headline",
+            instruction="Crie 5 opções de headlines curtas e magnéticas focando no benefício prático e na utilidade do produto demonstrado em {transcript}.",
+            output_type="options_list",
+            is_required=True,
+        ),
+        GenerationTask(
+            id="caption",
+            label="Legenda Comercial",
+            target="post_caption",
+            instruction="Escreva uma legenda de alta conversão contendo gancho, descrição da dor/solução, código do produto se houver, e CTA: {cta}.",
+            output_type="text",
+            is_required=True,
+        ),
+        GenerationTask(
+            id="product_name",
+            label="Identificação do Produto",
+            target="custom_metadata",
+            instruction="Nome conciso e categoria do produto identificado.",
+            output_type="text",
+            is_required=True,
+        ),
+    ],
 )
+
+FACTORY_TEMPLATES: List[VisualTemplate] = [
+    VisualTemplate(
+        id="curiosities-viral",
+        name="Curiosidades Virais",
+        is_system=True,
+        width=1080,
+        height=1920,
+        background_color="#0D1117",
+        avatar_enabled=True,
+        brand_name_enabled=True,
+        headline_enabled=True,
+        watermark_enabled=True,
+        video_fit="cover",
+        video_aspect="1:1",
+        video_y=360,
+        video_height=1000,
+        video_scale=92,
+        video_radius=20,
+        video_border_width=2,
+        video_border_color="#E11D48",
+        video_shadow="glow-pink",
+        avatar_x=60,
+        avatar_y=80,
+        avatar_size=100,
+        brand_name_font_size=36,
+        brand_name_color="#F0F6FC",
+        handle_font_size=26,
+        handle_color="#8B949E",
+        headline_font="Montserrat-ExtraBold",
+        headline_font_size=48,
+        headline_color="#FFFFFF",
+        headline_y=130,
+        headline_max_lines=3,
+        headline_margin_x=60,
+        headline_margin_top=30,
+        badge_enabled=True,
+        custom_badge_text="VOCÊ SABIA?",
+        custom_badge_bg_color="#E11D48",
+        custom_badge_text_color="#FFFFFF",
+        badge_y=45,
+        extra_image_enabled=True,
+        extra_image_template_type="comment",
+        extra_image_y=1420,
+        extra_image_height=340,
+        extra_image_width=92,
+        extra_image_radius=16,
+        watermark_opacity=0.7,
+        watermark_position="bottom-right",
+        niche_type="curiosities",
+        conversion_goal="engagement",
+        persona_role="Roteirista investigativo focado em fatos curiosos e mistérios da ciência e história",
+        tone_of_voice="Intrigante, misterioso, dinâmico",
+        call_to_action_template="Qual desses fatos mais te surpreendeu? Comente abaixo e siga para mais!",
+        default_hashtags=["#curiosidades", "#fatosdesconhecidos", "#vocesabia", "#ciencia", "#historia", "#viral"],
+        generation_tasks=[
+            GenerationTask(
+                id="headline",
+                label="Headline no Vídeo",
+                target="canvas_headline",
+                instruction="Crie 5 ganchos magnéticos em PT-BR para sobreposição no topo do vídeo que instiguem curiosidade imediata sobre {transcript}.",
+                output_type="options_list",
+                is_required=True,
+            ),
+            GenerationTask(
+                id="caption",
+                label="Legenda Completa",
+                target="post_caption",
+                instruction="Escreva uma legenda completa em PT-BR explicando o fato com clareza, gancho inicial, corpo informativo e CTA: {cta}. Termine com hashtags.",
+                output_type="text",
+                is_required=True,
+            ),
+            GenerationTask(
+                id="social_title",
+                label="Título do Post",
+                target="post_title",
+                instruction="Crie um título curto e chamativo de até 60 caracteres para o vídeo.",
+                output_type="text",
+                is_required=False,
+            ),
+            GenerationTask(
+                id="comment_prompt",
+                label="Pergunta para Comentários",
+                target="custom_metadata",
+                instruction="Gere uma pergunta provocativa em 1 frase para fixar no primeiro comentário.",
+                output_type="text",
+                is_required=False,
+            ),
+        ],
+    ),
+    DEFAULT_TEMPLATE,
+    VisualTemplate(
+        id="quick-facts-news",
+        name="Notícias & Fatos Rápidos",
+        is_system=True,
+        width=1080,
+        height=1920,
+        background_color="#18181B",
+        avatar_enabled=True,
+        brand_name_enabled=True,
+        headline_enabled=True,
+        watermark_enabled=True,
+        video_fit="contain",
+        video_aspect="16:9",
+        video_y=380,
+        video_height=960,
+        video_scale=96,
+        video_radius=12,
+        video_border_width=2,
+        video_border_color="#EF4444",
+        video_shadow="subtle",
+        avatar_x=60,
+        avatar_y=80,
+        avatar_size=100,
+        brand_name_font_size=36,
+        brand_name_color="#FAFAFA",
+        handle_font_size=26,
+        handle_color="#A1A1AA",
+        headline_font="Montserrat-ExtraBold",
+        headline_font_size=46,
+        headline_color="#FFFFFF",
+        headline_y=130,
+        headline_max_lines=3,
+        headline_margin_x=60,
+        headline_margin_top=30,
+        badge_enabled=True,
+        custom_badge_text="URGENTE ⚡",
+        custom_badge_bg_color="#EF4444",
+        custom_badge_text_color="#FFFFFF",
+        badge_y=45,
+        extra_image_enabled=True,
+        extra_image_template_type="follow",
+        extra_image_y=1400,
+        extra_image_height=360,
+        extra_image_width=96,
+        extra_image_radius=12,
+        watermark_opacity=0.7,
+        watermark_position="bottom-right",
+        niche_type="news",
+        conversion_goal="engagement",
+        persona_role="Jornalista digital investigativo ágil focado em notícias de última hora e fatos verificados",
+        tone_of_voice="Sério, dinâmico, urgente e informativo",
+        call_to_action_template="Siga o canal para atualizações em tempo real e compartilhe esta notícia!",
+        default_hashtags=["#noticias", "#urgente", "#fatos", "#ultimahora", "#informacao", "#brasil"],
+        generation_tasks=[
+            GenerationTask(
+                id="headline",
+                label="Manchete do Vídeo",
+                target="canvas_headline",
+                instruction="Crie 5 manchetes jornalísticas de alto impacto resumindo o acontecimento central de {transcript}.",
+                output_type="options_list",
+                is_required=True,
+            ),
+            GenerationTask(
+                id="caption",
+                label="Resumo da Notícia",
+                target="post_caption",
+                instruction="Escreva um resumo jornalístico estruturado com contextualização, desdobramentos e CTA: {cta}.",
+                output_type="text",
+                is_required=True,
+            ),
+            GenerationTask(
+                id="social_title",
+                label="Título da Notícia",
+                target="post_title",
+                instruction="Título objetivo de até 50 caracteres para feed de notícias.",
+                output_type="text",
+                is_required=True,
+            ),
+        ],
+    ),
+    VisualTemplate(
+        id="tech-review",
+        name="Tech & Gadgets Review",
+        is_system=True,
+        width=1080,
+        height=1920,
+        background_color="#0F172A",
+        avatar_enabled=True,
+        brand_name_enabled=True,
+        headline_enabled=True,
+        watermark_enabled=True,
+        video_fit="contain",
+        video_aspect="1:1",
+        video_y=360,
+        video_height=1020,
+        video_scale=94,
+        video_radius=24,
+        video_border_width=2,
+        video_border_color="#38BDF8",
+        video_shadow="glow-blue",
+        avatar_x=60,
+        avatar_y=80,
+        avatar_size=100,
+        brand_name_font_size=36,
+        brand_name_color="#F8FAFC",
+        handle_font_size=26,
+        handle_color="#94A3B8",
+        headline_font="Montserrat-ExtraBold",
+        headline_font_size=48,
+        headline_color="#38BDF8",
+        headline_y=130,
+        headline_max_lines=3,
+        headline_margin_x=60,
+        headline_margin_top=30,
+        badge_enabled=True,
+        custom_badge_text="TECH REVIEW 🚀",
+        custom_badge_bg_color="#0284C7",
+        custom_badge_text_color="#FFFFFF",
+        badge_y=45,
+        extra_image_enabled=True,
+        extra_image_template_type="fact",
+        extra_image_y=1420,
+        extra_image_height=340,
+        extra_image_width=94,
+        extra_image_radius=20,
+        watermark_opacity=0.7,
+        watermark_position="bottom-right",
+        niche_type="tech",
+        conversion_goal="engagement",
+        persona_role="Especialista em tecnologia, gadgets inovadores e análise técnica de equipamentos",
+        tone_of_voice="Técnico porém acessível, analítico, futurista e empolgante",
+        call_to_action_template="O que achou deste gadget? Você usaria? Deixe sua opinião nos comentários!",
+        default_hashtags=["#tecnologia", "#tech", "#gadgets", "#setup", "#review", "#inovacao"],
+        generation_tasks=[
+            GenerationTask(
+                id="headline",
+                label="Headline de Gadget",
+                target="canvas_headline",
+                instruction="Crie 5 headlines destacando o recurso mais surpreendente ou diferencial do gadget em {transcript}.",
+                output_type="options_list",
+                is_required=True,
+            ),
+            GenerationTask(
+                id="caption",
+                label="Análise do Produto",
+                target="post_caption",
+                instruction="Escreva uma legenda detalhando especificações, prós e contras, experiência de uso e CTA: {cta}.",
+                output_type="text",
+                is_required=True,
+            ),
+            GenerationTask(
+                id="tech_specs",
+                label="Especificações Rápidas",
+                target="custom_metadata",
+                instruction="Destaque 3 principais especificações ou diferenciais em formato bullet point.",
+                output_type="text",
+                is_required=False,
+            ),
+        ],
+    ),
+]
 
 DEFAULT_BRAND = Brand(
     id=DEFAULT_BRAND_ID,

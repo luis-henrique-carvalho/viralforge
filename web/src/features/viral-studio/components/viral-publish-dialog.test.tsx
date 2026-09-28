@@ -180,7 +180,10 @@ describe('ViralPublishDialog', () => {
 
     expect(mockMutateAsync).toHaveBeenCalledWith({
       item_ids: ['item-1', 'item-2'],
-      platforms: [{ platform: 'tiktok', accountId: 'acc-tiktok-1' }],
+      platforms: [
+        { platform: 'tiktok', accountId: 'acc-tiktok-1' },
+        { platform: 'instagram', accountId: 'acc-insta-1' },
+      ],
       schedule_mode: 'auto',
     })
 
@@ -230,5 +233,44 @@ describe('ViralPublishDialog', () => {
 
     fireEvent.click(screen.getByText('Cancelar'))
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders multi-brand auto-routing when items belong to different brands', async () => {
+    const user = userEvent.setup()
+    const multiBrandItems: ViralItem[] = [
+      {
+        ...items[0],
+        id: 'item-b1',
+        brand_id: 'brand-1',
+      },
+      {
+        ...items[1],
+        id: 'item-b2',
+        brand_id: 'brand-2',
+      },
+    ]
+
+    render(
+      <ViralPublishDialog
+        isOpen={true}
+        onClose={vi.fn()}
+        items={multiBrandItems}
+        batchId="batch-1"
+      />,
+    )
+
+    expect(screen.getByText('Roteamento Automático Multimarca Ativo')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Foram selecionados 2 vídeos distribuídos em 2 marcas diferentes/),
+    ).toBeInTheDocument()
+
+    const confirmBtn = screen.getByText('Confirmar Agendamento')
+    await user.click(confirmBtn)
+
+    expect(mockMutateAsync).toHaveBeenCalledWith({
+      item_ids: ['item-b1', 'item-b2'],
+      platforms: [],
+      schedule_mode: 'auto',
+    })
   })
 })

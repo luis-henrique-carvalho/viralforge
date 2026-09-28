@@ -5,11 +5,19 @@ ViralForge is an automated studio pipeline that ingests, curates, edits, and dis
 ## Publishing & Distribution
 
 **SocialChannel**:
-A specific authenticated social media profile (e.g. TikTok `@achados`, Instagram `@promo_radar`) belonging to a brand and backed by a publishing provider.
+A specific authenticated social media profile (e.g. TikTok `@achados`, Instagram `@promo_radar`) backed by a publishing provider, containing group/profile metadata (`group_id`, `group_name`) and domain ownership annotations (`bound_to_brand_id`, `bound_to_brand_name`).
 _Avoid_: SocialAccount, ChannelTarget, ZernioAccount, ProfileTarget
 
+**ProviderWorkspace**:
+An isolated container or customer group in an external publishing provider (maps to `customer` in Postiz or `profile` in Zernio) that scopes social accounts and post queues.
+_Avoid_: AccountGroup, SubAccount, CustomerProfile, TeamSpace
+
+**ExclusiveChannelTransfer**:
+The domain invariant ensuring 1:1 exclusive ownership of every authenticated social account. Binding a `SocialChannel` to Brand B automatically unbinds it from any prior Brand A and synchronizes the account's workspace/profile location on the active `PublishingProvider` via official HTTP API.
+_Avoid_: ChannelStealing, AccountReassignment, MultiBrandOverlap, OverwriteBinding
+
 **PublishingProvider**:
-An execution engine (external service like Zernio, direct native API, or internal worker) that delivers media and schedules posts to one or more social platforms.
+An execution engine (external platform like Postiz, Zernio, or deterministic Mock) that delivers media and schedules posts to one or more social platforms.
 _Avoid_: PublisherDriver, SocialIntegration, ZernioService
 
 **PublicationJob**:
@@ -24,6 +32,18 @@ _Avoid_: PublishResult, ZernioResponse, PostConfirmation
 The domain service responsible for channel discovery, continuous auto-chaining slot calculations, provider dispatch routing, and automated fallback execution.
 _Avoid_: PublisherService, DispatchManager, ZernioRouter
 
+**BrandSyndication**:
+The publishing pattern where a single ViralItem assigned to a Brand is dispatched to all active SocialChannels connected to that brand across platforms (TikTok, Instagram, YouTube Shorts), generating a PublicationJob per connected platform.
+_Avoid_: MultiPosting, CrossPlatformBlast, AccountSplitting
+
+**OmnichannelPublishing**:
+Simultaneous distribution of a video item across distinct social platforms (TikTok, Instagram, YouTube) bound to the same Brand, maintaining synchronized slot schedules and receipts per platform.
+_Avoid_: MultiNetworkPush, CrossFeedPosting
+
+**PublicationFailureIsolation**:
+The domain resilience guarantee that each SocialChannel's publication receipt is tracked independently, allowing a partial failure (e.g. TikTok 429 rate limit) to be retried selectively without duplicate dispatches to successfully published platforms (Instagram, YouTube).
+_Avoid_: AllOrNothingPublishing, BatchRollback
+
 **SocialPublisherPort**:
 The domain port (in Ports & Adapters architecture) defining the unified contract for publishing, scheduling, and cancelling outbound video publications across any external provider.
 _Avoid_: PublisherInterface, SocialGateway, DriverPort
@@ -31,15 +51,23 @@ _Avoid_: PublisherInterface, SocialGateway, DriverPort
 ## Viral Studio Pipeline
 
 **ViralBatch**:
-A grouped operational ingestion of raw source URLs or video files processed together under a common Brand and VisualTemplate.
+A grouped operational ingestion of raw source URLs or video files processed together under a common VisualTemplate, with items associated to either a single Brand or distributed across a BrandPool.
 _Avoid_: BatchJob, IngestionRun, VideoCollection
+
+**BrandPool**:
+A designated set of Brands selected at batch creation time across which incoming video items are distributed for multi-account video rendering and publishing.
+_Avoid_: AccountGroup, ProfileCluster, TargetPool
+
+**MultiBrandDistribution**:
+The algorithmic assignment (such as Round-Robin or Sequential blocks) of video items to different Brands prior to pipeline execution, ensuring each video is rendered with its assigned Brand's visual identity (@handle, avatar, brand name).
+_Avoid_: AccountSharding, VideoSplitting, ChannelPartitioning
 
 **ViralItem**:
 An individual video item within a batch, tracking its lifecycle from download, keyframe extraction, transcript generation, AI copy, rendering, approval, to publication.
 _Avoid_: ClipItem, BatchRecord, RenderItem
 
 **Brand**:
-A commercial identity owning visual templates, default CTAs, product affiliate links, and a pool of connected SocialChannels.
+A commercial identity owning visual templates, default CTAs, product affiliate links, a posting schedule grid, and an exclusive pool of bound SocialChannels mapped to provider workspaces.
 _Avoid_: ChannelGroup, Organization, AccountProfile
 
 **VisualTemplate**:
@@ -93,7 +121,7 @@ The security boundary and masking mechanism ensuring secrets (API keys, auth tok
 _Avoid_: KeyStore, PasswordManager, SecretHolder
 
 **ProviderSelector**:
-The domain configuration directive designating the currently active provider adapter (e.g. `PublishingProvider`: `zernio` | `mock`; `TranscriptionProvider`: `deepgram` | `elevenlabs` | `whisper`).
+The domain configuration directive designating the currently active provider adapter (e.g. `PublishingProvider`: `postiz` | `zernio` | `mock`; `TranscriptionProvider`: `deepgram` | `elevenlabs` | `whisper`).
 _Avoid_: ActiveEngine, DriverToggle, ServiceSwitch
 
 **PlatformSessionCookie**:
@@ -108,3 +136,28 @@ _Avoid_: SystemStats, DeviceProbe, GpuMonitor
 Uploaded visual and typographic brand artifacts (transparent PNG logo, licensed TTF/OTF subtitle fonts) utilized across the rendering and burn-in pipelines.
 _Avoid_: MediaAsset, CustomFile, SubtitleFont
 
+## Content Discovery & Mining
+
+**DiscoverySearch**:
+The persistent domain aggregate representing an asynchronous video exploration query across social platforms (TikTok, Instagram, YouTube), containing search query parameters, lifecycle status (`QUEUED`, `SEARCHING`, `COMPLETED`, `FAILED`, `CANCELLED`), execution telemetry, and the ranked collection of discovered media items.
+_Avoid_: DiscoveryJob, SearchRun, ScrapeSession, DiscoveryTask
+
+**DiscoveredVideo**:
+An individual video candidate identified during a DiscoverySearch, capturing source URL, author handle, view/like/comment counts, calculated `viral_score`, and import eligibility.
+_Avoid_: SearchHit, ScrapedVideo, VideoProspect, CandidateItem
+
+**DiscoveryWorker**:
+The background task queue and concurrency orchestrator in the backend responsible for consuming pending DiscoverySearches, enforcing platform rate limits, and safely capturing media metadata without blocking web requests.
+_Avoid_: ScraperDaemon, SearchQueueManager, MinerProcess
+
+**ImportProvenance**:
+The audit and deduplication record linking an imported `ViralItem` back to the original `DiscoverySearch` and source platform from which it was mined.
+_Avoid_: SourceLink, OriginReference, IngestionTracker
+
+**BrandWorkspace**:
+The dedicated operational hub for a single Brand (`/viral-studio/brands/:brandId`) providing 4 cohesive perspectives: Canais Sociais (channel binding & group status), Vídeos da Marca (batch curation & quick publishing), Agendamento & Fila (provider timeline & schedule cancellation), and Configurações (active engine selection & posting grid).
+_Avoid_: BrandDashboard, BrandManager, ChannelView
+
+**ScheduleCancellation**:
+The domain action that removes a pending PublicationJob from the active provider while immediately reverting the corresponding ViralItem's editorial state in `batches.json` back to `approved` for seamless re-scheduling.
+_Avoid_: PostUnschedule, AbortPublish, JobDelete

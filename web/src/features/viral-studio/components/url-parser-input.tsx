@@ -226,7 +226,7 @@ export function UrlParserInput({ value, onChange, error }: UrlParserInputProps) 
       </div>
 
       {items.length > 0 ? (
-        <ScrollArea className="max-h-72 rounded-xl border border-border/80 bg-card/40 p-2 sm:p-3">
+        <ScrollArea className="max-h-72 bg-card/40 p-2 sm:p-3">
           <div className="space-y-2">
             {items.map((item, idx) => {
               const itemKey = `${item.source_url}::${item.product_code ?? ''}::${item.manual_headline ?? ''}::item-${idx}`

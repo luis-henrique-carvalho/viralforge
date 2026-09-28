@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
-import { Cpu, LayoutTemplate, Plus, Tag } from 'lucide-react'
+import { Cpu, Layers, LayoutTemplate, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   Select,
   SelectContent,
@@ -13,6 +14,7 @@ import {
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { useLocalAIModels } from '../hooks/use-local-ai-models'
+import { BatchBrandSelection } from './batch-brand-selection'
 import type { Brand, VisualTemplate } from '../data/batch.types'
 
 export interface BatchConfigSidebarProps {
@@ -20,8 +22,12 @@ export interface BatchConfigSidebarProps {
   templates: VisualTemplate[]
   isLoadingBrands: boolean
   isLoadingTemplates: boolean
-  selectedBrandId: string
-  setSelectedBrandId: (val: string) => void
+  selectedBrandId?: string
+  setSelectedBrandId?: (val: string) => void
+  selectedBrandIds?: string[]
+  setSelectedBrandIds?: (ids: string[]) => void
+  distributionStrategy?: 'round_robin' | 'sequential'
+  setDistributionStrategy?: (val: 'round_robin' | 'sequential') => void
   selectedTemplateId: string
   setSelectedTemplateId: (val: string) => void
   selectedModel: string
@@ -35,8 +41,12 @@ export function BatchConfigSidebar({
   templates,
   isLoadingBrands,
   isLoadingTemplates,
-  selectedBrandId,
+  selectedBrandId = 'vale-o-clique',
   setSelectedBrandId,
+  selectedBrandIds,
+  setSelectedBrandIds,
+  distributionStrategy = 'round_robin',
+  setDistributionStrategy,
   selectedTemplateId,
   setSelectedTemplateId,
   selectedModel,
@@ -45,6 +55,25 @@ export function BatchConfigSidebar({
   itemsCount,
 }: BatchConfigSidebarProps) {
   const { modelOptions, isLoading: isLoadingModels } = useLocalAIModels()
+
+  const currentBrandIds = useMemo(() => {
+    if (selectedBrandIds && selectedBrandIds.length > 0) return selectedBrandIds
+    return selectedBrandId ? [selectedBrandId] : []
+  }, [selectedBrandIds, selectedBrandId])
+
+  const handleToggleBrand = (brandId: string) => {
+    if (!setSelectedBrandIds) {
+      setSelectedBrandId?.(brandId)
+      return
+    }
+    const next = currentBrandIds.includes(brandId)
+      ? currentBrandIds.length > 1
+        ? currentBrandIds.filter((id) => id !== brandId)
+        : currentBrandIds
+      : [...currentBrandIds, brandId]
+    setSelectedBrandIds(next)
+    if (next[0]) setSelectedBrandId?.(next[0])
+  }
 
   const groupedOptions = useMemo(() => {
     return modelOptions.reduce<Record<string, typeof modelOptions>>((acc, opt) => {
@@ -63,37 +92,61 @@ export function BatchConfigSidebar({
           <CardDescription>Perfil de marca, modelo de IA e template 9:16.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-xs">
-          <div className="space-y-1.5">
-            <Label className="flex items-center gap-1.5 text-xs">
-              <Tag className="size-3.5 text-primary" />
-              Perfil da Marca
-            </Label>
-            <Select
-              value={selectedBrandId}
-              onValueChange={setSelectedBrandId}
-              disabled={isLoadingBrands}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Selecione a marca..." />
-              </SelectTrigger>
-              <SelectContent>
-                {brands.map((b) => (
-                  <SelectItem
-                    key={b.id}
-                    value={b.id}
+          <BatchBrandSelection
+            brands={brands}
+            isLoadingBrands={isLoadingBrands}
+            currentBrandIds={currentBrandIds}
+            selectedBrandId={selectedBrandId}
+            setSelectedBrandId={setSelectedBrandId}
+            setSelectedBrandIds={setSelectedBrandIds}
+            onToggleBrand={handleToggleBrand}
+          />
+
+          {currentBrandIds.length > 1 && setDistributionStrategy && (
+            <div className="space-y-1.5 pt-2 border-t border-border/40">
+              <Label className="flex items-center gap-1.5 text-xs font-semibold">
+                <Layers className="size-3.5 text-primary" />
+                Distribuição Multi-Marca
+              </Label>
+              <RadioGroup
+                value={distributionStrategy}
+                onValueChange={(val) =>
+                  setDistributionStrategy(val as 'round_robin' | 'sequential')
+                }
+                className="space-y-1"
+              >
+                {/* shadcn-ignore: layout */}
+                <div className="flex items-center gap-2 p-1.5 rounded-lg border border-border/60 bg-card/40 cursor-pointer">
+                  <RadioGroupItem
+                    value="round_robin"
+                    id="sb_round_robin"
+                  />
+                  <Label
+                    htmlFor="sb_round_robin"
+                    className="cursor-pointer text-xs"
                   >
-                    {b.name} ({b.handle})
-                  </SelectItem>
-                ))}
-                {brands.length === 0 && (
-                  <SelectItem value="vale-o-clique">Vale o Clique? (@valeoclique)</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
+                    <span className="font-semibold">Round-Robin (Alternado)</span>
+                  </Label>
+                </div>
+                {/* shadcn-ignore: layout */}
+                <div className="flex items-center gap-2 p-1.5 rounded-lg border border-border/60 bg-card/40 cursor-pointer">
+                  <RadioGroupItem
+                    value="sequential"
+                    id="sb_sequential"
+                  />
+                  <Label
+                    htmlFor="sb_sequential"
+                    className="cursor-pointer text-xs"
+                  >
+                    <span className="font-semibold">Sequencial em Blocos</span>
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+          )}
 
           <div className="space-y-1.5">
-            <Label className="flex items-center gap-1.5 text-xs">
+            <Label className="flex items-center gap-1.5 text-xs font-semibold">
               <LayoutTemplate className="size-3.5 text-primary" />
               Template Visual 9:16
             </Label>
@@ -122,7 +175,7 @@ export function BatchConfigSidebar({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="flex items-center gap-1.5 text-xs">
+            <Label className="flex items-center gap-1.5 text-xs font-semibold">
               <Cpu className="size-3.5 text-indigo-500" />
               Modelo de Copywriting & Visão
             </Label>
@@ -165,7 +218,7 @@ export function BatchConfigSidebar({
               type="submit"
               className="w-full gap-2 shadow-sm font-semibold"
               size="lg"
-              disabled={isPending || itemsCount === 0}
+              disabled={isPending || itemsCount === 0 || currentBrandIds.length === 0}
             >
               <Plus className="size-4 shrink-0" />
               <span>{isPending ? 'Criando Lote...' : `Processar Lote (${itemsCount} vídeos)`}</span>

@@ -100,6 +100,7 @@ BRANDS_FILE: Optional[str] = None
 TEMPLATES_FILE: Optional[str] = None
 BATCHES_FILE: Optional[str] = None
 ITEMS_FILE: Optional[str] = None
+DISPATCH_QUEUE_FILE: Optional[str] = None
 
 _STORE_THREAD_LOCK = threading.RLock()
 _LOCK_DEPTH = 0
@@ -185,7 +186,8 @@ DEFAULT_TEMPLATE_ID = "classic-affiliate"
 
 DEFAULT_TEMPLATE_DICT: Dict[str, Any] = {
     "id": DEFAULT_TEMPLATE_ID,
-    "name": "Classic Affiliate",
+    "name": "Achadinhos & Afiliados",
+    "is_system": True,
     "width": 1080,
     "height": 1920,
     "background_color": "#FFFFFF",
@@ -194,6 +196,16 @@ DEFAULT_TEMPLATE_DICT: Dict[str, Any] = {
     "headline_enabled": True,
     "watermark_enabled": True,
     "video_fit": "contain",
+    "video_aspect": "1:1",
+    "video_x": None,
+    "video_y": 360,
+    "video_width": None,
+    "video_height": 1000,
+    "video_scale": 92,
+    "video_radius": 16,
+    "video_border_width": 2,
+    "video_border_color": "#F97316",
+    "video_shadow": "deep",
     "avatar_x": 60,
     "avatar_y": 80,
     "avatar_size": 100,
@@ -201,13 +213,62 @@ DEFAULT_TEMPLATE_DICT: Dict[str, Any] = {
     "brand_name_color": "#111111",
     "handle_font_size": 26,
     "handle_color": "#666666",
+    "headline_font": "Montserrat-ExtraBold",
     "headline_font_size": 48,
     "headline_color": "#111111",
+    "headline_y": 130,
     "headline_max_lines": 3,
     "headline_margin_x": 60,
     "headline_margin_top": 30,
+    "badge_enabled": True,
+    "custom_badge_text": "ACHADINHO 🔥",
+    "custom_badge_bg_color": "#F97316",
+    "custom_badge_text_color": "#FFFFFF",
+    "badge_y": 45,
+    "extra_image_enabled": True,
+    "extra_image_path": None,
+    "extra_image_url": None,
+    "extra_image_template_type": "deal",
+    "extra_image_x": None,
+    "extra_image_y": 1420,
+    "extra_image_height": 340,
+    "extra_image_width": 92,
+    "extra_image_radius": 16,
     "watermark_opacity": 0.7,
     "watermark_position": "bottom-right",
+    "niche_type": "affiliate",
+    "conversion_goal": "affiliate",
+    "persona_role": "Especialista em curadoria de produtos virais e achadinhos úteis para o dia a dia",
+    "tone_of_voice": "Entusiasmado, prático, direto e persuasivo",
+    "call_to_action_template": "Comente QUERO ou clique no link da bio para garantir o seu com desconto!",
+    "default_hashtags": ["#achadinhos", "#shopee", "#utilidades", "#comprinhas", "#dicas", "#publi"],
+    "preferred_model": None,
+    "generation_tasks": [
+        {
+            "id": "headline",
+            "label": "Headline no Vídeo",
+            "target": "canvas_headline",
+            "instruction": "Crie 5 headlines curtas focando no benefício prático e na utilidade do produto demonstrado em {transcript}.",
+            "output_type": "options_list",
+            "is_required": True,
+        },
+        {
+            "id": "caption",
+            "label": "Legenda Comercial",
+            "target": "post_caption",
+            "instruction": "Escreva uma legenda de alta conversão contendo gancho, descrição da dor/solução, código do produto se houver, e CTA: {cta}.",
+            "output_type": "text",
+            "is_required": True,
+        },
+        {
+            "id": "product_name",
+            "label": "Identificação do Produto",
+            "target": "custom_metadata",
+            "instruction": "Nome conciso e categoria do produto identificado.",
+            "output_type": "text",
+            "is_required": True,
+        },
+    ],
     "created_at": "2026-09-19T00:00:00Z",
     "updated_at": "2026-09-19T00:00:00Z",
 }
@@ -216,11 +277,19 @@ DEFAULT_BRAND_DICT: Dict[str, Any] = {
     "id": DEFAULT_BRAND_ID,
     "name": "Vale o Clique?",
     "handle": "@valeoclique",
+    "niche": "Achadinhos & Compras Inteligentes",
+    "discovery_keywords": ["achadinhos shopee", "produtos virais", "unboxing"],
     "avatar_path": None,
+    "avatar_url": None,
     "logo_path": None,
     "default_cta": "Confira os achadinhos no link da bio!",
     "default_affiliate_url": None,
     "template_id": DEFAULT_TEMPLATE_ID,
+    "posting_schedule": {
+        "frequency": 3,
+        "slots": ["10:00", "15:00", "20:00"],
+        "timezone": "America/Sao_Paulo",
+    },
     "publishing_profiles": {},
     "created_at": "2026-09-19T00:00:00Z",
     "updated_at": "2026-09-19T00:00:00Z",
@@ -249,12 +318,18 @@ def get_store_dir() -> str:
 
 
 def set_store_dir(directory: str) -> None:
-    global DATA_DIR, BRANDS_FILE, TEMPLATES_FILE, BATCHES_FILE, ITEMS_FILE
+    global DATA_DIR, BRANDS_FILE, TEMPLATES_FILE, BATCHES_FILE, ITEMS_FILE, DISPATCH_QUEUE_FILE
     DATA_DIR = directory
     BRANDS_FILE = None
     TEMPLATES_FILE = None
     BATCHES_FILE = None
     ITEMS_FILE = None
+    DISPATCH_QUEUE_FILE = None
+    try:
+        from clippyme.domain import publish_dispatch_service
+        publish_dispatch_service.DISPATCH_QUEUE_PATH = os.path.join(directory, "dispatch_queue.json")
+    except (ImportError, AttributeError):
+        pass
 
 
 def get_brands_path() -> str:
@@ -267,6 +342,18 @@ def get_templates_path() -> str:
 
 def get_batches_path() -> str:
     return BATCHES_FILE or os.path.join(DATA_DIR, BATCHES_FILENAME)
+
+
+def get_dispatch_queue_path() -> str:
+    if DISPATCH_QUEUE_FILE:
+        return DISPATCH_QUEUE_FILE
+    try:
+        from clippyme.domain import publish_dispatch_service
+        if getattr(publish_dispatch_service, "DISPATCH_QUEUE_PATH", None):
+            return publish_dispatch_service.DISPATCH_QUEUE_PATH
+    except (ImportError, AttributeError):
+        pass
+    return os.path.join(DATA_DIR, "dispatch_queue.json")
 
 
 def _atomic_write_json(file_path: str, data: Dict[str, Any]) -> None:
@@ -352,6 +439,13 @@ def list_brands() -> List[Dict[str, Any]]:
         return sorted(res, key=lambda b: (b.get("name") or b.get("id", "")).lower())
 
 
+DEFAULT_BRAND_SCHEDULE: Dict[str, Any] = {
+    "frequency": 3,
+    "slots": ["10:00", "15:00", "20:00"],
+    "timezone": "America/Sao_Paulo",
+}
+
+
 def get_brand(brand_id: str) -> Optional[Dict[str, Any]]:
     if not brand_id:
         return None
@@ -362,6 +456,8 @@ def get_brand(brand_id: str) -> Optional[Dict[str, Any]]:
             return None
         res = dict(brand)
         res.pop("_is_seed", None)
+        if not res.get("posting_schedule"):
+            res["posting_schedule"] = dict(DEFAULT_BRAND_SCHEDULE)
         return res
 
 
@@ -386,6 +482,8 @@ def create_brand(brand: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
         data["avatar_path"] = validate_safe_asset_path(data["avatar_path"])
     if "logo_path" in data and data["logo_path"] is not None:
         data["logo_path"] = validate_safe_asset_path(data["logo_path"])
+
+    data.setdefault("posting_schedule", dict(DEFAULT_BRAND_SCHEDULE))
 
     with _STORE_LOCK:
         brands = _load_brands_locked()
@@ -480,17 +578,201 @@ def delete_brand(brand_id: str) -> bool:
         return True
 
 
+def update_brand_schedule(
+    brand_id: str,
+    slots: List[str],
+    timezone: str = "America/Sao_Paulo",
+    frequency: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Atomically update a brand's daily posting schedule."""
+    if not slots:
+        raise ValidationError("Posting schedule must include at least one slot")
+    schedule = {
+        "frequency": frequency or len(slots),
+        "slots": slots,
+        "timezone": timezone,
+    }
+    return update_brand(brand_id, {"posting_schedule": schedule})
+
+
+def get_items_by_brand(
+    brand_id: str,
+    status: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Query all video items across batches belonging to a specific brand."""
+    if not brand_id:
+        raise ValidationError("brand_id is required")
+
+    target_status = status.upper() if status and status.lower() != "all" else None
+    matching_items: List[Dict[str, Any]] = []
+
+    with _STORE_LOCK:
+        batches = _load_batches_locked()
+        for batch_id, batch in batches.items():
+            batch_brand = batch.get("brand_id")
+            for item in batch.get("items", []):
+                item_brand = item.get("brand_id") or batch_brand
+                if item_brand == brand_id:
+                    item_status = str(item.get("status") or "").upper()
+                    if target_status is None or item_status == target_status:
+                        item_copy = dict(item)
+                        item_copy.setdefault("batch_id", batch_id)
+                        matching_items.append(item_copy)
+
+    # Sort most recent first
+    matching_items.sort(
+        key=lambda x: str(x.get("updated_at") or x.get("created_at") or ""),
+        reverse=True,
+    )
+    return matching_items
+
+
+def find_item_batch(item_id: str) -> tuple[Dict[str, Any], str, Dict[str, Any]]:
+    """Locate item, parent batch ID, and batch dict in batches.json or raise NotFoundError."""
+    with _STORE_LOCK:
+        batches = _load_batches_locked()
+        for batch_id, batch in batches.items():
+            b_id = batch.get("batch_id") or batch.get("id") or batch_id
+            for item in batch.get("items", []):
+                if item.get("id") == item_id or item.get("item_id") == item_id:
+                    return dict(item), str(b_id), dict(batch)
+    raise NotFoundError(f"Video item not found: {item_id}")
+
+
+def find_item_by_post_id(post_id: str) -> Optional[tuple[Dict[str, Any], str, Dict[str, Any]]]:
+    """Locate item, parent batch ID, and batch dict linked to a post_id in publication records."""
+    if not post_id:
+        return None
+    with _STORE_LOCK:
+        batches = _load_batches_locked()
+        for batch_id, batch in batches.items():
+            b_id = batch.get("batch_id") or batch.get("id") or batch_id
+            for item in batch.get("items", []):
+                for rec in item.get("publication_records", []):
+                    if rec.get("post_id") == post_id or rec.get("id") == post_id:
+                        return dict(item), str(b_id), dict(batch)
+    return None
+
+
+def update_item_status_by_post_id(
+    post_id: str,
+    new_status: str,
+) -> Optional[Dict[str, Any]]:
+    """Locate item linked to a post_id, update its status and record cancellation audit."""
+    if not post_id:
+        return None
+
+    with _STORE_LOCK:
+        batches = _load_batches_locked()
+        modified = False
+        target_item = None
+        now = _utcnow_iso()
+
+        for batch_id, batch in batches.items():
+            for item in batch.get("items", []):
+                for rec in item.get("publication_records", []):
+                    if rec.get("post_id") == post_id or rec.get("id") == post_id:
+                        item["status"] = new_status
+                        item["updated_at"] = now
+                        if new_status.upper() == "APPROVED":
+                            item["scheduled_for"] = None
+                            rec["status"] = "cancelled"
+                            rec["action"] = "cancelled"
+                            rec["cancelled_at"] = now
+                            rec["reason"] = "user_cancelled"
+                            rec["updated_at"] = now
+                        modified = True
+                        target_item = dict(item)
+                        target_item["batch_id"] = batch_id
+                        break
+                if modified:
+                    break
+            if modified:
+                break
+
+        if modified:
+            _atomic_write_json(get_batches_path(), batches)
+        return target_item
+
+
+def append_publication_record(
+    batch_id: Optional[str],
+    item_id: str,
+    record: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Atomically append a publication record to an item in batches.json."""
+    with _STORE_LOCK:
+        batches = _load_batches_locked()
+        found = False
+        for b_id, batch in batches.items():
+            if batch_id and b_id != batch_id and batch.get("id") != batch_id:
+                continue
+            for idx, item in enumerate(batch.get("items", [])):
+                if item.get("id") == item_id or item.get("item_id") == item_id:
+                    records = list(item.get("publication_records") or [])
+                    rec_id = record.get("id")
+                    existing_idx = next((i for i, r in enumerate(records) if rec_id and r.get("id") == rec_id), None)
+                    if existing_idx is not None:
+                        records[existing_idx] = record
+                    else:
+                        records.append(record)
+                    item["publication_records"] = records
+                    item["updated_at"] = _utcnow_iso()
+                    batch["items"][idx] = item
+                    batch["updated_at"] = _utcnow_iso()
+                    found = True
+                    break
+            if found:
+                break
+        if not found:
+            raise NotFoundError(f"Item not found: {item_id}")
+        _atomic_write_json(get_batches_path(), batches)
+        return record
+
+
+def update_item_status(
+    batch_id: Optional[str],
+    item_id: str,
+    status: str,
+) -> Dict[str, Any]:
+    """Update status of an item."""
+    return update_item(item_id, {"status": status})
+
+
 # ---------------------------------------------------------------------------
 # Template Storage Operations
 # ---------------------------------------------------------------------------
 
+def _get_factory_template_dicts() -> Dict[str, Dict[str, Any]]:
+    from clippyme.api.viral_studio_schemas import FACTORY_TEMPLATES
+    return {t.id: t.model_dump() for t in FACTORY_TEMPLATES}
+
+
 def _load_templates_locked() -> Dict[str, Dict[str, Any]]:
     path = get_templates_path()
     templates = _read_json_file(path)
+    factory_dict = _get_factory_template_dicts()
     if not templates:
-        templates = {DEFAULT_TEMPLATE_ID: dict(DEFAULT_TEMPLATE_DICT)}
+        templates = {k: dict(v) for k, v in factory_dict.items()}
         _atomic_write_json(path, templates)
+    else:
+        modified = False
+        for fid, fval in factory_dict.items():
+            if fid not in templates:
+                templates[fid] = dict(fval)
+                modified = True
+            elif templates[fid].get("is_system") is None:
+                templates[fid]["is_system"] = fval.get("is_system", True)
+                modified = True
+        if modified:
+            _atomic_write_json(path, templates)
     return templates
+
+
+def ensure_default_templates() -> None:
+    """Ensure all default factory templates are populated in the store."""
+    with _STORE_LOCK:
+        _load_templates_locked()
 
 
 def list_templates() -> List[Dict[str, Any]]:
@@ -535,6 +817,7 @@ def create_template(template: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
         now = _utcnow_iso()
         data.setdefault("created_at", now)
         data["updated_at"] = now
+        data.setdefault("is_system", False)
 
         templates[tid] = data
         _atomic_write_json(get_templates_path(), templates)
@@ -590,6 +873,41 @@ def save_template(template: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
         return dict(data)
 
 
+def duplicate_template(template_id: str, new_name: Optional[str] = None) -> Dict[str, Any]:
+    if not template_id:
+        raise ValidationError("Template id is required")
+    with _STORE_LOCK:
+        templates = _load_templates_locked()
+        if template_id not in templates:
+            raise NotFoundError(f"Template not found: {template_id}")
+        source = templates[template_id]
+        new_id = f"{_slugify(source.get('name') or template_id)}-copy-{uuid.uuid4().hex[:6]}"
+        cloned = dict(source)
+        cloned["id"] = new_id
+        cloned["template_id"] = new_id
+        cloned["name"] = new_name or f"{source.get('name', 'Template')} (Cópia)"
+        cloned["is_system"] = False
+        now = _utcnow_iso()
+        cloned["created_at"] = now
+        cloned["updated_at"] = now
+        templates[new_id] = cloned
+        _atomic_write_json(get_templates_path(), templates)
+        return dict(cloned)
+
+
+def reset_default_templates() -> List[Dict[str, Any]]:
+    with _STORE_LOCK:
+        path = get_templates_path()
+        templates = _read_json_file(path)
+        factory_dict = _get_factory_template_dicts()
+        now = _utcnow_iso()
+        for fid, fval in factory_dict.items():
+            restored = dict(fval)
+            restored["updated_at"] = now
+            templates[fid] = restored
+        _atomic_write_json(path, templates)
+        return sorted(templates.values(), key=lambda t: (t.get("name") or t.get("id", "")).lower())
+
 
 def delete_template(template_id: str) -> bool:
     if not template_id:
@@ -598,6 +916,9 @@ def delete_template(template_id: str) -> bool:
         templates = _load_templates_locked()
         if template_id not in templates:
             raise NotFoundError(f"Template not found: {template_id}")
+        template = templates[template_id]
+        if template.get("is_system", False):
+            raise ValidationError("Templates de fábrica não podem ser excluídos.")
         del templates[template_id]
         _atomic_write_json(get_templates_path(), templates)
         return True
@@ -623,7 +944,17 @@ def _derive_batch_status(items: List[Dict[str, Any]]) -> str:
 
 def _load_batches_locked() -> Dict[str, Dict[str, Any]]:
     path = get_batches_path()
-    return _read_json_file(path)
+    batches = _read_json_file(path)
+    healed = False
+    for batch in batches.values():
+        for item in batch.get("items", []):
+            if item.get("status") == "FAILED" and item.get("rendered_path"):
+                if os.path.isfile(item.get("rendered_path")):
+                    item["status"] = "APPROVED"
+                    healed = True
+    if healed:
+        _atomic_write_json(path, batches)
+    return batches
 
 
 def list_batches() -> List[Dict[str, Any]]:
@@ -660,9 +991,20 @@ def get_batch_or_raise(batch_id: str) -> Dict[str, Any]:
 
 def create_batch(batch: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
     data = _to_dict(batch)
-    brand_id = data.get("brand_id")
-    if not brand_id or not str(brand_id).strip():
-        raise ValidationError("brand_id is required")
+    raw_brand_id = data.get("brand_id")
+    raw_brand_ids = data.get("brand_ids")
+    brand_ids: List[str] = []
+    if raw_brand_ids and isinstance(raw_brand_ids, list):
+        brand_ids = [str(b).strip() for b in raw_brand_ids if b and str(b).strip()]
+    if not brand_ids and raw_brand_id and str(raw_brand_id).strip():
+        brand_ids = [str(raw_brand_id).strip()]
+
+    if not brand_ids:
+        raise ValidationError("brand_id or brand_ids is required")
+
+    strategy = str(data.get("distribution_strategy") or "round_robin").lower()
+    if strategy not in ("round_robin", "sequential"):
+        strategy = "round_robin"
 
     raw_items = data.get("items")
     if not raw_items or not isinstance(raw_items, list) or len(raw_items) == 0:
@@ -670,8 +1012,9 @@ def create_batch(batch: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
 
     with _STORE_LOCK:
         brands = _load_brands_locked()
-        if brand_id not in brands:
-            raise NotFoundError(f"Brand not found: {brand_id}")
+        for bid in brand_ids:
+            if bid not in brands:
+                raise NotFoundError(f"Brand not found: {bid}")
 
         batch_id = data.get("batch_id") or data.get("id")
         if not batch_id or not str(batch_id).strip():
@@ -684,12 +1027,16 @@ def create_batch(batch: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
 
         data["batch_id"] = batch_id
         data["id"] = batch_id
+        data["brand_ids"] = brand_ids
+        data["distribution_strategy"] = strategy
+        primary_brand_id = raw_brand_id if raw_brand_id and raw_brand_id in brands else brand_ids[0]
+        data["brand_id"] = primary_brand_id
 
         batches = _load_batches_locked()
         if batch_id in batches:
             raise ConflictError(f"Batch already exists: {batch_id}")
 
-        brand = brands[brand_id]
+        brand = brands[primary_brand_id]
         template_id = data.get("template_id") or brand.get("template_id") or DEFAULT_TEMPLATE_ID
         templates = _load_templates_locked()
         if template_id not in templates:
@@ -707,9 +1054,13 @@ def create_batch(batch: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
         data["updated_at"] = now
         data["status"] = data.get("status") or "PENDING"
 
+        total_items_count = len(raw_items)
+        num_brands = len(brand_ids)
+        block_size = max(1, (total_items_count + num_brands - 1) // num_brands)
+
         seen_item_ids = set()
         processed_items = []
-        for raw_item in raw_items:
+        for idx, raw_item in enumerate(raw_items):
             if not isinstance(raw_item, dict) and not hasattr(raw_item, "__dict__"):
                 raise ValidationError("Each item in items must be an object/dictionary")
             item = _to_dict(raw_item)
@@ -724,12 +1075,27 @@ def create_batch(batch: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
                     raise ValidationError(f"Invalid item_id: {clean_item_id!r}")
                 item_id = clean_item_id
             seen_item_ids.add(item_id)
+
+            # Algorithmic Brand Assignment
+            if item.get("brand_id"):
+                explicit_bid = str(item.get("brand_id")).strip()
+                if explicit_bid not in brands:
+                    raise NotFoundError(f"Brand not found for item: {explicit_bid}")
+                item_brand_id = explicit_bid
+            elif strategy == "round_robin":
+                item_brand_id = brand_ids[idx % num_brands]
+            else:
+                brand_idx = min(idx // block_size, num_brands - 1)
+                item_brand_id = brand_ids[brand_idx]
+
             item["id"] = item_id
             item["item_id"] = item_id
             item["batch_id"] = batch_id
-            item["brand_id"] = brand_id
+            item["brand_id"] = item_brand_id
+            item["template_id"] = item.get("template_id") or template_id
             item_model = item.get("model") or data.get("model")
             item["model"] = str(item_model).strip() if item_model and str(item_model).strip() else None
+            item.setdefault("provenance", item.get("provenance"))
             item.setdefault("status", "PENDING")
             item.setdefault("source_path", None)
             item.setdefault("rendered_path", None)
@@ -808,6 +1174,8 @@ def get_item(item_id: str) -> Optional[Dict[str, Any]]:
                 if item.get("id") == item_id or item.get("item_id") == item_id:
                     res = dict(item)
                     res["batch_id"] = batch.get("batch_id") or batch.get("id")
+                    if not res.get("brand_id") and batch.get("brand_id"):
+                        res["brand_id"] = batch.get("brand_id")
                     return res
         return None
 
@@ -853,6 +1221,7 @@ def update_item(item_id: str, updates: Union[Dict[str, Any], Any]) -> Dict[str, 
                             "logs",
                             "publication_records",
                             "model",
+                            "provenance",
                         ):
                             item[k] = v
                     item["updated_at"] = _utcnow_iso()
@@ -948,19 +1317,21 @@ def append_item_log(item_id: str, log_entry: Dict[str, Any]) -> List[Dict[str, A
 
 
 def get_next_available_slots(
-    account_id: str,
-    count: int,
-    preferred_time: str = "18:00",
+    account_id: Optional[str] = None,
+    count: int = 1,
+    preferred_time: Union[str, List[str]] = "18:00",
     start_date: Optional[str] = None,
     timezone_str: str = "America/Sao_Paulo",
+    slots: Optional[List[str]] = None,
+    brand_id: Optional[str] = None,
 ) -> List[datetime]:
-    """Calculate the next available publishing slots for a specific account without collisions (Auto-Chaining).
+    """Calculate the next available publishing slots without collisions (Auto-Chaining).
 
-    Algorithm:
-    1. Scan stored items in SCHEDULED status matching account_id.
-    2. Extract occupied dates in the target timezone.
-    3. Determine the base date (max(start_date, today) or last occupied date + 1 day).
-    4. Project `count` consecutive daily slots at `preferred_time` skipping any occupied dates.
+    Supports:
+    - Multi-slot daily traversal (e.g. 10:00, 15:00, 20:00) before advancing to next day.
+    - Anti-collision based on already scheduled items in store (scoped by account_id and/or brand_id).
+    - Timezone-aware date/time math.
+    - Chronological resolution: past slots today are discarded; gaps in schedule are filled first.
     """
     if count <= 0:
         return []
@@ -970,61 +1341,124 @@ def get_next_available_slots(
     except (ZoneInfoNotFoundError, ValueError):
         tz = ZoneInfo("America/Sao_Paulo")
 
-    try:
-        time_parts = (preferred_time or "18:00").strip().split(":")
-        pref_hour = int(time_parts[0])
-        pref_minute = int(time_parts[1]) if len(time_parts) > 1 else 0
-        pref_time = time(hour=pref_hour, minute=pref_minute)
-    except (ValueError, IndexError):
-        pref_time = time(hour=18, minute=0)
+    # Resolve daily time slots
+    raw_slots: List[str] = []
+    if slots and isinstance(slots, list):
+        raw_slots = [str(s).strip() for s in slots if str(s).strip()]
+    elif isinstance(preferred_time, list):
+        raw_slots = [str(s).strip() for s in preferred_time if str(s).strip()]
+    elif isinstance(preferred_time, str) and "," in preferred_time:
+        raw_slots = [s.strip() for s in preferred_time.split(",") if s.strip()]
+    elif preferred_time:
+        raw_slots = [str(preferred_time).strip()]
 
-    now = datetime.now(tz)
+    daily_times: List[time] = []
+    for s_str in raw_slots:
+        try:
+            parts = s_str.split(":")
+            h = int(parts[0])
+            m = int(parts[1]) if len(parts) > 1 else 0
+            s = int(parts[2]) if len(parts) > 2 else 0
+            daily_times.append(time(hour=h, minute=m, second=s))
+        except (ValueError, IndexError):
+            continue
 
-    occupied_dates: set[date] = set()
+    if not daily_times:
+        daily_times = [time(hour=18, minute=0)]
+
+    # Sort slots chronologically within a day, removing duplicates
+    daily_times = sorted(list(dict.fromkeys(daily_times)))
+
+    now = datetime.now(tz).replace(microsecond=0)
+
+    # Collect occupied timestamps matching brand_id and/or account_id
+    occupied_datetimes: set[datetime] = set()
     with _STORE_LOCK:
         batches = _load_batches_locked()
         for batch in batches.values():
+            batch_brand = batch.get("brand_id")
             for item in batch.get("items", []):
-                if item.get("status") != "SCHEDULED":
+                item_status = str(item.get("status") or "").upper()
+                if item_status != "SCHEDULED":
                     continue
-                # Match account_id if specified on item or in its publication records
+
+                item_brand = item.get("brand_id") or batch_brand
+                if brand_id and item_brand != brand_id:
+                    continue
+
                 item_acc = item.get("account_id")
                 records = item.get("publication_records") or []
-                matches_acc = (item_acc == account_id) or not account_id
-                if not matches_acc:
-                    for rec in records:
-                        if rec.get("account_id") == account_id:
-                            matches_acc = True
-                            break
-                if not matches_acc:
-                    continue
+                if account_id:
+                    matches_acc = (item_acc == account_id)
+                    if not matches_acc and records:
+                        for rec in records:
+                            if rec.get("channel_id") == account_id or rec.get("account_id") == account_id:
+                                matches_acc = True
+                                break
+                    if not matches_acc and not item_acc and not records:
+                        matches_acc = True
+                    if not matches_acc and brand_id and item_brand == brand_id:
+                        matches_acc = True
+                    if not matches_acc:
+                        continue
 
-                # Check scheduled_for on item or within records
-                scheduled_iso = item.get("scheduled_for")
-                if not scheduled_iso and records:
-                    for rec in records:
-                        if rec.get("scheduled_for"):
-                            scheduled_iso = rec.get("scheduled_for")
-                            break
-                        res = rec.get("result")
-                        if isinstance(res, dict) and res.get("scheduled_for"):
-                            scheduled_iso = res.get("scheduled_for")
-                            break
-                if not scheduled_iso:
-                    continue
+                scheduled_isos: List[str] = []
+                if item.get("scheduled_for"):
+                    scheduled_isos.append(str(item.get("scheduled_for")))
+                for rec in records:
+                    rec_status = str(rec.get("status") or "").lower()
+                    if rec_status in ("cancelled", "canceled", "failed"):
+                        continue
+                    if rec.get("scheduled_for"):
+                        scheduled_isos.append(str(rec.get("scheduled_for")))
+                    res = rec.get("result")
+                    if isinstance(res, dict) and res.get("scheduled_for"):
+                        scheduled_isos.append(str(res.get("scheduled_for")))
 
-                try:
-                    dt = datetime.fromisoformat(str(scheduled_iso).replace("Z", "+00:00"))
-                    if dt.tzinfo is None:
-                        dt = dt.replace(tzinfo=tz)
-                    else:
-                        dt = dt.astimezone(tz)
-                    if dt.date() >= now.date():
-                        occupied_dates.add(dt.date())
-                except (ValueError, TypeError):
-                    continue
+                for s_iso in scheduled_isos:
+                    try:
+                        dt = datetime.fromisoformat(str(s_iso).replace("Z", "+00:00"))
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=tz)
+                        else:
+                            dt = dt.astimezone(tz)
+                        occupied_datetimes.add(dt.replace(second=0, microsecond=0))
+                    except (ValueError, TypeError):
+                        continue
 
-    # Determine base_date (Gap Filling: start from today or specified start_date)
+        # Also reserve slots from active/queued dispatch queue jobs
+        dispatch_path = get_dispatch_queue_path()
+        if os.path.isfile(dispatch_path):
+            try:
+                with open(dispatch_path, "r", encoding="utf-8") as f:
+                    queue_data = json.load(f)
+                for job in queue_data.values():
+                    if not isinstance(job, dict):
+                        continue
+                    j_status = str(job.get("status") or "").upper()
+                    if j_status in ("CANCELLED", "CANCELED", "FAILED"):
+                        continue
+                    j_brand = job.get("brand_id")
+                    if brand_id and j_brand and j_brand != brand_id:
+                        continue
+                    j_channels = job.get("channel_ids") or []
+                    if account_id and j_channels and account_id not in j_channels:
+                        continue
+                    j_sched = job.get("scheduled_for")
+                    if j_sched:
+                        try:
+                            dt = datetime.fromisoformat(str(j_sched).replace("Z", "+00:00"))
+                            if dt.tzinfo is None:
+                                dt = dt.replace(tzinfo=tz)
+                            else:
+                                dt = dt.astimezone(tz)
+                            occupied_datetimes.add(dt.replace(second=0, microsecond=0))
+                        except (ValueError, TypeError):
+                            pass
+            except Exception as exc:
+                logger.warning("Could not inspect dispatch_queue in get_next_available_slots: %s", exc)
+
+    # Determine base date
     if start_date:
         try:
             start_date_obj = (
@@ -1032,29 +1466,29 @@ def get_next_available_slots(
                 if "T" in start_date
                 else datetime.strptime(start_date.strip(), "%Y-%m-%d").date()
             )
-            base_date = max(start_date_obj, now.date())
+            curr_date = max(start_date_obj, now.date())
         except ValueError:
-            base_date = now.date()
+            curr_date = now.date()
     else:
-        target_today = datetime.combine(now.date(), pref_time, tzinfo=tz)
-        if now < target_today:
-            base_date = now.date()
-        else:
-            base_date = now.date() + timedelta(days=1)
+        curr_date = now.date()
 
-
-    slots: List[datetime] = []
-    candidate_date = base_date
+    result_slots: List[datetime] = []
     iterations = 0
-    while len(slots) < count and iterations < 365:
+    while len(result_slots) < count and iterations < 365:
         iterations += 1
-        if candidate_date not in occupied_dates:
-            slot_dt = datetime.combine(candidate_date, pref_time, tzinfo=tz)
-            if slot_dt > now:
-                slots.append(slot_dt)
-        candidate_date += timedelta(days=1)
+        for t in daily_times:
+            candidate_dt = datetime.combine(curr_date, t, tzinfo=tz)
+            if candidate_dt <= now:
+                continue
+            candidate_normalized = candidate_dt.replace(second=0, microsecond=0)
+            if candidate_normalized in occupied_datetimes:
+                continue
+            result_slots.append(candidate_dt)
+            if len(result_slots) == count:
+                break
+        curr_date += timedelta(days=1)
 
-    return slots
+    return result_slots
 
 
 def cancel_item_schedule(item_id: str) -> Dict[str, Any]:

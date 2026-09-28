@@ -42,7 +42,7 @@ AI-powered viral video pipeline & studio: multiplatform video discovery, cloud o
 - [API](#api)
 - [Editing toggles (compose-on-download)](#editing-toggles-compose-on-download)
 - [Reframing](#reframing)
-- [Publishing (Zernio)](#publishing-zernio)
+- [Publishing (Postiz & Zernio)](#publishing-postiz--zernio)
 - [Security posture](#security-posture)
 - [CPU vs GPU](#cpu-vs-gpu)
 - [Acknowledgements](#acknowledgements)
@@ -61,7 +61,7 @@ Given a video URL or upload, ClippyMe runs the following pipeline end-to-end:
 4. **Reframe to 9:16** with active-speaker tracking: YOLOv8 person detection + MediaPipe FaceMesh mouth-aspect-ratio (MAR) variance to pick who is speaking, then a smoothed cameraman that adapts speed and zoom per scene. Hardened against messy real-world inputs: variable-frame-rate normalization, audio `start_time` compensation (YouTube A/V desync), and corrupt-frame resilience, all no-ops on clean sources.
 5. **Post-process** each clip: Ken Burns auto-zoom (1.0→1.05×), EBU R128 audio normalization to −14 LUFS, automatic cover frame selection. Every rendered mp4 is written with a leading `moov` atom (`+faststart`), so it starts playing in the browser before the full file downloads and uploads cleanly to social. Every render and compose pass shares one near-visually-lossless libx264 setting (CRF 18, `CLIPPYME_X264_CRF`), so the stacked re-encodes don't compound into soft output; the final mux and download copy are stream-copy/lossless.
 6. **Optional editing** at download time (compose-on-demand): a **Colour grade** preset (warm_cinematic / cool_crisp / neutral_punch / vivid_pop), **Smart Cut** (filler-word + silence removal via auto-editor v3 timeline + audio polish, plus a separate manual transcript trim and a conversational AI trim), **Hook** text overlay (Pillow + emoji, with Instagram-Stories-style banner / colours / outline / font, defaulting to bannerless white Anton with a thin black outline), **Subtitles** (6 ASS karaoke presets or classic SRT with a live preview), and a **Brand logo** watermark. The per-clip editor is a tabbed modal; settings can be applied to one clip, copied to all clips, or staged across a multi-select. Custom subtitle/hook fonts and the logo are uploaded once in Settings.
-7. **Publish or schedule** to TikTok / Instagram / YouTube via **Zernio**, with a SmartScheduler that picks Italian-prime-time slots, avoids same-day collisions, and (when scheduling) spreads one clip per day to stay under per-platform daily caps. Any residual Zernio daily-limit 429 is surfaced verbatim per clip.
+7. **Publish or schedule** to TikTok / Instagram / YouTube via **Postiz** (default self-hosted) or **Zernio**, with brand workspaces, auto-scheduling slots, exclusive 1:1 channel ownership, and queue tracking.
 
 While a job runs you stay in control:
 
@@ -79,7 +79,8 @@ While a job runs you stay in control:
 | Pipeline | yt-dlp · Deepgram REST · ElevenLabs Scribe REST · Faster-Whisper · PySceneDetect · YOLOv8 (Ultralytics) · MediaPipe · ffmpeg · auto-editor (Nim binary) · Pillow |
 | AI | Google Gemini (viral detection) · Deepgram Nova-3 / ElevenLabs Scribe (transcription) |
 | Frontend | React 18 · Vite 6 · Tailwind CSS v4 · lucide-react · custom toasts/primitives |
-| Publishing | Zernio multi-platform API |
+| Publishing | Postiz (self-hosted / default) · Zernio multi-platform API · Mock adapter |
+| Deploy | Docker Compose (CPU multi-arch + NVIDIA CUDA / AMD ROCm profiles) |
 | Deploy | Docker Compose (CPU multi-arch + NVIDIA CUDA / AMD ROCm profiles) |
 
 ---
@@ -93,11 +94,11 @@ docker compose up --build
 ```
 
 - Backend: http://localhost:8000
-- Frontend: http://localhost:5175
+- Frontend: http://localhost:5176
 
-Open the dashboard, drop in a YouTube URL or upload a file, and watch the pipeline run live.
+Open the web app, drop in a YouTube URL or upload a file, and watch the pipeline run live.
 
-> **First run after a pull** that touches `requirements.txt` or `package.json`: `docker compose down -v && docker compose up --build` to clear the stale anonymous volume on `/app/node_modules`.
+> **First run after a pull** that touches `requirements.txt` or `web/package.json`: `docker compose down -v && docker compose up --build` to clear the stale anonymous volume on `/app/node_modules`.
 
 ### NVIDIA GPU profile
 
@@ -135,7 +136,7 @@ docker compose -f docker-compose.yml -f docker-compose.amd.yml exec backend \
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
 ```
 
-Swaps the dashboard from the Vite dev server to a static `vite build` served by **nginx** (same port 5175, same loopback default; the nginx proxy mirrors the dev proxy with 600 s timeouts for long composes and unbuffered upload/video streaming). The default `docker compose up` dev workflow (HMR + bind mount) is untouched. Requires Docker Compose ≥ 2.24.
+Swaps the web frontend from the Vite dev server to a static `vite build` served by **nginx** (same port 5176, same loopback default; the nginx proxy mirrors the dev proxy with 600 s timeouts for long composes and unbuffered upload/video streaming). The default `docker compose up` dev workflow (HMR + bind mount) is untouched. Requires Docker Compose ≥ 2.24.
 
 ---
 
@@ -169,15 +170,19 @@ All API keys, model selection, and cookies are managed **from the dashboard Sett
 | `DEEPGRAM_API_KEY` | Cloud transcription (default) | Falls back to local Faster-Whisper if missing. |
 | `ELEVENLABS_API_KEY` | Alternative cloud transcription (Scribe) | Adds audio-event tags + optional Voice Isolator; also falls back to Faster-Whisper. |
 | `HUGGINGFACE_TOKEN` | Optional gated models for Whisper | |
-| Zernio | Social publishing | Per-platform account IDs auto-discovered via "Discover from Zernio". |
+| `POSTIZ_API_KEY` | Social publishing (Postiz) | Used with self-hosted Postiz cluster for multi-brand publishing and scheduling. |
+| Zernio | Legacy social publishing | Per-platform account IDs auto-discovered via "Discover from Zernio". |
 | Cookies | YouTube age-gated / region-locked content | Upload a Netscape `cookies.txt` from the Settings tab. Stored at `data/cookies.txt`, mode `0600`, max 10 MB. |
 
 Runtime env overrides (rarely needed):
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `CLIPPYME_BIND` | `127.0.0.1` | Host interface both published ports (8000/5175) bind to. `0.0.0.0` exposes the app to the LAN — deliberate choice only. |
+| `CLIPPYME_BIND` | `127.0.0.1` | Host interface both published ports (8000/5176) bind to. `0.0.0.0` exposes the app to the LAN — deliberate choice only. |
 | `CLIPPYME_API_TOKEN` | _(unset)_ | Optional shared-secret auth: when set, every `/api` request must carry it (`X-API-Token` or `Authorization: Bearer`). The dashboard stores it in Settings → API token. Unset = no-op. |
+| `PUBLISHING_PROVIDER` | `postiz` | Active publishing provider: `postiz` (default), `zernio`, or `mock`. |
+| `POSTIZ_BASE_URL` | `http://localhost:4007` | Base URL of self-hosted Postiz server (`http://host.docker.internal:4007` in Docker). |
+| `POSTIZ_API_KEY` | _(unset)_ | API key for Postiz authentication. |
 | `TRANSCRIPTION_PROVIDER` | `deepgram` | Or `elevenlabs` (Scribe), or `whisper` to force local. |
 | `ELEVENLABS_AUDIO_ISOLATION` | `false` | Run the ElevenLabs Voice Isolator before ASR to strip background noise/music on noisy sources. |
 | `CLIPPYME_TRANSCRIBE_AUDIO_ONLY` | `true` | Strip to audio-only FLAC before transcription; `false` sends the full video. |
@@ -244,6 +249,8 @@ src/clippyme/
   api/                FastAPI surface (thin: validate → domain helper → JSON)
     app.py            Thin FastAPI layer: job-lifecycle routes, middleware, static mounts, lifespan
     config_routes.py  Config-family APIRouter (keys/cookies/fonts/logo/zernio/models), include_router'ed by app.py
+    viral_studio_routes.py Viral Studio & Brand Workspace routes (brands, channels, batches, templates)
+    viral_studio_schemas.py Pydantic schemas for Viral Studio and Brand Workspace
     schemas.py        Pydantic request models (strict validation)
     security.py       Trusted-origin / rate-limit / API-token gates, job-id validation
   pipeline/           Heavy lifters (main.py imports cv2/torch → pure logic lives in the *_ops modules)
@@ -270,6 +277,11 @@ src/clippyme/
     job_journal.py · job_control.py · job_actions.py    Crash-safe journal + recovery, status machine, cancel/stop
     job_results.py · job_artifacts.py   Result loaders + orchestrator command builder; atomic metadata IO
     runtime_state.py  Durable per-job phase/progress/attempt state + checkpoint dir (atomic, fsync'd)
+    brand_workspace_service.py Brand Workspace orchestration, 1:1 exclusive channel transfer & auto-scheduling
+    viral_studio_store.py      JSON-backed store for brands, batches, publication jobs and schedules
+    social_publisher_port.py   Hexagonal port & domain contracts (SocialChannel, PublicationJob, PublicationReceipt)
+    postiz_publisher_adapter.py Postiz publisher adapter (Docker self-hosted, temporal queue, integrations/groups)
+    zernio_publisher_adapter.py Zernio publisher adapter (cloud provider)
     uploads.py        Local-file upload intake (size cap, safe destination paths)
     compose.py        Grade → Subtitles → Smart Cut → Hook → Logo compose pipeline (pass-fused)
     smartcut.py       Two-stage filler-word + audio polish (auto-editor v3 timeline)
@@ -281,6 +293,7 @@ src/clippyme/
     encode.py         Single source of x264 settings for every render pass
     publish_service.py · history_service.py   Zernio publish flow + disk-backed job history scan
   integrations/       External clients
+    postiz_client.py         REST client for self-hosted Postiz API (upload, posts, integrations, slots)
     social_publisher.py      Zernio REST + SmartScheduler + publish_clip orchestrator
     auto_editor_updater.py   Background daily updater for the auto-editor binary
   storage/
@@ -338,6 +351,15 @@ All routes are JSON in / JSON out. Job IDs are strict UUID4. Config endpoints re
 | `POST` | `/api/config/zernio` | Save/update Zernio credentials. |
 | `GET` | `/api/zernio/accounts` | Discover accounts via Zernio. |
 | `POST` | `/api/publish/{job_id}/{clip_index}` | Upload + schedule a clip on TikTok/IG/YouTube. |
+| `GET`/`POST` | `/api/viral-studio/brands` | List / create commercial brands. |
+| `GET`/`PATCH`/`DELETE` | `/api/viral-studio/brands/{brand_id}` | Get / update / delete brand profile & editorial settings. |
+| `GET` | `/api/viral-studio/brands/{brand_id}/workspace` | Sovereign workspace overview (metrics, engine, accounts, queue). |
+| `GET`/`PUT` | `/api/viral-studio/brands/{brand_id}/channels` | List connected channels / bind channels with 1:1 exclusive transfer. |
+| `POST` | `/api/viral-studio/brands/{brand_id}/auto-schedule` | Auto-schedule approved creative in the next available slot. |
+| `POST` | `/api/viral-studio/brands/{brand_id}/schedule` | Schedule creative on specific channels and datetime. |
+| `GET`/`POST` | `/api/viral-studio/brands/{brand_id}/schedule-slots` | Get / sync daily posting slots with publisher engine. |
+| `GET` | `/api/viral-studio/brands/{brand_id}/scheduled` | List scheduled timeline and queue from provider. |
+| `DELETE` | `/api/viral-studio/brands/{brand_id}/scheduled/{post_id}` | Cancel scheduled post and revert local item to `approved`. |
 | `POST` | `/api/live-monitor/start` | Start a channel monitor (kick/twitch/youtube, live/vod mode). |
 | `POST` | `/api/live-monitor/stop` | Stop one monitor (`{monitor_id}`) or all. |
 | `POST` | `/api/live-monitor/{id}/config` | Update a running monitor's settings (allow-listed fields; apply to future clips). |
@@ -397,15 +419,18 @@ After a job completes, every clip can be flipped between all three modes post-ho
 
 ---
 
-## Publishing (Zernio)
+## Publishing (Postiz & Zernio)
 
-`POST /api/publish/{job_id}/{clip_index}` uploads the clip to Zernio's presigned URL and schedules a post. Three scheduling modes:
+ViralForge supports a decoupled **Ports & Adapters (Hexagonal)** publishing architecture:
 
-- `now`: immediate
-- `auto`: `SmartScheduler` picks the next free Italian-prime-time slot per weekday, with a 90-minute minimum gap and anti-collision against already-scheduled posts (3-step algorithm: free prime-time window → 15-min scan 07–23 → fallback)
-- `manual`: caller passes an ISO 8601 `scheduled_for`
+- **Postiz (Default / Self-Hosted)**: Direct integration with self-hosted Postiz cluster (`host.docker.internal:4007`). Supports multi-brand workspaces (`Customer` groups), automatic schedule slots (`/integrations/:id/time`), next slot lookup (`/find-slot/:id`), durable Temporal workflow queue, and native feed/reel/short formatting (`settings.post_type: "post"`).
+- **Zernio (Cloud Provider)**: Publishes to TikTok / Instagram / YouTube via Zernio REST API with profile/workspace mapping and automatic slot selection.
+- **Mock Provider**: In-memory publisher for fast host testing and CI without external dependencies.
 
-The dashboard's unified `PublishModal` publishes the selected clips concurrently in one click, each row showing live queued → uploading → live/error status. With `auto` it spreads one clip per day from a chosen start date (mirroring the original `tmp/programma_shorts.py` logic) to stay under per-platform daily caps; any residual Zernio daily-limit 429 is surfaced verbatim per clip instead of failing the whole batch.
+### Multi-Brand Workspaces & Exclusive Channel Ownership
+- Each commercial `Brand` has an isolated workspace with its own connected social channels, visual guidelines, and daily schedule slots.
+- **1:1 Exclusive Channel Transfer**: A social channel belongs to exactly one brand at a time. Binding a channel to a new brand automatically frees it from its previous brand across the entire system.
+- **Auto-Scheduling**: 1-click scheduling dispatches approved creative directly into the brand's next available posting slot. Cancelling any scheduled post immediately reverts the local creative status to `approved`.
 
 ---
 

@@ -386,6 +386,7 @@ def test_render_viral_video_retry_aac_on_copy_error(tmp_path, test_brand, test_t
 # Synthetic Video Real FFmpeg Integration Smoke Test
 # ============================================================================
 
+@pytest.mark.integration
 def test_synthetic_video_render_smoke_test(tmp_path, test_brand, test_template):
     """Real FFmpeg execution creating a synthetic source video and rendering 1080x1920 MP4."""
     if not _has_ffmpeg():
@@ -849,6 +850,7 @@ def test_resolve_font_searches_system_fonts_when_bundled_missing():
         assert font is not None
 
 
+@pytest.mark.integration
 def test_synthetic_video_render_odd_dimensions_smoke_test(tmp_path, test_brand, test_template):
     """Real FFmpeg execution with odd source dimensions (641x361) renders valid 1080x1920 MP4."""
     if not viral_studio_renderer.os.path.isfile("/usr/bin/ffmpeg") and not viral_studio_renderer.os.path.isfile("/usr/local/bin/ffmpeg"):
@@ -883,6 +885,58 @@ def test_synthetic_video_render_odd_dimensions_smoke_test(tmp_path, test_brand, 
     assert output == rendered
     assert os.path.isfile(rendered)
     assert os.path.getsize(rendered) > 0
+
+
+def test_generate_header_overlay_with_emojis(tmp_path, test_brand, test_template):
+    """Header overlay correctly renders text with emojis in headline, badge, and footer card."""
+    out_png = str(tmp_path / "emoji_overlay.png")
+    test_template_emoji = test_template.model_copy(
+        update={
+            "custom_badge_text": "ACHADINHOS 🔥",
+            "extra_image_enabled": True,
+            "extra_image_template_type": "comment",
+            "extra_image_title": "O QUE ACHOU? 💬",
+            "extra_image_subtitle": "Deixe seu comentário! 👇",
+        }
+    )
+    meta = viral_studio_renderer.generate_header_overlay(
+        brand=test_brand,
+        template=test_template_emoji,
+        headline="Chega de bagunça no seu banheiro! 🚽✨",
+        output_image_path=out_png,
+    )
+    assert meta is not None
+    assert os.path.isfile(out_png)
+    assert os.path.getsize(out_png) > 0
+
+    # Ensure wrap_and_fit_headline handles emoji text width measuring without error
+    lines, font_size, height = viral_studio_renderer.wrap_and_fit_headline(
+        text="Chega de bagunça no seu banheiro! 🚽✨",
+        max_width=960,
+        max_lines=3,
+        base_font_size=48,
+    )
+    assert len(lines) >= 1
+    assert font_size > 0
+    assert height > 0
+
+
+def test_generate_header_overlay_headline_alignment(tmp_path, test_brand, test_template):
+    """Test both left and center headline alignments generate valid overlays without errors."""
+    for alignment in ["center", "left"]:
+        out_png = str(tmp_path / f"overlay_align_{alignment}.png")
+        t = test_template.model_copy(update={"headline_alignment": alignment})
+        meta = viral_studio_renderer.generate_header_overlay(
+            brand=test_brand,
+            template=t,
+            headline="Dica Incrível para Sua Casa! 🏠",
+            output_image_path=out_png,
+        )
+        assert meta is not None
+        assert os.path.isfile(out_png)
+        assert os.path.getsize(out_png) > 0
+
+
 
 
 

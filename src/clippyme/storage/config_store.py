@@ -22,6 +22,9 @@ VALID_CONFIG_KEYS = (
     "ELEVENLABS_API_KEY",
     "TRANSCRIPTION_PROVIDER",
     "PUBLISHING_PROVIDER",
+    "POSTIZ_BASE_URL",
+    "POSTIZ_PUBLIC_URL",
+    "POSTIZ_API_KEY",
     "TWITCH_CLIENT_ID",
     "TWITCH_CLIENT_SECRET",
 )
@@ -151,6 +154,60 @@ def zernio_config_status() -> dict:
     }
 
 
+def load_postiz_config() -> dict:
+    raw = _read_raw_config()
+    base_url = os.environ.get("POSTIZ_BASE_URL") or raw.get("POSTIZ_BASE_URL") or "http://localhost:4007"
+    public_url = os.environ.get("POSTIZ_PUBLIC_URL") or raw.get("POSTIZ_PUBLIC_URL") or ""
+    api_key = os.environ.get("POSTIZ_API_KEY") or raw.get("POSTIZ_API_KEY") or ""
+    return {
+        "base_url": str(base_url).strip(),
+        "public_url": str(public_url).strip(),
+        "api_key": str(api_key).strip(),
+    }
+
+
+def save_postiz_config(base_url: str = None, api_key: str = None, public_url: str = None) -> bool:
+    """Merge-update Postiz base URL, public URL, and API key into persistent config."""
+    with _CONFIG_LOCK:
+        raw = _read_raw_config()
+        if base_url is not None:
+            clean_url = str(base_url).strip()
+            if clean_url:
+                raw["POSTIZ_BASE_URL"] = clean_url
+                os.environ["POSTIZ_BASE_URL"] = clean_url
+            else:
+                raw.pop("POSTIZ_BASE_URL", None)
+                os.environ.pop("POSTIZ_BASE_URL", None)
+        if public_url is not None:
+            clean_pub = str(public_url).strip()
+            if clean_pub:
+                raw["POSTIZ_PUBLIC_URL"] = clean_pub
+                os.environ["POSTIZ_PUBLIC_URL"] = clean_pub
+            else:
+                raw.pop("POSTIZ_PUBLIC_URL", None)
+                os.environ.pop("POSTIZ_PUBLIC_URL", None)
+        if api_key is not None:
+            clean_key = str(api_key).strip()
+            if clean_key:
+                raw["POSTIZ_API_KEY"] = clean_key
+                os.environ["POSTIZ_API_KEY"] = clean_key
+            else:
+                raw.pop("POSTIZ_API_KEY", None)
+                os.environ.pop("POSTIZ_API_KEY", None)
+        return _write_raw_config(raw)
+
+
+def postiz_config_status() -> dict:
+    cfg = load_postiz_config()
+    api_key = cfg.get("api_key", "")
+    masked = f"{api_key[:6]}...{api_key[-4:]}" if api_key and len(api_key) > 10 else ""
+    return {
+        "configured": bool(api_key),
+        "base_url": cfg.get("base_url", "http://localhost:4007"),
+        "api_key_masked": masked,
+    }
+
+
 def _normalize_incoming_keys(data: dict) -> dict:
     if not data:
         return {}
@@ -173,8 +230,11 @@ def load_persistent_config() -> dict:
         "HF_TOKEN": os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_TOKEN") or "",
         "DEEPGRAM_API_KEY": os.environ.get("DEEPGRAM_API_KEY", ""),
         "ELEVENLABS_API_KEY": os.environ.get("ELEVENLABS_API_KEY", ""),
-        "TRANSCRIPTION_PROVIDER": os.environ.get("TRANSCRIPTION_PROVIDER", "deepgram"),
+        "TRANSCRIPTION_PROVIDER": os.environ.get("TRANSCRIPTION_PROVIDER", "whisper"),
         "PUBLISHING_PROVIDER": os.environ.get("PUBLISHING_PROVIDER", "zernio"),
+        "POSTIZ_BASE_URL": os.environ.get("POSTIZ_BASE_URL", "http://localhost:4007"),
+        "POSTIZ_PUBLIC_URL": os.environ.get("POSTIZ_PUBLIC_URL", ""),
+        "POSTIZ_API_KEY": os.environ.get("POSTIZ_API_KEY", ""),
         "TWITCH_CLIENT_ID": os.environ.get("TWITCH_CLIENT_ID", ""),
         "TWITCH_CLIENT_SECRET": os.environ.get("TWITCH_CLIENT_SECRET", ""),
     }

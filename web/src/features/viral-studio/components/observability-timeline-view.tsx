@@ -10,6 +10,16 @@ import { toast } from 'sonner'
 import { TimelineLogItem } from './timeline-log-item'
 import type { ViralItem } from '../data/batch.types'
 
+function isErrorLog(log: Record<string, unknown>): boolean {
+  return (
+    String(log.level || '').toLowerCase() === 'error' ||
+    Boolean(log.error) ||
+    String(log.stage || '')
+      .toLowerCase()
+      .includes('fail')
+  )
+}
+
 interface TimelineViewProps {
   item: ViralItem
   className?: string
@@ -26,12 +36,7 @@ export function ObservabilityTimelineView({ item, className }: TimelineViewProps
 
   const filteredLogs = useMemo(() => {
     return rawLogs.filter((log) => {
-      const isError =
-        String(log.level || '').toLowerCase() === 'error' ||
-        Boolean(log.error) ||
-        String(log.stage || '')
-          .toLowerCase()
-          .includes('fail')
+      const isError = isErrorLog(log)
 
       if (filterMode === 'errors' && !isError) {
         return false
@@ -50,14 +55,7 @@ export function ObservabilityTimelineView({ item, className }: TimelineViewProps
   }, [rawLogs, filterMode, searchQuery])
 
   const errorCount = useMemo(() => {
-    return rawLogs.filter(
-      (log) =>
-        String(log.level || '').toLowerCase() === 'error' ||
-        Boolean(log.error) ||
-        String(log.stage || '')
-          .toLowerCase()
-          .includes('fail'),
-    ).length
+    return rawLogs.filter(isErrorLog).length
   }, [rawLogs])
 
   const handleCopyLogs = () => {
@@ -150,7 +148,7 @@ export function ObservabilityTimelineView({ item, className }: TimelineViewProps
 
       <CardContent className="p-3 flex-1 flex flex-col min-h-0">
         {filteredLogs.length > 0 ? (
-          <ScrollArea className="h-[460px] max-h-[460px] w-full rounded-lg bg-background/60 p-3 border border-border/50 font-mono text-xs">
+          <ScrollArea className="h-[460px] max-h-[460px] w-full  bg-background/60 p-3 border border-border/50 font-mono text-xs">
             <div className="relative pl-3 space-y-3.5 before:absolute before:left-1 before:top-2 before:bottom-2 before:w-px before:bg-border/60">
               {filteredLogs.map((log, index) => {
                 const uniqueKey = log.timestamp

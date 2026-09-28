@@ -36,6 +36,16 @@ export function ItemCardMediaHero({
                 />
               </div>
             )}
+            {item.brand_id && (
+              <Badge
+                variant="outline"
+                className="gap-1 text-[10px] py-0.5 px-1.5 h-5 bg-black/65 backdrop-blur-md text-zinc-200 border border-white/20 shadow-xs truncate font-medium"
+                title={`Marca: ${item.brand_id}`}
+              >
+                <Tag className="size-2 text-primary shrink-0" />
+                <span className="truncate max-w-[90px]">@{item.brand_id.replace(/^@/, '')}</span>
+              </Badge>
+            )}
             {item.product_code ? (
               <Badge
                 variant="secondary"

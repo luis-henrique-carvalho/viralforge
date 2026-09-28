@@ -187,7 +187,10 @@ class ZernioClient:
         return re.sub(r"(?i)Bearer\s+[A-Za-z0-9._\-]+", "Bearer ***REDACTED***", text)
 
     def _request(self, method: str, path: str, **kwargs) -> Any:
-        url = f"{self._base}{path}"
+        clean_path = path if path.startswith("/") else f"/{path}"
+        if clean_path.startswith("/v1/"):
+            clean_path = clean_path[3:]
+        url = f"{self._base}{clean_path}"
         kwargs.setdefault("timeout", HTTP_TIMEOUT_SECONDS)
         kwargs.setdefault("allow_redirects", False)
         try:

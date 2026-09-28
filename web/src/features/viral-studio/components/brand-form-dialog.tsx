@@ -35,6 +35,7 @@ export function BrandFormDialog({ isOpen, onClose, brandToEdit }: BrandFormDialo
     defaultValues: {
       name: '',
       handle: '',
+      avatar_url: '',
       default_cta: 'Confira os achadinhos no link da bio!',
       default_affiliate_url: '',
       template_id: 'classic-affiliate',
@@ -47,6 +48,7 @@ export function BrandFormDialog({ isOpen, onClose, brandToEdit }: BrandFormDialo
       form.reset({
         name: brandToEdit.name,
         handle: brandToEdit.handle,
+        avatar_url: brandToEdit.avatar_url || '',
         default_cta: brandToEdit.default_cta,
         default_affiliate_url: brandToEdit.default_affiliate_url || '',
         template_id: brandToEdit.template_id || 'classic-affiliate',
@@ -56,6 +58,7 @@ export function BrandFormDialog({ isOpen, onClose, brandToEdit }: BrandFormDialo
       form.reset({
         name: '',
         handle: '',
+        avatar_url: '',
         default_cta: 'Confira os achadinhos no link da bio!',
         default_affiliate_url: '',
         template_id: 'classic-affiliate',
@@ -82,6 +85,9 @@ export function BrandFormDialog({ isOpen, onClose, brandToEdit }: BrandFormDialo
           platform: found.platform,
           avatar_url: found.avatar_url || null,
           handle: found.name,
+        }
+        if (found.avatar_url && !form.getValues('avatar_url')) {
+          form.setValue('avatar_url', found.avatar_url, { shouldDirty: true })
         }
       }
     }

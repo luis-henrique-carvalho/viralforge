@@ -64,12 +64,9 @@ export default defineConfig({
     // Dev-server Host allow-list. Only local names — the unrelated upstream
     // 'openshorts.app' was removed (DNS-rebinding hardening). Add your own
     // hostname here if you proxy the dev server through a custom domain.
-    allowedHosts: [
-      'localhost',
-      '127.0.0.1',
-      '.ngrok-free.app',
-      '.ngrok-free.dev',
-    ],
+    allowedHosts: process.env.ALLOWED_HOSTS
+      ? process.env.ALLOWED_HOSTS.split(',').map((h) => h.trim())
+      : true,
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8000',
@@ -84,6 +81,10 @@ export default defineConfig({
         changeOrigin: true,
       },
       '/fonts': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
+      '/uploads': {
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
       }

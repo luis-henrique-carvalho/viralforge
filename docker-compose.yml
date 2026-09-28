@@ -20,7 +20,10 @@ services:
         ENABLE_WHISPER_DIARIZE: ${ENABLE_WHISPER_DIARIZE:-0}
     container_name: clippyme-backend
     image: clippyme-backend
-    network_mode: host
+    ports:
+      - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -30,7 +33,7 @@ services:
       - HF_TOKEN=${HF_TOKEN:-}
       - HUGGINGFACE_TOKEN=${HUGGINGFACE_TOKEN:-${HF_TOKEN:-}}
       # ASR provider + credentials. TRANSCRIPTION_PROVIDER=deepgram|elevenlabs|whisper.
-      - TRANSCRIPTION_PROVIDER=${TRANSCRIPTION_PROVIDER:-deepgram}
+      - TRANSCRIPTION_PROVIDER=${TRANSCRIPTION_PROVIDER:-whisper}
       - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY:-}
       - DEEPGRAM_MODEL=${DEEPGRAM_MODEL:-nova-3}
       # Default 'multi' enables Nova-3 native EN+IT code-switching.
@@ -117,25 +120,46 @@ services:
       # for a deliberate LAN deployment: every API request must then carry
       # X-API-Token (the dashboard has a Settings field for it).
       - CLIPPYME_API_TOKEN=${CLIPPYME_API_TOKEN:-}
+      # Concurrency limit
+      - MAX_CONCURRENT_JOBS=${MAX_CONCURRENT_JOBS:-5}
+      # Social publishing (Postiz / Zernio)
+      - PUBLISHING_PROVIDER=${PUBLISHING_PROVIDER:-postiz}
+      - POSTIZ_BASE_URL=${POSTIZ_BASE_URL:-http://localhost:4007}
+      - POSTIZ_PUBLIC_URL=${POSTIZ_PUBLIC_URL:-}
+      - POSTIZ_API_KEY=${POSTIZ_API_KEY:-}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
       # Persistent cache directories for HuggingFace, Matplotlib and PyTorch
       - HF_HOME=/app/data/cache/huggingface
       - MPLCONFIGDIR=/app/data/cache/matplotlib
       - TORCH_HOME=/app/data/cache/torch
+      - PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
     volumes:
       - .:/app
       - /app/__pycache__
       - ./data:/app/data
       - ./docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
+    networks:
+      - default
+      - postiz-net
     restart: unless-stopped
 
   frontend:
-    build: ./dashboard
+    build: ./web
     container_name: clippyme-frontend
     image: clippyme-frontend
-    network_mode: host
+    environment:
+      - BACKEND_URL=http://backend:8000
+      - VITE_POSTIZ_PUBLIC_URL=${VITE_POSTIZ_PUBLIC_URL:-}
+    ports:
+      - "5176:5176"
     volumes:
-      - ./dashboard:/app
+      - ./web:/app
       - /app/node_modules
-    restart: unless-stopped
     depends_on:
       - backend
+
+networks:
+  default:
+  postiz-net:
+    name: postiz-docker-compose_postiz-network
+    external: true

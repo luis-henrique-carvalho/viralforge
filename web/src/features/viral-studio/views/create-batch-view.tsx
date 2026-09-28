@@ -20,6 +20,10 @@ export function CreateBatchView() {
   const templates = templatesData?.templates || []
 
   const [selectedBrandId, setSelectedBrandId] = useState<string>('vale-o-clique')
+  const [selectedBrandIds, setSelectedBrandIds] = useState<string[]>(['vale-o-clique'])
+  const [distributionStrategy, setDistributionStrategy] = useState<'round_robin' | 'sequential'>(
+    'round_robin',
+  )
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('classic-affiliate')
   const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-flash')
   const [rawUrlsText, setRawUrlsText] = useState<string>('')
@@ -34,13 +38,16 @@ export function CreateBatchView() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedBrandId) return setErrorMsg('Selecione uma marca.')
+    if (selectedBrandIds.length === 0 && !selectedBrandId)
+      return setErrorMsg('Selecione pelo menos uma marca.')
     if (parsedItems.length === 0)
       return setErrorMsg('Insira pelo menos uma URL válida para processar.')
 
     try {
       const result = await createBatchMutation.mutateAsync({
-        brand_id: selectedBrandId,
+        brand_ids: selectedBrandIds.length > 0 ? selectedBrandIds : [selectedBrandId],
+        brand_id: selectedBrandIds[0] || selectedBrandId,
+        distribution_strategy: distributionStrategy,
         template_id: selectedTemplateId || undefined,
         model: selectedModel || undefined,
         items: parsedItems,
@@ -118,6 +125,10 @@ export function CreateBatchView() {
               isLoadingTemplates={isLoadingTemplates}
               selectedBrandId={selectedBrandId}
               setSelectedBrandId={setSelectedBrandId}
+              selectedBrandIds={selectedBrandIds}
+              setSelectedBrandIds={setSelectedBrandIds}
+              distributionStrategy={distributionStrategy}
+              setDistributionStrategy={setDistributionStrategy}
               selectedTemplateId={selectedTemplateId}
               setSelectedTemplateId={setSelectedTemplateId}
               selectedModel={selectedModel}

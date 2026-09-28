@@ -156,6 +156,15 @@ async def lifespan(app: FastAPI):
     # Failures are non-fatal — smartcut has an FFmpeg fallback path.
     from clippyme.integrations.auto_editor_updater import background_updater_loop
     ae_updater_task = asyncio.create_task(background_updater_loop())
+    # Startup recovery and background tasks for async discovery worker
+    from clippyme.domain.discovery.worker import get_discovery_worker
+    discovery_worker = get_discovery_worker()
+    try:
+        await discovery_worker.recover_on_startup()
+    except Exception:
+        logger.exception("Discovery worker startup recovery failed")
+    discovery_task = asyncio.create_task(discovery_worker.run())
+
     # Bring back every monitor that was still marked resume_on_start when the
     # process last went down (durable auto-resume). Never fatal to startup —
     # a per-monitor failure stays visible via its status() instead.
@@ -163,6 +172,13 @@ async def lifespan(app: FastAPI):
         await live_monitor.auto_resume()
     except Exception:
         logger.exception("live monitor auto-resume failed")
+
+    # Recover and resume in-flight dispatch publishing jobs from previous server life
+    try:
+        from clippyme.domain.publish_dispatch_service import dispatch_service
+        await dispatch_service.recover_on_startup()
+    except Exception:
+        logger.exception("Publish dispatch startup recovery failed")
     yield
     # Stop the live monitor first so its in-flight capture/publish tasks unwind
     # cleanly before we tear down the worker loops they depend on. shutdown()
@@ -171,10 +187,17 @@ async def lifespan(app: FastAPI):
         await live_monitor.shutdown()
     except Exception:
         logger.exception("live monitor failed to stop cleanly")
+
+    # Stop discovery worker
+    try:
+        await discovery_worker.stop()
+    except Exception:
+        logger.exception("discovery worker failed to stop cleanly")
+
     # Cancel ALL background tasks on shutdown — not just the updater. Leaving
     # the worker/cleanup loops pending blocks uvicorn's graceful exit and logs
     # "Task was destroyed but it is pending!" tracebacks.
-    _bg_tasks = (worker_task, cleanup_task, ae_updater_task)
+    _bg_tasks = (worker_task, cleanup_task, ae_updater_task, discovery_task)
     for _t in _bg_tasks:
         _t.cancel()
     for _t in _bg_tasks:
@@ -284,6 +307,11 @@ app.mount("/thumbnails", StaticFiles(directory=THUMBNAILS_DIR), name="thumbnails
 
 # Mount static files for serving fonts (used by subtitle preview in frontend)
 app.mount("/fonts", StaticFiles(directory="fonts"), name="fonts")
+
+# Mount static files for serving user template uploads
+UPLOADS_DIR = os.path.join("data", "uploads")
+os.makedirs(UPLOADS_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 # Config-family routes (keys, cookies, fonts, logo, zernio) live in their own
 # router — they touch none of the job runtime state, so keeping them out of

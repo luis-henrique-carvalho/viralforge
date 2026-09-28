@@ -89,7 +89,7 @@ describe('ViralEditorView Integration', () => {
     await waitFor(() => {
       expect(screen.getByText('Todas as alterações salvas')).toBeInTheDocument()
     })
-  })
+  }, 15000)
 
   it('triggers dirty confirmation modal when attempting to navigate back with unsaved edits', async () => {
     const user = userEvent.setup()

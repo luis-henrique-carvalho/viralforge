@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Bot, Save, Sparkles } from 'lucide-react'
+import { Bot, Save } from 'lucide-react'
 import {
   Card,
   CardHeader,
@@ -19,25 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
 import { Typography } from '@/components/ui/typography'
-import { ApiKeyInput } from './api-key-input'
+import { GeminiSettingsSection } from './gemini-settings-section'
 import { LocalModelsSection } from './local-models-section'
 import { useSettings } from '../hooks/use-settings'
 import { useUpdateSettings } from '../hooks/use-update-settings'
 import { aiModelsSchema, type AiModelsFormData } from '../data/settings.schema'
-
-const GEMINI_MODELS = [
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Padrão Recomendado)' },
-  {
-    id: 'gemini-2.5-flash-lite',
-    name: 'Gemini 2.5 Flash-Lite (Ultra Rápido & Econômico)',
-  },
-  {
-    id: 'gemini-2.5-pro',
-    name: 'Gemini 2.5 Pro (Máximo Raciocínio & Contexto)',
-  },
-]
 
 export function AiModelsCard() {
   const { config, localModels } = useSettings()
@@ -103,65 +90,18 @@ export function AiModelsCard() {
 
       <form onSubmit={onSubmit}>
         <CardContent className="space-y-6">
-          <Card className="space-y-4 border-border/60 bg-card/40 p-4 shadow-none">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <Typography variant="h4">Google Gemini Cloud</Typography>
-              </div>
-              <Badge
-                variant="secondary"
-                className="text-xs"
-              >
-                Cloud AI
-              </Badge>
-            </div>
-
-            <ApiKeyInput
-              label="Google Gemini API Key"
-              description="Chave de API do Google AI Studio para detecção viral, roteirização e tarefas de copy."
-              value={geminiKey}
-              onChange={(val) => form.setValue('GEMINI_API_KEY', val)}
-              isConfigured={isGeminiConfigured}
-              maskedValue={config?.GEMINI_API_KEY}
-              onClear={async () => {
-                await updateConfig({ GEMINI_API_KEY: '' })
-                form.setValue('GEMINI_API_KEY', '')
-              }}
-              name="gemini-api-key"
-            />
-
-            <div className="space-y-2 pt-1">
-              <Label
-                htmlFor="gemini-model-select"
-                className="text-xs font-medium"
-              >
-                Modelo Gemini Padrão
-              </Label>
-              <Select
-                value={geminiModel}
-                onValueChange={(val) => form.setValue('GEMINI_MODEL', val)}
-              >
-                <SelectTrigger
-                  id="gemini-model-select"
-                  className="w-full sm:w-80 font-mono text-xs"
-                >
-                  <SelectValue placeholder="Selecione o modelo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {GEMINI_MODELS.map((m) => (
-                    <SelectItem
-                      key={m.id}
-                      value={m.id}
-                      className="text-xs font-mono"
-                    >
-                      {m.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </Card>
+          <GeminiSettingsSection
+            apiKey={geminiKey}
+            setApiKey={(val) => form.setValue('GEMINI_API_KEY', val)}
+            model={geminiModel}
+            setModel={(val) => form.setValue('GEMINI_MODEL', val)}
+            isConfigured={isGeminiConfigured}
+            maskedKey={config?.GEMINI_API_KEY}
+            onClearKey={async () => {
+              await updateConfig({ GEMINI_API_KEY: '' })
+              form.setValue('GEMINI_API_KEY', '')
+            }}
+          />
 
           <LocalModelsSection
             lmStudioUrl={lmStudioUrl}

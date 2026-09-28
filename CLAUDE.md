@@ -17,7 +17,9 @@ Python backend is src-layout under `src/clippyme/` (`pip install -e .`):
 - `api/` — `app.py` (thin FastAPI layer: job-lifecycle routes, middleware,
   static mounts, lifespan), `config_routes.py` (the config-family `APIRouter`:
   keys/cookies/fonts/logo/zernio/models — routes that touch no job runtime
-  state, `include_router`ed by app.py), `schemas.py` (Pydantic request models),
+  state, `include_router`ed by app.py), `discovery_routes.py` (multi-platform
+  video discovery: legacy sync search + asynchronous `DiscoveryWorker` queue,
+  cancellation and saved search history), `schemas.py` (Pydantic request models),
   `security.py` (trusted-origin/rate limit/API-token gates).
 - `domain/` — endpoint logic. `clip_resolve.py` (shared `resolve_clip()`: job
   dir → latest metadata → clip entry → path, used by every per-clip endpoint),
@@ -70,6 +72,11 @@ Python backend is src-layout under `src/clippyme/` (`pip install -e .`):
   `viral_studio_download.py` (yt-dlp intake preserving source provenance, manifest, and engagement metrics),
   `viral_studio_orchestrator.py` (step logging `append_item_log` and batch lifecycle orchestration),
   `viral_studio_store.py` (atomic crash-safe JSON store with `_STORE_LOCK` and 0o600 permissions),
+  `discovery/` — multi-platform video discovery: `service.py` (search and scoring orchestrator),
+  `store.py` (atomic crash-safe store in `data/discovery/{id}.json` with lightweight `searches_index.json`
+  and batch URL cross-referencing for `already_imported`), `worker.py` (`DiscoveryWorker`: `asyncio.Queue`,
+  global `Semaphore(2)` + isolated per-platform locks `_platform_locks`, in-flight task cancellation with immediate
+  semaphore return, startup recovery), `schemas.py` (`DiscoverySearch`, `DiscoverySearchStatus`, `ImportProvenance`),
   `errors.py` (domain exceptions mapped to HTTP by one app-level handler).
 - `pipeline/` — `orchestrator.py` (**the entrypoint queued jobs actually run**:
   preflight → checkpointed `main.py` stages → per-render output QA; owns
@@ -128,7 +135,7 @@ rendered).
 ## Commands
 
 ```bash
-docker compose up --build            # primary run (backend :8000, frontend :5175, CPU)
+docker compose up --build            # primary run (backend :8000, frontend :5176, CPU)
 docker compose -f docker-compose.yml -f docker-compose.amd.yml up --build  # AMD ROCm GPU (gfx1200 / RDNA)
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build  # NVIDIA CUDA GPU
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build  # prod frontend (nginx)
@@ -148,6 +155,9 @@ docker compose run --rm -u root backend sh -lc "pip install -q pytest && pytest 
 
 # Web Frontend (Typecheck + ESLint + Vitest + Build)
 pnpm --dir web typecheck && pnpm --dir web lint && pnpm --dir web test:coverage && pnpm --dir web build
+
+# Public Tunnels (Cloudflare Tunnel: Postiz, API, Dashboard)
+./scripts/start_tunnels.sh {status|start|stop|restart}
 ```
 
 CI (`.github/workflows/ci.yml`): backend host suite (with report-only
@@ -198,9 +208,9 @@ as `clip_filename` in metadata (re-dumped atomically per cut iteration) and
 every consumer resolves through `clip_resolve.clip_filename_for`
 (clip_filename → video_url → positional legacy fallback).
 
-**Transcription & Hardware Acceleration**: `TRANSCRIPTION_PROVIDER` = `deepgram` (default, Nova-3
-REST) | `elevenlabs` (Scribe; audio-event tags feed the Gemini prompt) |
-`whisper` (local). Both cloud providers silently fall back to Whisper on any
+**Transcription & Hardware Acceleration**: `TRANSCRIPTION_PROVIDER` = `whisper` (default, local) |
+`deepgram` (Nova-3 REST) | `elevenlabs` (Scribe; audio-event tags feed the Gemini prompt).
+Both cloud providers silently fall back to Whisper on any
 failure. All paths transcribe an extracted mono-16kHz FLAC, not the video.
 Transcripts are cached 7 days under `data/cache/` keyed by URL hash.
 - **Compute Architecture & Dynamic Routing**:
@@ -295,18 +305,37 @@ through verbatim (the frontend parses per-platform 429 daily limits).
 - **Visual Template & TemplateStudio Rules**:
   * `VisualTemplate` Schema: Autonomous domain aggregate combining visual geometry (1080x1920 logical space) and editorial intelligence (`generation_tasks: List[GenerationTask]`). Strictly decoupled from `Brand`. The `conversion_goal` field (`engagement` vs `affiliate`) dictates copy behavior: `engagement` forbids product codes and bio links, directing CTA to retention/comments.
   * `viral_studio_copy.py` (`CopyEngine`): Deep module. Assembles prompts dynamically from `template.generation_tasks`, builds on-demand JSON schemas containing only active task keys, interpolates variables (`{transcript}`, `{brand_name}`, `{cta}`), runs 5-level JSON repair, and populates `AICopyData` (`headlines`, `caption`, `custom_outputs: Dict[str, Any]`). Host-testable via pure functions without GPU/network.
-  * `viral_studio_renderer.py`: Deep module. Enforces even coordinates and dimensions (`coord - (coord % 2)`) for libx264/YUV420p macroblock compatibility. Composes Pillow overlays (avatar, handle, badge at `badge_y`, headline at `headline_y`) and applies video border-radius masks and extra image/footer overlays before final FFmpeg encoding.
+  * `viral_studio_renderer.py`: Deep module. Enforces even coordinates and dimensions (`coord - (coord % 2)`) for libx264/YUV420p macroblock compatibility. Composes Pillow overlays (avatar, handle, badge at `badge_y`, headline at `headline_y` with `headline_alignment` support: left vs center) and applies video border-radius masks and extra image/footer overlays before final FFmpeg encoding.
+    * **Emoji Rendering Invariants**: Renders full-color emojis via `pilmoji` + `Twemoji`. Any custom emoji source class MUST subclass `BaseSource` directly (e.g. `class _CachedTwemojiSource(Twemoji):`) — object composition fails Pilmoji's internal `isinstance` check and silently falls back to Pillow's `.notdef` tofu box. Downloaded emoji PNGs must be cached locally in `data/cache/emojis/`. Line wrapping and centering must always calculate text width via `_measure_text_width` / `Pilmoji.getsize()` to account for emoji glyph bounding boxes.
+    * **1:1 Visual Parity Guarantee**: The Pillow/FFmpeg video overlay generator must mathematically match the `react-konva` 9:16 interactive canvas preview 1:1 in geometry, font sizes, positioning (`badge_y`, `headline_y`, `extra_image_x/y`), alignment, border widths, corner radiuses, and default background colors (`#0D1117`).
   * `TemplateStudio` (`TemplateEditorModal.jsx`): Dual-pane workstation powered by `react-konva` in canonical 1080x1920 space. Features free-layer dragging, magnetic central snap guide at X=540px, video vertical height handles (400-1500px), aspect ratio presets (`1:1`, `4:5`, `16:9`), border styling, and footer image uploads. Aba 2 contains the `+ Adicionar Tarefa de IA` catalog. All canvas element readers must use defensive fallbacks (`?.value ?? default`) to prevent unhandled runtime exceptions from collapsing layers to `(0, 0)`.
   * Canonical Prototypes: Use `docs/prototypes/viral-studio-template-simulation.html` (canvas mechanics) and `docs/prototypes/dynamic-generation-tasks-simulation.html` (AI tasks & dynamic schema) as visual and interaction benchmarks, while strictly applying the project's official theme (`tokens.css` + `app.css` / Shadcn).
 - **Docker Host UID & Reload Workflow**:
   * `docker-entrypoint.sh` dynamically synchronizes container `appuser` with the host user's UID/GID (`stat -c '%u' /app`) at boot, ensuring all state files (`0o600`) in `data/` and `output/` belong to the developer on the host machine without permission errors.
   * Because backend `uvicorn` in Docker runs without `--reload`, **always run `docker restart clippyme-backend`** after modifying backend Python files so the running uvicorn process reloads updated Pydantic schemas and route handlers.
 - **Social Publishing & Auto-Chaining (Ports & Adapters)**:
-  * `SocialPublisherPort` (`clippyme.domain.social_publisher_port`): Core domain port for social distribution (`publish`, `schedule`, `cancel`, `get_status`, `list_accounts`). No domain or route code may import provider SDKs directly.
-  * `ZernioPublisherAdapter`: Production adapter integrating with Zernio API with presigned streaming upload, SSRF checks, 429 rate-limit mapping to `ValidationError`, and log secret sanitization.
+  * **Regra Estrita de Integração com Serviços Externos (Proibição de Acesso Direto a Banco/Docker CLI)**: É estritamente proibido manipular ou alterar dados de serviços e provedores externos (como Postiz, Zernio, etc.) diretamente via queries SQL no banco de dados (`psql`, etc.) ou comandos no Docker CLI (`docker exec`, etc.). Toda e qualquer interação, integração, sincronização ou mutação de estado de serviços externos DEVE ocorrer exclusivamente por meio de suas APIs HTTP oficiais/autenticadas.
+  * `SocialPublisherPort` (`clippyme.domain.social_publisher_port`): Core domain port for social media distribution (`publish`, `schedule`, `cancel`, `get_status`, `list_accounts`, `ensure_brand_workspace`, `assign_channel_to_workspace`, `find_next_slot`, `list_scheduled`, `get_metrics`). No domain or route code may import provider SDKs directly.
+  * **Isolamento 1:1 de Redes Sociais por Marca**:
+    - Cada conta social autenticada pertence exclusivamente a uma única Marca no ViralForge.
+    - Ao vincular um canal a uma nova marca em `bind_brand_channels`, o sistema desvincula-o automaticamente de marcas anteriores no domínio e sincroniza a movimentação de grupo/perfil no provedor ativo via API HTTP oficial.
+  * **Invariantes do Postiz (`PostizPublisherAdapter`)**:
+    - `POST /api/public/v1/posts`: sempre inclua `settings.post_type: "post"` (ou `"story"`) no payload de publicação/agendamento para redes como Instagram, caso contrário o validador NestJS retorna `HTTP 400 Bad Request`.
+    - O endpoint `POST /api/public/v1/posts` retorna uma lista `[{"postId": "...", "integration": "..."}]`. Trate retornos em lista ou objeto defensivamente para extrair `postId`.
+    - Grupos/customers são identificados via `customer: { id, name }` em `GET /api/public/v1/integrations`.
+  * **Invariantes do Zernio (`ZernioPublisherAdapter`)**:
+    - A base URL é `https://zernio.com/api/v1`. Endpoints como `/profiles` e `/accounts` não devem receber prefixo duplicado `/v1/`.
+    - Em `GET /accounts`, o campo `profileId` retorna `{ _id, name }` (objeto). Extraia `_id` para `group_id` e `name` para `group_name`.
+    - Perfis de marca são garantidos via `POST /profiles` (`json={"name": ...}`) e contas são associadas ao perfil via `PATCH /accounts/:id` (`json={"profileId": ...}`).
   * `MockPublisherAdapter`: Deterministic in-memory test double for offline execution and fast host tests.
-  * Provider Resolution (`get_social_publisher`): Resolves provider via `PUBLISHING_PROVIDER` config, explicit `provider=` argument, or safe mock fallback.
+  * Provider Resolution (`get_social_publisher`): Resolves provider via `PUBLISHING_PROVIDER` config (defaults to `postiz`), explicit `provider=` argument, or safe mock fallback.
   * Intelligent Gap-Filling Scheduling (`get_next_available_slots`): Evaluates candidate dates starting from earliest possible (`now.date()`), filling intermediate cancelled slots before advancing past the tail of the queue (`occupied_dates`). Every account projection is fully isolated.
+- **Asynchronous Discovery & Mining Worker (`DiscoveryWorker`)**:
+  * `POST /api/discovery/searches` responds immediately with HTTP 202 Accepted (`QUEUED`).
+  * `DiscoveryWorker` runs on the event loop in `lifespan` with bounded concurrency via two-level controls: global `asyncio.Semaphore(2)` + isolated per-platform locks (`_platform_locks[platform]`), preventing IP bans, captchas, and bot detection on TikTok/Instagram.
+  * In-Flight Cancellation: `POST /api/discovery/searches/{id}/cancel` cancels active `asyncio.Task`, aborts scraper execution, immediately releases the concurrency semaphore, and persists status `CANCELLED`.
+  * Thin Handlers Invariant: aggregate instantiation and queuing MUST be encapsulated in `DiscoveryWorker.create_and_enqueue(filter_params)` and `DiscoverySearch.to_summary()`, keeping route handlers under 15 lines (`validate -> call domain -> return JSON`).
+  * Atomic Persistence & Deduplication: Searches persist crash-safely in `data/discovery/{search_id}.json` with `searches_index.json` for lightweight history lookups. `mark_imported_status()` cross-references item URLs with existing batch stores to display `Já no Lote #X` in the UI.
 
 
 ## API endpoints
@@ -322,6 +351,11 @@ through verbatim (the frontend parses per-platform 429 daily limits).
 | POST | `/api/edit-ai/{job_id}/{clip_index}` | NL instruction → Gemini → `drop_ranges` |
 | POST | `/api/reframe/{job_id}/{clip_index}` | Switch reframe mode post-hoc |
 | POST | `/api/publish/{job_id}/{clip_index}` | Upload + schedule via Zernio |
+| POST | `/api/discovery/searches` | Disparar busca de vídeos assíncrona (HTTP 202) |
+| POST | `/api/discovery/searches/{id}/cancel` | Cancelar busca em andamento ou na fila |
+| GET | `/api/discovery/searches` | Listar histórico de buscas mineradas |
+| GET | `/api/discovery/searches/{id}` | Consultar resultados e vídeos da busca |
+| DELETE | `/api/discovery/searches/{id}` | Excluir busca persistida e histórico |
 | GET/POST/DELETE | `/api/config*` | Keys, cookies, logo, fonts, Zernio (trusted clients) |
 | GET | `/api/history` · POST `/api/history/{id}/restore` · DELETE `/api/history/{id}` | Past jobs |
 
@@ -355,5 +389,9 @@ injection).
 - `docs/plano-migracao-frontend.md` — Arquitetura da migração frontend para React 19 + Vite 8 + TanStack Router + Shadcn (TweakCN).
 - `docs/publicacao-e-fila-continua.md` — Fila contínua auto-chaining sem colisão e arquitetura Ports & Adapters para publicação social.
 - `docs/viral-studio-template-architecture.md` — Sistema de Templates universais desacoplados, Konva 9:16 e motor dinâmico de GenerationTasks.
+- `docs/integracao-publicacao-postiz.md` — Arquitetura e especificação funcional da integração ViralForge ↔ Postiz (Ports & Adapters, Temporal, zero duplicação SQLite).
+- `docs/gestao-de-marcas-workspace.md` — Especificação do Catálogo Global de Marcas (/viral-studio/brands) e Workspace Dedicado (/viral-studio/brands/$brandId) com 4 abas e integração Postiz/Discovery.
+- `docs/descoberta-assincrona-e-mineracao.md` — Especificação técnica completa da Descoberta Assíncrona, DiscoveryWorker, cancelamento e histórico persistente.
+- `docs/adr/0004-asynchronous-discovery-mining-and-search-persistence.md` — Arquitetura de Descoberta Assíncrona com DiscoveryWorker, persistência em disco e cancelamento em voo.
 - `docs/architecture-history.md` — summary of major refactors (what moved
   where and why); the pre-rewrite CLAUDE.md is in git history.

@@ -79,6 +79,21 @@ class SocialChannel:
     name: str
     connected: bool = True
     avatar_url: Optional[str] = None
+    handle: Optional[str] = None
+    provider: str = "postiz"
+    group_id: Optional[str] = None
+    group_name: Optional[str] = None
+    bound_to_brand_id: Optional[str] = None
+    bound_to_brand_name: Optional[str] = None
+    raw_data: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class WorkspaceSummary:
+    """A customer group, organization, or workspace in a publishing provider."""
+    id: str
+    name: str
+    provider: str
 
 
 class SocialPublisherPort(ABC):
@@ -104,9 +119,45 @@ class SocialPublisherPort(ABC):
         """Check status of a publication by its external post ID."""
         ...
 
-    async def list_accounts(self) -> List[SocialChannel]:
-        """List active connected accounts available for posting."""
+    async def list_accounts(
+        self, customer_id: Optional[str] = None, brand_id: Optional[str] = None, **kwargs: Any
+    ) -> List[SocialChannel]:
+        """List active connected accounts available for posting (optionally filtered by customer/group or brand)."""
         return []
+
+    async def list_workspaces(self) -> List[WorkspaceSummary]:
+        """List available workspaces or customer groups in the publishing provider."""
+        return []
+
+    async def ensure_brand_workspace(self, brand_name: str, brand_id: str) -> Optional[str]:
+        """Ensure an isolated container, profile or group exists on the provider for this brand."""
+        return None
+
+    async def assign_channel_to_workspace(self, channel_id: str, workspace_id: str) -> bool:
+        """Move or assign a connected channel/account to a specific workspace/profile in the provider."""
+        return False
+
+    async def get_connect_channel_url(self, brand_id: Optional[str] = None) -> str:
+        """Get URL for connecting a new social media channel."""
+        return ""
+
+    async def find_next_slot(self, channel_id: str) -> Optional[datetime]:
+        """Query next free slot from provider. Returns None for local calculation fallback."""
+        return None
+
+    async def publish_now(self, external_id: str) -> bool:
+        """Trigger immediate publication for a scheduled post on the external provider."""
+        return True
+
+    async def list_scheduled(
+        self, customer_id: str, start_date: str, end_date: str
+    ) -> List[Dict[str, Any]]:
+        """Query calendar of scheduled and published posts on the external provider."""
+        return []
+
+    async def get_metrics(self, external_id: str) -> Dict[str, Any]:
+        """Query engagement analytics for a specific post."""
+        return {}
 
 
 _GLOBAL_PUBLISHER: Optional[SocialPublisherPort] = None
@@ -123,21 +174,26 @@ def get_social_publisher(provider: Optional[str] = None) -> SocialPublisherPort:
 
     Resolution strategy:
     1. If _GLOBAL_PUBLISHER is set and provider is None, return it.
-    2. If provider is None, inspect PUBLISHING_PROVIDER in env or config_store.
+    2. If provider is None, inspect PUBLISHING_PROVIDER in env or config_store (default 'postiz').
     3. If MOCK_PUBLISHER=1 or resolved provider == 'mock', return MockPublisherAdapter.
-    4. If provider == 'zernio' (explicit) or (resolved provider != 'mock' and Zernio API key is set),
+    4. If provider == 'postiz' or (configured_provider == 'postiz' and POSTIZ_API_KEY is set),
+       return PostizPublisherAdapter.
+    5. If provider == 'zernio' or (configured_provider == 'zernio' and ZERNIO_API_KEY is set),
        return ZernioPublisherAdapter.
-    5. Fallback to MockPublisherAdapter for offline execution.
+    6. Fallback to MockPublisherAdapter for safe offline execution when no keys are present.
     """
     global _GLOBAL_PUBLISHER
-    if _GLOBAL_PUBLISHER is not None and provider is None:
+    if _GLOBAL_PUBLISHER is not None:
         return _GLOBAL_PUBLISHER
 
-    configured_provider = None
-    if provider is None:
-        from clippyme.storage.config_store import load_persistent_config
-        persistent_cfg = load_persistent_config()
-        configured_provider = os.environ.get("PUBLISHING_PROVIDER") or persistent_cfg.get("PUBLISHING_PROVIDER")
+    from clippyme.storage.config_store import load_persistent_config, load_zernio_config
+    persistent_cfg = load_persistent_config() or {}
+
+    configured_provider = (
+        os.environ.get("PUBLISHING_PROVIDER")
+        or persistent_cfg.get("PUBLISHING_PROVIDER")
+        or "postiz"
+    ).strip().lower()
 
     use_mock = (
         provider == "mock"
@@ -148,20 +204,42 @@ def get_social_publisher(provider: Optional[str] = None) -> SocialPublisherPort:
         from clippyme.domain.mock_publisher_adapter import MockPublisherAdapter
         return MockPublisherAdapter()
 
-    # Check Zernio configuration
-    from clippyme.storage.config_store import load_zernio_config
+    postiz_url = (
+        os.environ.get("POSTIZ_BASE_URL")
+        or persistent_cfg.get("POSTIZ_BASE_URL")
+        or "http://localhost:4007"
+    ).strip()
+    postiz_key = (
+        os.environ.get("POSTIZ_API_KEY")
+        or persistent_cfg.get("POSTIZ_API_KEY")
+        or ""
+    ).strip()
+
     zernio_cfg = load_zernio_config() or {}
-    api_key = (
+    zernio_key = (
         os.environ.get("ZERNIO_API_KEY")
         or zernio_cfg.get("api_key")
         or ""
     ).strip()
 
-    if (api_key and provider != "mock") or provider == "zernio":
-        from clippyme.domain.zernio_publisher_adapter import ZernioPublisherAdapter
-        return ZernioPublisherAdapter(api_key=api_key or "dummy_zernio_key")
+    target_provider = (provider or configured_provider).strip().lower()
 
-    # Safe deterministic offline fallback
+    if target_provider == "postiz" and (postiz_key or provider == "postiz"):
+        from clippyme.domain.postiz_publisher_adapter import PostizPublisherAdapter
+        return PostizPublisherAdapter(base_url=postiz_url, api_key=postiz_key)
+
+    if target_provider == "zernio" and (zernio_key or provider == "zernio"):
+        from clippyme.domain.zernio_publisher_adapter import ZernioPublisherAdapter
+        return ZernioPublisherAdapter(api_key=zernio_key or "dummy_zernio_key")
+
+    if postiz_key:
+        from clippyme.domain.postiz_publisher_adapter import PostizPublisherAdapter
+        return PostizPublisherAdapter(base_url=postiz_url, api_key=postiz_key)
+
+    if zernio_key:
+        from clippyme.domain.zernio_publisher_adapter import ZernioPublisherAdapter
+        return ZernioPublisherAdapter(api_key=zernio_key)
+
     from clippyme.domain.mock_publisher_adapter import MockPublisherAdapter
     return MockPublisherAdapter()
 

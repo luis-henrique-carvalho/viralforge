@@ -12,7 +12,8 @@ export interface PublishAccountPickerProps {
   isLoading: boolean
   selectedAccountIds: string[]
   onToggleAccount: (id: string) => void
-  brandProfiles?: Record<string, any>
+  brandName?: string
+  brandId?: string
 }
 
 export function PublishAccountPicker({
@@ -20,14 +21,8 @@ export function PublishAccountPicker({
   isLoading,
   selectedAccountIds,
   onToggleAccount,
-  brandProfiles = {},
+  brandName,
 }: PublishAccountPickerProps) {
-  const brandLinkedIds = new Set(
-    Object.values(brandProfiles)
-      .map((p: any) => p?.account_id)
-      .filter(Boolean),
-  )
-
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -36,10 +31,10 @@ export function PublishAccountPicker({
           Contas / Canais de Destino ({selectedAccountIds.length} selecionado
           {selectedAccountIds.length !== 1 ? 's' : ''})
         </Label>
-        {brandLinkedIds.size > 0 && (
+        {brandName && (
           <span className="text-[11px] text-muted-foreground flex items-center gap-1">
             <Sparkles className="size-3 text-primary" />
-            Canais da marca pré-selecionados
+            Canais de {brandName}
           </span>
         )}
       </div>
@@ -53,7 +48,6 @@ export function PublishAccountPicker({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           {accounts.map((acc) => {
             const isSelected = selectedAccountIds.includes(acc.id)
-            const isBrandLinked = brandLinkedIds.has(acc.id)
 
             return (
               <Button
@@ -95,14 +89,12 @@ export function PublishAccountPicker({
                     >
                       {acc.platform}
                     </Typography>
-                    {isBrandLinked && (
-                      <Badge
-                        variant="secondary"
-                        className="text-[9px] px-1 py-0 h-3.5 bg-primary/15 text-primary border-0"
-                      >
-                        Marca
-                      </Badge>
-                    )}
+                    <Badge
+                      variant="secondary"
+                      className="text-[9px] px-1 py-0 h-3.5 bg-primary/15 text-primary border-0"
+                    >
+                      Marca
+                    </Badge>
                   </div>
                 </div>
                 {isSelected && <CheckCircle2 className="size-4 text-primary shrink-0" />}
@@ -113,7 +105,9 @@ export function PublishAccountPicker({
       ) : (
         <Alert className="bg-muted/40 border-dashed text-xs text-muted-foreground">
           <AlertDescription className="text-xs text-muted-foreground">
-            Nenhuma conta oficial vinculada. O modo de demonstração Mock será utilizado.
+            {brandName
+              ? `Nenhuma conta social conectada para a marca "${brandName}". O modo de demonstração Mock será utilizado ou vincule canais na aba da Marca.`
+              : 'Nenhuma conta oficial vinculada. O modo de demonstração Mock será utilizado.'}
           </AlertDescription>
         </Alert>
       )}

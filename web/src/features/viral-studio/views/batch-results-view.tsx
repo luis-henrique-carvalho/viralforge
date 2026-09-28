@@ -1,6 +1,7 @@
 // shadcn-ignore: view orchestrator delegating to subcomponents
 import { useState, useMemo } from 'react'
 import { useBatchDetail } from '../hooks/use-batch-detail'
+import { useBrands } from '../hooks/use-brands'
 import { useApproveItem, useBulkItemActions, useRetryItem } from '../hooks/use-item-actions'
 import { useCancelSchedule } from '../hooks/use-publishing'
 import { BatchResultsHeader } from '../components/batch-results-header'
@@ -20,6 +21,8 @@ interface BatchResultsViewProps {
 
 export function BatchResultsView({ batchId }: BatchResultsViewProps) {
   const { data: batch, isLoading, error } = useBatchDetail(batchId)
+  const { data: brandsData } = useBrands()
+  const allBrands = useMemo(() => brandsData?.brands || [], [brandsData?.brands])
 
   const approveMutation = useApproveItem(batchId)
   const retryMutation = useRetryItem(batchId)
@@ -29,6 +32,7 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
   const [activeTab, setActiveTab] = useState<
     'all' | 'ready' | 'processing' | 'failed' | 'scheduled'
   >('all')
+  const [selectedBrandId, setSelectedBrandId] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [inspectedItemId, setInspectedItemId] = useState<string | null>(null)
   const [isSelectionMode, setIsSelectionMode] = useState(false)
@@ -42,8 +46,17 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
     [items, inspectedItemId],
   )
 
+  const availableBrands = useMemo(() => {
+    const brandIdsInBatch = new Set(items.map((i) => i.brand_id).filter(Boolean))
+    return allBrands.filter((b) => brandIdsInBatch.has(b.id))
+  }, [items, allBrands])
+
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
+      if (selectedBrandId !== 'all' && item.brand_id !== selectedBrandId) {
+        return false
+      }
+
       if (
         activeTab === 'ready' &&
         !['READY_FOR_REVIEW', 'APPROVED', 'SCHEDULED', 'PUBLISHED'].includes(item.status)
@@ -71,7 +84,7 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
       }
       return true
     })
-  }, [items, activeTab, searchQuery])
+  }, [items, selectedBrandId, activeTab, searchQuery])
 
   const handleToggleSelect = (itemId: string) => {
     setSelectedIds((prev) => {
@@ -137,6 +150,9 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
         failedCount={failedTotal}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        selectedBrandId={selectedBrandId}
+        onBrandChange={setSelectedBrandId}
+        availableBrands={availableBrands}
       />
 
       {filteredItems.length > 0 ? (

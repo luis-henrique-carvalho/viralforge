@@ -33,7 +33,11 @@ class DiscoveryService:
         }
 
     def _get_cache_key(self, filter_params: DiscoveryFilter) -> str:
-        key_raw = f"{filter_params.platform}:{filter_params.query.lower().strip()}:{filter_params.limit}"
+        key_raw = (
+            f"{filter_params.platform}:{filter_params.query.lower().strip()}:{filter_params.limit}:"
+            f"{filter_params.min_views}:{filter_params.max_age_days}:"
+            f"{filter_params.min_duration_seconds}:{filter_params.max_duration_seconds}:{filter_params.sort_by.value}"
+        )
         return hashlib.sha256(key_raw.encode("utf-8")).hexdigest()
 
     def _read_cache(self, cache_key: str) -> Optional[DiscoveryResult]:
@@ -83,7 +87,7 @@ class DiscoveryService:
         """Executa a busca com cache, roteamento para o provedor e ordenação."""
         cache_key = self._get_cache_key(filter_params)
         cached_result = self._read_cache(cache_key)
-        if cached_result:
+        if cached_result and len(cached_result.items) >= filter_params.limit:
             # Re-aplica ordenação e filtros caso o usuário altere sort_by
             sorted_items = self._sort_items(cached_result.items, filter_params.sort_by)
             if filter_params.max_age_days:
@@ -91,7 +95,11 @@ class DiscoveryService:
                 sorted_items = [item for item in sorted_items if item.published_timestamp is None or item.published_timestamp >= min_timestamp]
             if filter_params.min_views:
                 sorted_items = [item for item in sorted_items if item.view_count >= filter_params.min_views]
-            cached_result.items = sorted_items
+            if filter_params.min_duration_seconds:
+                sorted_items = [item for item in sorted_items if item.duration_seconds is None or item.duration_seconds >= filter_params.min_duration_seconds]
+            if filter_params.max_duration_seconds:
+                sorted_items = [item for item in sorted_items if item.duration_seconds is None or item.duration_seconds <= filter_params.max_duration_seconds]
+            cached_result.items = sorted_items[:filter_params.limit]
             return cached_result
 
         provider = self._providers.get(filter_params.platform)
@@ -109,6 +117,12 @@ class DiscoveryService:
         # Filtro de views mínimas
         if filter_params.min_views:
             items = [item for item in items if item.view_count >= filter_params.min_views]
+
+        # Filtros de duração
+        if filter_params.min_duration_seconds:
+            items = [item for item in items if item.duration_seconds is None or item.duration_seconds >= filter_params.min_duration_seconds]
+        if filter_params.max_duration_seconds:
+            items = [item for item in items if item.duration_seconds is None or item.duration_seconds <= filter_params.max_duration_seconds]
 
         sorted_items = self._sort_items(items, filter_params.sort_by)
 

@@ -5,6 +5,8 @@ import type {
   HardwareTelemetry,
   LocalModelsResponse,
   LogoStatusResponse,
+  PostizConfigStatus,
+  PostizIntegrationsResponse,
   SystemConfig,
   ZernioConfigStatus,
 } from '../data/settings.types'
@@ -15,8 +17,8 @@ export const mockSystemConfig: SystemConfig = {
   DEFAULT_AI_MODEL: 'gemini-2.5-flash',
   LM_STUDIO_BASE_URL: 'http://localhost:1234',
   OLLAMA_BASE_URL: 'http://localhost:11434',
-  TRANSCRIPTION_PROVIDER: 'deepgram',
-  PUBLISHING_PROVIDER: 'zernio',
+  TRANSCRIPTION_PROVIDER: 'whisper',
+  PUBLISHING_PROVIDER: 'postiz',
   DEEPGRAM_API_KEY: 'dg_...1234',
   ELEVENLABS_API_KEY: '',
   HF_TOKEN: '',
@@ -50,6 +52,31 @@ export const mockZernioConfigStatus: ZernioConfigStatus = {
     youtube: 'acc_yt_789',
   },
   timezone: 'America/Sao_Paulo',
+}
+
+export const mockPostizConfigStatus: PostizConfigStatus = {
+  configured: true,
+  base_url: 'http://localhost:4007',
+  api_key_masked: 'pzi_...9999',
+}
+
+export const mockPostizIntegrationsResponse: PostizIntegrationsResponse = {
+  integrations: [
+    {
+      id: 'int_tiktok_123',
+      name: '@viralforge_tiktok',
+      platform: 'tiktok',
+      connected: true,
+      disabled: false,
+    },
+    {
+      id: 'int_youtube_456',
+      name: 'ViralForge Channel',
+      platform: 'youtube',
+      connected: true,
+      disabled: false,
+    },
+  ],
 }
 
 export const mockLocalModelsResponse: LocalModelsResponse = {
@@ -121,6 +148,23 @@ export const settingsHandlers = [
         { id: 'acc_yt_789', platform: 'youtube', name: 'Viral Studio Official' },
       ],
     })
+  }),
+
+  http.get('/api/config/postiz', () => {
+    return HttpResponse.json(mockPostizConfigStatus)
+  }),
+
+  http.post('/api/config/postiz', async ({ request }) => {
+    const body = (await request.json()) as Partial<PostizConfigStatus>
+    return HttpResponse.json({
+      ...mockPostizConfigStatus,
+      ...body,
+      configured: true,
+    })
+  }),
+
+  http.get('/api/postiz/integrations', () => {
+    return HttpResponse.json(mockPostizIntegrationsResponse)
   }),
 
   http.get('/api/config/cookies/status', () => {

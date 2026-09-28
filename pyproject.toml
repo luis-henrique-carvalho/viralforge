@@ -6,6 +6,9 @@ build-backend = "setuptools.build_meta"
 name = "clippyme"
 version = "0.0.0"
 requires-python = ">=3.11"
+dependencies = [
+    "playwright>=1.63.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -30,10 +33,13 @@ host-tests = [
     "google-genai>=1.70.0,<2.0.0",
     "python-dotenv==1.2.2",
     "Pillow>=12.3.0,<13",
+    "pilmoji>=2.0.5",
+    "emoji>=2.16.0",
     "requests>=2.32,<3",
     "json-repair>=0.30",
     "psutil==7.0.0",
     "tqdm==4.67.3",
+    "playwright>=1.40.0",
 ]
 
 [tool.pytest.ini_options]

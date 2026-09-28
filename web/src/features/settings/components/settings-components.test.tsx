@@ -11,6 +11,7 @@ import { CookiesManagerCard } from './cookies-manager-card'
 import { HardwareStatusCard } from './hardware-status-card'
 import { BrandAssetsCard } from './brand-assets-card'
 import { ZernioSettingsSection } from './zernio-settings-section'
+import { PostizSettingsSection } from './postiz-settings-section'
 import { LocalModelsSection } from './local-models-section'
 
 describe('ApiKeyInput Component', () => {
@@ -87,12 +88,13 @@ describe('SettingsSidebarNav Component', () => {
 })
 
 describe('PublishingProviderCard Component', () => {
-  it('renders correctly and allows saving configuration', async () => {
+  it('renders correctly and allows saving configuration for Postiz', async () => {
     const user = userEvent.setup()
     renderWithProviders(<PublishingProviderCard />)
 
     expect(screen.getByText('Provedores de Publicação Social')).toBeInTheDocument()
-    expect(screen.getByText('Zernio API Key')).toBeInTheDocument()
+    expect(screen.getByText(/URL Base do Postiz/i)).toBeInTheDocument()
+    expect(screen.getByText('Postiz API Key')).toBeInTheDocument()
 
     const saveBtn = screen.getByRole('button', {
       name: /salvar configurações de publicação/i,
@@ -101,15 +103,107 @@ describe('PublishingProviderCard Component', () => {
     await user.click(saveBtn)
   })
 
-  it('triggers discover accounts button', async () => {
+  it('triggers discover postiz integrations button', async () => {
     const user = userEvent.setup()
     renderWithProviders(<PublishingProviderCard />)
 
     const discoverBtn = screen.getByRole('button', {
-      name: /descobrir contas/i,
+      name: /testar conexão \/ sincronizar/i,
     })
     expect(discoverBtn).toBeInTheDocument()
     await user.click(discoverBtn)
+  })
+
+  it('allows clearing postiz api key', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<PublishingProviderCard />)
+
+    const clearBtn = screen.queryByRole('button', { name: /limpar chave/i })
+    if (clearBtn) {
+      await user.click(clearBtn)
+    }
+  })
+
+  it('allows discovering with unsaved postiz key', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<PublishingProviderCard />)
+
+    const keyInput = screen.getByLabelText('Postiz API Key')
+    await user.type(keyInput, 'pzi_new_key_123')
+
+    const discoverBtn = screen.getByRole('button', {
+      name: /testar conexão \/ sincronizar/i,
+    })
+    await user.click(discoverBtn)
+  })
+})
+
+describe('PostizSettingsSection Component', () => {
+  it('renders inputs, integrations with avatar, and triggers callbacks', async () => {
+    const user = userEvent.setup()
+    const setBaseUrl = vi.fn()
+    const setApiKey = vi.fn()
+    const onDiscover = vi.fn().mockResolvedValue(undefined)
+    const onClearKey = vi.fn().mockResolvedValue(undefined)
+
+    renderWithProviders(
+      <PostizSettingsSection
+        baseUrl=""
+        setBaseUrl={setBaseUrl}
+        apiKey="pzi_123"
+        setApiKey={setApiKey}
+        onDiscover={onDiscover}
+        onClearKey={onClearKey}
+        isDiscovering={false}
+        isConfigured={true}
+        maskedKey="pzi...123"
+        integrationsList={[
+          {
+            id: 'int_123',
+            platform: 'tiktok',
+            name: '@viralchannel',
+            connected: true,
+            avatar_url: 'https://example.com/avatar.png',
+            disabled: false,
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getByText(/@viralchannel/i)).toBeInTheDocument()
+
+    const baseUrlInput = screen.getByLabelText(/URL Base do Postiz/i)
+    await user.type(baseUrlInput, 'http://localhost:4007')
+    expect(setBaseUrl).toHaveBeenCalled()
+
+    const clearBtn = screen.getByRole('button', { name: /limpar chave/i })
+    await user.click(clearBtn)
+    expect(onClearKey).toHaveBeenCalledOnce()
+
+    const discoverBtn = screen.getByRole('button', {
+      name: /testar conexão \/ sincronizar/i,
+    })
+    await user.click(discoverBtn)
+    expect(onDiscover).toHaveBeenCalledOnce()
+  })
+
+  it('renders empty placeholder when no integrations are present', () => {
+    renderWithProviders(
+      <PostizSettingsSection
+        baseUrl="http://localhost:4007"
+        setBaseUrl={vi.fn()}
+        apiKey=""
+        setApiKey={vi.fn()}
+        onDiscover={vi.fn()}
+        onClearKey={vi.fn()}
+        isDiscovering={true}
+        isConfigured={false}
+        integrationsList={[]}
+      />,
+    )
+
+    expect(screen.getByText(/nenhum canal social sincronizado ainda/i)).toBeInTheDocument()
+    expect(screen.getByText(/Conectando.../i)).toBeInTheDocument()
   })
 })
 

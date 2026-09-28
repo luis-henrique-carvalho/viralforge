@@ -15,7 +15,7 @@ from clippyme.storage.config_store import (
     save_persistent_config,
 )
 
-ORIGIN = {"Origin": "http://localhost:5175"}
+ORIGIN = {"Origin": "http://localhost:5176"}
 
 
 @pytest.fixture(autouse=True)
@@ -37,6 +37,7 @@ def client(tmp_path, monkeypatch):
 
 def test_publishing_provider_config_store(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("PUBLISHING_PROVIDER", raising=False)
     # Default is zernio when not set
     config = load_persistent_config()
     assert config.get("PUBLISHING_PROVIDER") == "zernio"

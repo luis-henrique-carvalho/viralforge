@@ -22,6 +22,14 @@ export interface ZernioSettingsSectionProps {
   accountsList?: ZernioAccountItem[]
 }
 
+function normalizeAccount(acc: ZernioAccountItem) {
+  const accId = acc.id || acc._id || acc.accountId || ''
+  const name = acc.name || acc.displayName || acc.username || accId
+  const platform = (acc.platform || 'unknown').toLowerCase()
+  const avatarUrl = acc.avatar_url || acc.avatarUrl
+  return { accId, name, platform, avatarUrl }
+}
+
 export function ZernioSettingsSection({
   apiKey,
   setApiKey,
@@ -67,21 +75,15 @@ export function ZernioSettingsSection({
             <Sparkles className="h-3.5 w-3.5 text-primary" />
             Contas Conectadas na Organização ({accountsList.length})
           </Label>
-          <Typography
-            variant="muted"
-            className="text-[11px]"
-          >
+          <Typography variant="muted">
             O vínculo com marcas é feito na tela de Marcas (/brands).
           </Typography>
         </div>
 
         {accountsList.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {accountsList.map((acc) => {
-              const accId = acc.id || acc._id || acc.accountId || ''
-              const name = acc.name || acc.displayName || acc.username || accId
-              const platform = (acc.platform || 'unknown').toLowerCase()
-              const avatarUrl = acc.avatar_url || acc.avatarUrl
+            {accountsList.map((rawAcc) => {
+              const { accId, name, platform, avatarUrl } = normalizeAccount(rawAcc)
 
               return (
                 <div

@@ -16,11 +16,13 @@ export function usePreviewSlots(
   count: number,
   startDate?: string,
   preferredTime?: string,
+  brandId?: string,
   options?: { enabled?: boolean },
 ) {
   return useQuery({
-    queryKey: viralStudioKeys.previewSlots(accountId, count, startDate, preferredTime),
-    queryFn: () => viralStudioApi.previewPublishSlots(accountId, count, startDate, preferredTime),
+    queryKey: viralStudioKeys.previewSlots(accountId, count, startDate, preferredTime, brandId),
+    queryFn: () =>
+      viralStudioApi.previewPublishSlots(accountId, count, startDate, preferredTime, brandId),
     enabled: (options?.enabled ?? true) && Boolean(accountId) && count > 0,
     staleTime: 30 * 1000,
   })

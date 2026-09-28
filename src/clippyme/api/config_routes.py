@@ -21,7 +21,7 @@ from typing import Optional
 
 from fastapi import APIRouter, File, Header, HTTPException, Request, UploadFile
 
-from clippyme.api.schemas import ConfigUpdateRequest, ZernioConfigRequest
+from clippyme.api.schemas import ConfigUpdateRequest, PostizConfigRequest, ZernioConfigRequest
 from clippyme.api.security import require_trusted_config_request
 from clippyme.domain.cookie_resolver import (
     SUPPORTED_COOKIE_PLATFORMS,
@@ -32,8 +32,11 @@ from clippyme.domain.cookie_resolver import (
 from clippyme.pipeline.gemini_service import list_available_models
 from clippyme.storage.config_store import (
     load_persistent_config,
+    load_postiz_config,
     load_zernio_config,
+    postiz_config_status,
     save_persistent_config,
+    save_postiz_config,
     save_zernio_config,
     zernio_config_status,
 )
@@ -610,4 +613,62 @@ async def list_zernio_accounts(request: Request):
     except ZernioError as e:
         raise HTTPException(status_code=502, detail=f"Zernio API error: {e}")
     return {"accounts": accounts}
+
+
+@router.get("/api/config/postiz")
+async def get_postiz_config(request: Request):
+    """Return persisted Postiz settings (api_key masked)."""
+    require_trusted_config_request(request)
+    return await asyncio.to_thread(postiz_config_status)
+
+
+@router.post("/api/config/postiz")
+async def update_postiz_config(req: PostizConfigRequest, request: Request):
+    """Update Postiz Base URL and API key."""
+    require_trusted_config_request(request)
+    ok = await asyncio.to_thread(
+        save_postiz_config,
+        base_url=req.base_url,
+        api_key=req.api_key,
+    )
+    if not ok:
+        raise HTTPException(status_code=500, detail="Failed to save Postiz config")
+    return await asyncio.to_thread(postiz_config_status)
+
+
+@router.get("/api/postiz/integrations")
+async def list_postiz_integrations(request: Request):
+    """Discovery: list connected integrations/channels via Postiz API."""
+    require_trusted_config_request(request)
+    cfg = await asyncio.to_thread(load_postiz_config)
+    base_url = cfg.get("base_url") or "http://localhost:4007"
+    api_key = cfg.get("api_key")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="Postiz API key not configured")
+    from clippyme.integrations.postiz_client import PostizClient, PostizError
+    try:
+        client = PostizClient(base_url=base_url, api_key=api_key)
+        raw_integrations = await client.list_integrations()
+        integrations = []
+        for item in raw_integrations:
+            if isinstance(item, dict):
+                integration_id = str(item.get("id") or item.get("_id") or "")
+                provider = str(item.get("identifier") or item.get("providerIdentifier") or "unknown").lower()
+                platform = provider.replace("-standalone", "")
+                name = str(item.get("name") or item.get("profile") or f"{platform}_{integration_id[:6]}")
+                avatar = item.get("picture") or item.get("avatar") or None
+                disabled = bool(item.get("disabled", False))
+                integrations.append({
+                    "id": integration_id,
+                    "platform": platform,
+                    "name": name,
+                    "connected": not disabled,
+                    "avatar_url": str(avatar) if avatar else None,
+                })
+        return {"integrations": integrations}
+    except PostizError as e:
+        raise HTTPException(status_code=502, detail=f"Postiz API error: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Failed to connect to Postiz at {base_url}: {e}")
+
 

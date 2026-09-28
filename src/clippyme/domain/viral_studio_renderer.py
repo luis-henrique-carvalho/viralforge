@@ -17,6 +17,7 @@ import os
 import re
 import subprocess
 import tempfile
+from io import BytesIO
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
@@ -37,6 +38,100 @@ if not os.path.isdir(FONTS_DIR):
     _cwd_fallback = os.path.abspath("fonts")
     if os.path.isdir(_cwd_fallback):
         FONTS_DIR = _cwd_fallback
+
+_EMOJI_CACHE_DIR = os.path.join(_REPO_ROOT, "data", "cache", "emojis")
+
+try:
+    from pilmoji.source import Twemoji
+
+    class _CachedTwemojiSource(Twemoji):
+        """Local file-cached Twemoji source for fast, offline-resilient emoji rendering."""
+
+        def get_emoji(self, emoji_str: str) -> Optional[BytesIO]:
+            os.makedirs(_EMOJI_CACHE_DIR, exist_ok=True)
+            code = "-".join(f"{ord(c):x}" for c in emoji_str)
+            filepath = os.path.join(_EMOJI_CACHE_DIR, f"twemoji_{code}.png")
+            if os.path.isfile(filepath):
+                try:
+                    with open(filepath, "rb") as f:
+                        return BytesIO(f.read())
+                except Exception:
+                    pass
+            try:
+                bio = super().get_emoji(emoji_str)
+                if bio:
+                    data = bio.getvalue()
+                    with open(filepath, "wb") as f:
+                        f.write(data)
+                    return BytesIO(data)
+            except Exception as exc:
+                logger.debug("Failed to fetch emoji %s from CDN: %s", emoji_str, exc)
+            return None
+except Exception:
+    class _CachedTwemojiSource:  # type: ignore
+        def get_emoji(self, emoji_str: str) -> Optional[BytesIO]:
+            return None
+
+
+_cached_emoji_source: Any = None
+
+
+def _get_emoji_source() -> Any:
+    global _cached_emoji_source
+    if _cached_emoji_source is None:
+        _cached_emoji_source = _CachedTwemojiSource()
+    return _cached_emoji_source
+
+
+def _measure_text_width(
+    text: str,
+    font: ImageFont.ImageFont,
+    draw: Optional[ImageDraw.ImageDraw] = None,
+) -> int:
+    """Measure exact width of text line taking both typography and emojis into account."""
+    if not text:
+        return 0
+    try:
+        from pilmoji import Pilmoji
+        source = _get_emoji_source()
+        if source:
+            dummy = Image.new("RGBA", (1, 1))
+            with Pilmoji(dummy, source=source) as p:
+                w, _ = p.getsize(text, font=font)
+                return int(w)
+    except Exception:
+        pass
+
+    if draw is None:
+        dummy = Image.new("RGBA", (1, 1))
+        draw = ImageDraw.Draw(dummy)
+    bbox = draw.textbbox((0, 0), text, font=font)
+    return int(bbox[2] - bbox[0])
+
+
+def _draw_text_with_emojis(
+    img: Image.Image,
+    xy: Tuple[int, int],
+    text: str,
+    font: ImageFont.ImageFont,
+    fill: Union[Tuple[int, int, int, int], Tuple[int, int, int]],
+) -> None:
+    """Draw text with full color emoji support and fallback to standard Pillow text."""
+    if not text:
+        return
+    try:
+        from pilmoji import Pilmoji
+        source = _get_emoji_source()
+        if source:
+            with Pilmoji(img, source=source) as pilmoji:
+                pilmoji.text(xy, text, fill=fill, font=font)
+                return
+    except Exception as exc:
+        logger.debug("Pilmoji draw fallback to draw.text: %s", exc)
+
+    draw = ImageDraw.Draw(img)
+    draw.text(xy, text, font=font, fill=fill)
+
 
 DEFAULT_HEADLINE_FONT = "Montserrat-ExtraBold.ttf"
 DEFAULT_BRAND_FONT = "Montserrat-ExtraBold.ttf"
@@ -88,10 +183,12 @@ def _hex_to_ffmpeg_color(hex_str: str, default: str = "0xFFFFFF") -> str:
 def _resolve_font(font_filename: str, size: int) -> ImageFont.ImageFont:
     """Resolve a TrueType font from bundled fonts, system, or fallback to default."""
     if font_filename:
+        clean_name = font_filename.strip()
         candidates = [
-            os.path.join(FONTS_DIR, font_filename),
-            os.path.join(FONTS_DIR, f"{font_filename}.ttf"),
-            font_filename,
+            os.path.join(FONTS_DIR, clean_name),
+            os.path.join(FONTS_DIR, f"{clean_name}.ttf"),
+            os.path.join(FONTS_DIR, f"{clean_name.replace(' ', '-')}.ttf"),
+            clean_name,
         ]
         for candidate in candidates:
             if os.path.isfile(candidate):
@@ -100,12 +197,12 @@ def _resolve_font(font_filename: str, size: int) -> ImageFont.ImageFont:
                 except Exception:
                     pass
 
-    # Try standard bundled fonts
+    # Try standard bundled fonts in preferred modern sans order
     for fallback_name in (
         "Montserrat-ExtraBold.ttf",
-        "NotoSerif-Bold.ttf",
         "Poppins-Medium.ttf",
         "Anton-Regular.ttf",
+        "NotoSerif-Bold.ttf",
     ):
         fallback_path = os.path.join(FONTS_DIR, fallback_name)
         if os.path.isfile(fallback_path):
@@ -176,8 +273,7 @@ def wrap_and_fit_headline(
 
         for word in words:
             test_line = " ".join(current_line + [word])
-            bbox = draw.textbbox((0, 0), test_line, font=font)
-            line_w = bbox[2] - bbox[0]
+            line_w = _measure_text_width(test_line, font=font, draw=draw)
 
             if line_w <= max_w:
                 current_line.append(word)
@@ -185,8 +281,8 @@ def wrap_and_fit_headline(
                 if current_line:
                     lines.append(" ".join(current_line))
                     current_line = [word]
-                    word_bbox = draw.textbbox((0, 0), word, font=font)
-                    if (word_bbox[2] - word_bbox[0]) > max_w:
+                    word_w = _measure_text_width(word, font=font, draw=draw)
+                    if word_w > max_w:
                         has_overflow_word = True
                 else:
                     # Single word is wider than max_w
@@ -211,7 +307,7 @@ def wrap_and_fit_headline(
         trimmed_lines = best_lines[: max_l - 1]
         overflow_words = " ".join(best_lines[max_l - 1 :])
         truncated = overflow_words
-        while truncated and (draw.textbbox((0, 0), f"{truncated}...", font=font)[2] - draw.textbbox((0, 0), f"{truncated}...", font=font)[0]) > max_w:
+        while truncated and _measure_text_width(f"{truncated}...", font=font, draw=draw) > max_w:
             parts = truncated.split()
             if len(parts) > 1:
                 truncated = " ".join(parts[:-1])
@@ -223,10 +319,10 @@ def wrap_and_fit_headline(
     # Ensure every single line is bounded within max_w
     bounded_lines: List[str] = []
     for line in best_lines:
-        line_w = draw.textbbox((0, 0), line, font=font)[2] - draw.textbbox((0, 0), line, font=font)[0]
+        line_w = _measure_text_width(line, font=font, draw=draw)
         if line_w > max_w:
             t = line
-            while t and (draw.textbbox((0, 0), f"{t}...", font=font)[2] - draw.textbbox((0, 0), f"{t}...", font=font)[0]) > max_w:
+            while t and _measure_text_width(f"{t}...", font=font, draw=draw) > max_w:
                 t = t[:-1].rstrip("\u200d\ufe0f ")
             bounded_lines.append(f"{t}..." if t else "...")
         else:
@@ -243,13 +339,18 @@ def wrap_and_fit_headline(
 
 
 def calculate_video_placement(
-    canvas_width: int,
-    canvas_height: int,
-    top_used_height: int,
-    bottom_margin: int,
-    source_width: int,
-    source_height: int,
+    canvas_width: int = 1080,
+    canvas_height: int = 1920,
+    top_used_height: int = 0,
+    bottom_margin: int = 0,
+    source_width: int = 1080,
+    source_height: int = 1920,
     video_fit: str = "contain",
+    video_y: Optional[int] = None,
+    video_height: Optional[int] = None,
+    video_scale: Optional[int] = None,
+    video_x: Optional[int] = None,
+    video_width: Optional[int] = None,
 ) -> Dict[str, int]:
     """Calculate contain-fit coordinates and dimensions for source video on canvas. Pure function.
 
@@ -265,6 +366,105 @@ def calculate_video_placement(
 
     src_w = max(2, int(source_width))
     src_h = max(2, int(source_height))
+
+    if video_y is not None:
+        if video_width is not None and video_width > 0:
+            box_w = int(video_width)
+        else:
+            scale_pct = video_scale if video_scale is not None else 92
+            box_w = int(canvas_w * (scale_pct / 100.0))
+        if box_w % 2 != 0:
+            box_w -= 1
+        box_w = max(2, min(canvas_w, box_w))
+
+        box_h = int(video_height) if (video_height is not None and video_height > 0) else 1000
+        if box_h % 2 != 0:
+            box_h -= 1
+        box_h = max(2, min(canvas_h, box_h))
+
+        box_x = int(video_x) if video_x is not None else ((canvas_w - box_w) // 2)
+        if box_x % 2 != 0:
+            box_x -= 1
+        box_x = max(0, box_x)
+
+        box_y = int(video_y)
+        if box_y % 2 != 0:
+            box_y -= 1
+        box_y = max(0, box_y)
+
+        if video_fit == "cover":
+            scale = max(box_w / src_w, box_h / src_h)
+            target_w = max(2, int(src_w * scale))
+            target_h = max(2, int(src_h * scale))
+            if target_w % 2 != 0:
+                target_w -= 1
+            if target_h % 2 != 0:
+                target_h -= 1
+
+            return {
+                "x": box_x,
+                "y": box_y,
+                "width": box_w,
+                "height": box_h,
+                "scale_width": target_w,
+                "scale_height": target_h,
+                "crop_width": box_w,
+                "crop_height": box_h,
+                "fit": "cover",
+                "box_x": box_x,
+                "box_y": box_y,
+                "box_width": box_w,
+                "box_height": box_h,
+                "available_width": box_w,
+                "available_height": box_h,
+                "top_margin": box_y,
+                "bottom_margin": max(0, canvas_h - (box_y + box_h)),
+            }
+        else:
+            scale = min(box_w / src_w, box_h / src_h)
+            target_w = max(2, int(src_w * scale))
+            target_h = max(2, int(src_h * scale))
+            if target_w % 2 != 0:
+                target_w -= 1
+            if target_h % 2 != 0:
+                target_h -= 1
+            target_w = max(2, target_w)
+            target_h = max(2, target_h)
+
+            pos_x = box_x + (box_w - target_w) // 2
+            pos_y = box_y + (box_h - target_h) // 2
+            if pos_x % 2 != 0:
+                pos_x -= 1
+            if pos_y % 2 != 0:
+                pos_y -= 1
+            pos_x = max(0, pos_x)
+            pos_y = max(0, pos_y)
+
+            if pos_y + target_h > canvas_h:
+                pos_y = canvas_h - target_h
+                if pos_y % 2 != 0:
+                    pos_y -= 1
+                pos_y = max(0, pos_y)
+
+            return {
+                "x": pos_x,
+                "y": pos_y,
+                "width": target_w,
+                "height": target_h,
+                "scale_width": target_w,
+                "scale_height": target_h,
+                "crop_width": target_w,
+                "crop_height": target_h,
+                "fit": "contain",
+                "box_x": box_x,
+                "box_y": box_y,
+                "box_width": box_w,
+                "box_height": box_h,
+                "available_width": box_w,
+                "available_height": box_h,
+                "top_margin": box_y,
+                "bottom_margin": max(0, canvas_h - (box_y + box_h)),
+            }
 
     top_margin = max(0, int(top_used_height))
     bot_margin = max(0, int(bottom_margin))
@@ -309,6 +509,15 @@ def calculate_video_placement(
         "y": pos_y,
         "width": target_w,
         "height": target_h,
+        "scale_width": target_w,
+        "scale_height": target_h,
+        "crop_width": target_w,
+        "crop_height": target_h,
+        "fit": "contain",
+        "box_x": pos_x,
+        "box_y": pos_y,
+        "box_width": target_w,
+        "box_height": target_h,
         "available_width": available_w,
         "available_height": available_h,
         "top_margin": top_margin,
@@ -333,13 +542,83 @@ def _resolve_asset_path(path: Optional[str]) -> Optional[str]:
     return None
 
 
+def _resolve_or_download_avatar(brand: Union[Brand, Dict[str, Any]]) -> Optional[str]:
+    """Resolve brand avatar image path from local asset, remote URL, or linked social accounts."""
+    if not brand:
+        return None
+
+    # 1. Direct local avatar_path
+    raw_path = _extract_field(brand, "avatar_path")
+    if raw_path:
+        local_path = _resolve_asset_path(raw_path)
+        if local_path and os.path.isfile(local_path):
+            return local_path
+
+    # 2. Check avatar_url on brand or inside publishing_profiles
+    avatar_url = _extract_field(brand, "avatar_url")
+    if not avatar_url:
+        profiles = _extract_field(brand, "publishing_profiles", {})
+        if isinstance(profiles, dict):
+            for platform in ("instagram", "tiktok", "youtube"):
+                p_data = profiles.get(platform)
+                if isinstance(p_data, dict) and p_data.get("avatar_url"):
+                    avatar_url = p_data["avatar_url"]
+                    break
+
+    if not avatar_url or not isinstance(avatar_url, str):
+        return None
+
+    avatar_url = avatar_url.strip()
+    if not (avatar_url.startswith("http://") or avatar_url.startswith("https://")):
+        # If it's a local relative path stored in avatar_url
+        return _resolve_asset_path(avatar_url)
+
+    # Remote URL: cache locally in data/cache/avatars/<hash>.png
+    try:
+        import hashlib
+        import urllib.request
+        url_hash = hashlib.sha256(avatar_url.encode("utf-8")).hexdigest()[:24]
+        cache_dir = os.path.join(_REPO_ROOT, "data", "cache", "avatars")
+        os.makedirs(cache_dir, exist_ok=True)
+        cached_file = os.path.join(cache_dir, f"{url_hash}.png")
+
+        if os.path.isfile(cached_file) and os.path.getsize(cached_file) > 500:
+            return cached_file
+
+        req = urllib.request.Request(
+            avatar_url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "ngrok-skip-browser-warning": "1",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = resp.read()
+            if data and len(data) > 200:
+                # Validate it is actually a valid image format
+                try:
+                    from io import BytesIO
+                    with Image.open(BytesIO(data)) as test_img:
+                        test_img.verify()
+                    with open(cached_file, "wb") as f:
+                        f.write(data)
+                    return cached_file
+                except Exception as img_err:
+                    logger.warning("Downloaded avatar from %s is not a valid image: %s", avatar_url, img_err)
+    except Exception as exc:
+        logger.warning("Could not download brand avatar from %s: %s", avatar_url, exc)
+
+    return None
+
+
 def generate_header_overlay(
     brand: Union[Brand, Dict[str, Any]],
     template: Union[VisualTemplate, Dict[str, Any]],
     headline: str,
     output_image_path: str,
+    video_placement: Optional[Dict[str, int]] = None,
 ) -> Dict[str, Any]:
-    """Render transparent PNG overlay containing brand header and dynamic headline.
+    """Render transparent PNG overlay containing brand header, badge, headline, and footer card.
 
     Uses Pillow with TrueType fonts, circular avatar crop, and auto-downscaling.
     """
@@ -353,15 +632,20 @@ def generate_header_overlay(
     img = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
+    brand_alignment = str(_extract_field(template, "brand_alignment", "left"))
     avatar_enabled = bool(_extract_field(template, "avatar_enabled", True))
-    avatar_x = max(0, int(_extract_field(template, "avatar_x", 60)))
+    avatar_x_conf = _extract_field(template, "avatar_x")
     avatar_y = max(0, int(_extract_field(template, "avatar_y", 80)))
     avatar_size = max(20, int(_extract_field(template, "avatar_size", 100)))
 
+    if brand_alignment == "center":
+        avatar_x = (canvas_w - avatar_size) // 2
+    else:
+        avatar_x = max(0, int(avatar_x_conf)) if avatar_x_conf is not None else 60
+
     avatar_bottom = 0
     if avatar_enabled:
-        raw_avatar_path = _extract_field(brand, "avatar_path") or _extract_field(brand, "avatar_url")
-        avatar_path = _resolve_asset_path(raw_avatar_path)
+        avatar_path = _resolve_or_download_avatar(brand)
         avatar_placed = False
 
         if avatar_path and os.path.isfile(avatar_path):
@@ -416,39 +700,87 @@ def generate_header_overlay(
     header_bottom = avatar_bottom
 
     if brand_name_enabled:
-        text_x = (avatar_x + avatar_size + 24) if avatar_enabled else avatar_x
-        name_y = avatar_y + 8 if avatar_enabled else 80
         brand_name = str(_extract_field(brand, "name", "Vale o Clique?")).strip()
-
-        max_text_w = max(100, canvas_w - text_x - 60)
-        name_font = _resolve_font(DEFAULT_BRAND_FONT, brand_name_font_size)
-
-        if brand_name:
-            # Truncate brand name if wider than available canvas space
-            display_name = brand_name
-            if (draw.textbbox((0, 0), display_name, font=name_font)[2] - draw.textbbox((0, 0), display_name, font=name_font)[0]) > max_text_w:
-                while display_name and (draw.textbbox((0, 0), f"{display_name}...", font=name_font)[2] - draw.textbbox((0, 0), f"{display_name}...", font=name_font)[0]) > max_text_w:
-                    display_name = display_name[:-1].rstrip()
-                display_name = f"{display_name}..." if display_name else "..."
-
-            draw.text((text_x, name_y), display_name, font=name_font, fill=brand_name_color)
-            header_bottom = max(avatar_bottom, name_y + brand_name_font_size)
-
         raw_handle = _extract_field(brand, "handle")
         clean_handle = str(raw_handle).strip().lstrip("@") if raw_handle is not None else ""
-        if clean_handle:
-            display_handle = f"@{clean_handle}"
-            handle_y = (name_y + brand_name_font_size + 8) if brand_name else name_y
-            handle_font = _resolve_font(DEFAULT_HANDLE_FONT, handle_font_size)
 
-            # Truncate handle if wider than available canvas space
-            if (draw.textbbox((0, 0), display_handle, font=handle_font)[2] - draw.textbbox((0, 0), display_handle, font=handle_font)[0]) > max_text_w:
-                while clean_handle and (draw.textbbox((0, 0), f"@{clean_handle}...", font=handle_font)[2] - draw.textbbox((0, 0), f"@{clean_handle}...", font=handle_font)[0]) > max_text_w:
-                    clean_handle = clean_handle[:-1].rstrip()
-                display_handle = f"@{clean_handle}..." if clean_handle else "..."
+        name_font = _resolve_font(DEFAULT_BRAND_FONT, brand_name_font_size)
+        handle_font = _resolve_font(DEFAULT_HANDLE_FONT, handle_font_size)
 
-            draw.text((text_x, handle_y), display_handle, font=handle_font, fill=handle_color)
-            header_bottom = max(header_bottom, handle_y + handle_font_size)
+        if brand_alignment == "center":
+            name_y = (avatar_bottom + 12) if avatar_enabled else avatar_y
+            if brand_name:
+                nw = _measure_text_width(brand_name, font=name_font, draw=draw)
+                t_bbox = draw.textbbox((0, 0), brand_name, font=name_font)
+                nx = (canvas_w - nw) // 2
+                _draw_text_with_emojis(img, (nx, name_y), brand_name, font=name_font, fill=brand_name_color)
+                header_bottom = max(header_bottom, name_y + (t_bbox[3] - t_bbox[1]))
+
+            if clean_handle:
+                display_handle = f"@{clean_handle}"
+                hw = _measure_text_width(display_handle, font=handle_font, draw=draw)
+                h_bbox = draw.textbbox((0, 0), display_handle, font=handle_font)
+                hx = (canvas_w - hw) // 2
+                hy = (name_y + brand_name_font_size + 6) if brand_name else name_y
+                _draw_text_with_emojis(img, (hx, hy), display_handle, font=handle_font, fill=handle_color)
+                header_bottom = max(header_bottom, hy + (h_bbox[3] - h_bbox[1]))
+        else:
+            text_x = (avatar_x + avatar_size + 24) if avatar_enabled else avatar_x
+            name_y = avatar_y + 8 if avatar_enabled else 80
+            max_text_w = max(100, canvas_w - text_x - 60)
+
+            if brand_name:
+                display_name = brand_name
+                if _measure_text_width(display_name, font=name_font, draw=draw) > max_text_w:
+                    while display_name and _measure_text_width(f"{display_name}...", font=name_font, draw=draw) > max_text_w:
+                        display_name = display_name[:-1].rstrip()
+                    display_name = f"{display_name}..." if display_name else "..."
+
+                _draw_text_with_emojis(img, (text_x, name_y), display_name, font=name_font, fill=brand_name_color)
+                header_bottom = max(avatar_bottom, name_y + brand_name_font_size)
+
+            if clean_handle:
+                display_handle = f"@{clean_handle}"
+                handle_y = (name_y + brand_name_font_size + 8) if brand_name else name_y
+
+                if _measure_text_width(display_handle, font=handle_font, draw=draw) > max_text_w:
+                    while clean_handle and _measure_text_width(f"@{clean_handle}...", font=handle_font, draw=draw) > max_text_w:
+                        clean_handle = clean_handle[:-1].rstrip()
+                    display_handle = f"@{clean_handle}..." if clean_handle else "..."
+
+                _draw_text_with_emojis(img, (text_x, handle_y), display_handle, font=handle_font, fill=handle_color)
+                header_bottom = max(header_bottom, handle_y + handle_font_size)
+
+    # Top Badge / Niche Tag
+    badge_enabled = bool(_extract_field(template, "badge_enabled", True))
+    custom_badge_text = str(_extract_field(template, "custom_badge_text") or "").strip()
+    badge_y_conf = _extract_field(template, "badge_y")
+    badge_y = max(0, int(badge_y_conf)) if badge_y_conf is not None else 45
+    badge_bg_color = _hex_to_rgba(str(_extract_field(template, "custom_badge_bg_color", "#E11D48")))
+    badge_text_color = _hex_to_rgba(str(_extract_field(template, "custom_badge_text_color", "#FFFFFF")))
+
+    if badge_enabled and custom_badge_text:
+        badge_font = _resolve_font(DEFAULT_HEADLINE_FONT, 24)
+        bw_text = _measure_text_width(custom_badge_text, font=badge_font, draw=draw)
+        t_bbox = draw.textbbox((0, 0), custom_badge_text, font=badge_font)
+        bw = bw_text + 36
+        bh = max(34, (t_bbox[3] - t_bbox[1]) + 16)
+        bx = (canvas_w - bw) // 2
+        draw.rounded_rectangle(
+            [bx, badge_y, bx + bw, badge_y + bh],
+            radius=8,
+            fill=badge_bg_color,
+        )
+        badge_text_x = bx + (bw - bw_text) // 2
+        badge_text_y = badge_y + (bh - (t_bbox[3] - t_bbox[1])) // 2 - t_bbox[1]
+        _draw_text_with_emojis(
+            img,
+            (badge_text_x, badge_text_y),
+            custom_badge_text,
+            font=badge_font,
+            fill=badge_text_color,
+        )
+        header_bottom = max(header_bottom, badge_y + bh)
 
     # Dynamic Headline
     headline_enabled = bool(_extract_field(template, "headline_enabled", True))
@@ -457,6 +789,7 @@ def generate_header_overlay(
     headline_max_lines = max(1, int(_extract_field(template, "headline_max_lines", 3)))
     headline_margin_x = max(0, int(_extract_field(template, "headline_margin_x", 60)))
     headline_margin_top = max(0, int(_extract_field(template, "headline_margin_top", 30)))
+    headline_y_conf = _extract_field(template, "headline_y")
 
     final_font_size = headline_font_size
     headline_lines: List[str] = []
@@ -464,24 +797,183 @@ def generate_header_overlay(
 
     if headline_enabled and headline and headline.strip():
         max_headline_w = canvas_w - (2 * headline_margin_x)
+        headline_font_name = str(_extract_field(template, "headline_font") or DEFAULT_HEADLINE_FONT)
         headline_lines, final_font_size, text_h = wrap_and_fit_headline(
             text=headline,
             max_width=max_headline_w,
             max_lines=headline_max_lines,
             base_font_size=headline_font_size,
-            font_name=DEFAULT_HEADLINE_FONT,
+            font_name=headline_font_name,
         )
 
-        hl_font = _resolve_font(DEFAULT_HEADLINE_FONT, final_font_size)
-        curr_y = (header_bottom + headline_margin_top) if header_bottom > 0 else 80
+        hl_font = _resolve_font(headline_font_name, final_font_size)
+        if headline_y_conf is not None:
+            curr_y = max(0, int(headline_y_conf))
+        else:
+            curr_y = (header_bottom + headline_margin_top) if header_bottom > 0 else 80
+
         line_height = draw.textbbox((0, 0), "Ajgq!#1", font=hl_font)[3] - draw.textbbox((0, 0), "Ajgq!#1", font=hl_font)[1]
         line_spacing = int(line_height * 0.20)
+        headline_alignment = str(_extract_field(template, "headline_alignment", "center") or "center").lower()
 
         for line in headline_lines:
-            draw.text((headline_margin_x, curr_y), line, font=hl_font, fill=headline_color)
+            if headline_alignment == "left":
+                line_x = headline_margin_x
+            else:
+                line_w = _measure_text_width(line, font=hl_font, draw=draw)
+                line_x = max(0, (canvas_w - line_w) // 2)
+
+            _draw_text_with_emojis(img, (line_x, curr_y), line, font=hl_font, fill=headline_color)
             curr_y += line_height + line_spacing
 
         headline_bottom = curr_y
+
+    # Video Border and Framing on Overlay with Corner Masking
+    if video_placement:
+        v_border_w = int(_extract_field(template, "video_border_width", 0) or 0)
+        v_border_col = _hex_to_rgba(str(_extract_field(template, "video_border_color", "#3B82F6")))
+        v_radius = int(_extract_field(template, "video_radius", 0) or 0)
+        bg_col = _hex_to_rgba(str(_extract_field(template, "background_color", "#0D1117")), alpha=255)
+
+        vx = video_placement["x"]
+        vy = video_placement["y"]
+        vw = video_placement["width"]
+        vh = video_placement["height"]
+
+        box_x = video_placement.get("box_x", vx)
+        box_y = video_placement.get("box_y", vy)
+        box_w = video_placement.get("box_width", vw)
+        box_h = video_placement.get("box_height", vh)
+
+        # In contain mode, if container box is larger than video, fill sidebars/letterbox with card fill
+        if box_w > vw or box_h > vh:
+            card_fill = (30, 41, 59, 255)
+            if vx > box_x:
+                draw.rectangle([box_x, box_y, vx, box_y + box_h], fill=card_fill)
+            if (box_x + box_w) > (vx + vw):
+                draw.rectangle([vx + vw, box_y, box_x + box_w, box_y + box_h], fill=card_fill)
+            if vy > box_y:
+                draw.rectangle([box_x, box_y, box_x + box_w, vy], fill=card_fill)
+            if (box_y + box_h) > (vy + vh):
+                draw.rectangle([box_x, vy + vh, box_x + box_w, box_y + box_h], fill=card_fill)
+
+        # If radius > 0, mask corners with canvas background color so video corners are rounded
+        if v_radius > 0 and box_w > 2 * v_radius and box_h > 2 * v_radius:
+            corner_mask = Image.new("RGBA", (box_w, box_h), bg_col)
+            cm_draw = ImageDraw.Draw(corner_mask)
+            cm_draw.rounded_rectangle([0, 0, box_w - 1, box_h - 1], radius=v_radius, fill=(0, 0, 0, 0))
+            img.paste(corner_mask, (box_x, box_y), corner_mask)
+
+        # Draw container border outline
+        if v_border_w > 0:
+            if v_radius > 0:
+                draw.rounded_rectangle(
+                    [box_x, box_y, box_x + box_w - 1, box_y + box_h - 1],
+                    radius=v_radius,
+                    outline=v_border_col,
+                    width=v_border_w,
+                )
+            else:
+                draw.rectangle(
+                    [box_x, box_y, box_x + box_w - 1, box_y + box_h - 1],
+                    outline=v_border_col,
+                    width=v_border_w,
+                )
+
+    # Extra Image / Footer Card Layer
+    extra_image_enabled = bool(_extract_field(template, "extra_image_enabled", False))
+    if extra_image_enabled:
+        extra_type = str(_extract_field(template, "extra_image_template_type", "comment"))
+        extra_y = max(0, int(_extract_field(template, "extra_image_y", 1420)))
+        extra_h = max(30, int(_extract_field(template, "extra_image_height", 340)))
+        extra_w_pct = max(20, min(100, int(_extract_field(template, "extra_image_width", 92))))
+        extra_w = int(canvas_w * (extra_w_pct / 100.0))
+        extra_x_conf = _extract_field(template, "extra_image_x")
+        extra_x = int(extra_x_conf) if extra_x_conf is not None else ((canvas_w - extra_w) // 2)
+        extra_r = max(0, int(_extract_field(template, "extra_image_radius", 16)))
+
+        if extra_type in ("custom_upload", "custom", "image"):
+            raw_extra_path = _extract_field(template, "extra_image_path") or _extract_field(template, "extra_image_url")
+            extra_asset = _resolve_asset_path(raw_extra_path)
+            if extra_asset and os.path.isfile(extra_asset):
+                try:
+                    with Image.open(extra_asset) as e_img:
+                        e_img = e_img.convert("RGBA")
+                        e_img = ImageOps.fit(e_img, (extra_w, extra_h), Image.Resampling.LANCZOS)
+                        if extra_r > 0:
+                            mask = Image.new("L", (extra_w, extra_h), 0)
+                            md = ImageDraw.Draw(mask)
+                            md.rounded_rectangle([0, 0, extra_w - 1, extra_h - 1], radius=extra_r, fill=255)
+                            img.paste(e_img, (extra_x, extra_y), mask)
+                        else:
+                            img.paste(e_img, (extra_x, extra_y))
+                except Exception as exc:
+                    logger.warning("Could not render extra image asset: %s", exc)
+        else:
+            custom_title = _extract_field(template, "extra_image_title")
+            custom_sub = _extract_field(template, "extra_image_subtitle")
+            bg_col_hex = str(_extract_field(template, "extra_image_bg_color", "#18181B"))
+            text_col_hex = str(_extract_field(template, "extra_image_text_color", "#FFFFFF"))
+            border_col_hex = str(_extract_field(template, "extra_image_border_color", "#3F3F46"))
+
+            card_bg = _hex_to_rgba(bg_col_hex, alpha=235)
+            card_border = _hex_to_rgba(border_col_hex)
+            card_title_col = _hex_to_rgba(text_col_hex)
+            card_sub_col = _hex_to_rgba(text_col_hex, alpha=180)
+
+            draw.rounded_rectangle(
+                [extra_x, extra_y, extra_x + extra_w, extra_y + extra_h],
+                radius=extra_r,
+                fill=card_bg,
+                outline=card_border,
+                width=2,
+            )
+            title_font = _resolve_font(DEFAULT_HEADLINE_FONT, 24)
+            body_font = _resolve_font(DEFAULT_HANDLE_FONT, 18)
+
+            if custom_title and str(custom_title).strip():
+                c_title = str(custom_title).strip()
+            elif extra_type == "comment":
+                c_title = "💬 DEIXE SEU COMENTÁRIO"
+            elif extra_type == "follow":
+                c_title = "🔔 SIGA O PERFIL PARA MAIS"
+            elif extra_type == "deal":
+                c_title = "🛒 CONFIRA O LINK NA BIO"
+            else:
+                c_title = "💡 FATO CURIOSO DIÁRIO"
+
+            if custom_sub and str(custom_sub).strip():
+                c_sub = str(custom_sub).strip()
+            elif extra_type == "comment":
+                c_sub = "Participe do debate e compartilhe com seus amigos!"
+            elif extra_type == "follow":
+                c_sub = "Não perca os próximos conteúdos exclusivos!"
+            elif extra_type == "deal":
+                c_sub = "Aproveite as ofertas antes que esgotem!"
+            else:
+                c_sub = "Salve este vídeo para rever quando quiser!"
+
+            tw = _measure_text_width(c_title, font=title_font, draw=draw)
+            sw = _measure_text_width(c_sub, font=body_font, draw=draw)
+            t_bbox = draw.textbbox((0, 0), c_title, font=title_font)
+            s_bbox = draw.textbbox((0, 0), c_sub, font=body_font)
+            content_h = (t_bbox[3] - t_bbox[1]) + 12 + (s_bbox[3] - s_bbox[1])
+            start_cy = extra_y + (extra_h - content_h) // 2
+
+            _draw_text_with_emojis(
+                img,
+                (extra_x + (extra_w - tw) // 2, start_cy),
+                c_title,
+                font=title_font,
+                fill=card_title_col,
+            )
+            _draw_text_with_emojis(
+                img,
+                (extra_x + (extra_w - sw) // 2, start_cy + (t_bbox[3] - t_bbox[1]) + 12),
+                c_sub,
+                font=body_font,
+                fill=card_sub_col,
+            )
 
     # Ensure output directory exists and save PNG
     os.makedirs(os.path.dirname(os.path.abspath(output_image_path)) or ".", exist_ok=True)
@@ -574,15 +1066,18 @@ def build_render_ffmpeg_cmd(
     """Build the complete FFmpeg command array. Pure function for unit testing.
 
     Filter graph:
-    1. Scales source video to contain-fit dimensions.
+    1. Scales (and optionally crops for cover fit) source video to box dimensions.
     2. Overlays optional watermark logo onto the video footage (Sobre o vídeo).
     3. Pads to canvas_width x canvas_height with background_color, positioning video at (pos_x, pos_y).
-    4. Overlays transparent header and headline PNG at (0, 0).
+    4. Overlays transparent header, headline, and border PNG at (0, 0).
     """
     vw = video_placement["width"]
     vh = video_placement["height"]
     vx = video_placement["x"]
     vy = video_placement["y"]
+    fit_mode = video_placement.get("fit", "contain")
+    sw = video_placement.get("scale_width", vw)
+    sh = video_placement.get("scale_height", vh)
 
     cw = canvas_width - (canvas_width % 2)
     ch = canvas_height - (canvas_height % 2)
@@ -590,6 +1085,11 @@ def build_render_ffmpeg_cmd(
     bg_color = _hex_to_ffmpeg_color(background_color)
 
     extra_inputs: List[str] = []
+    if fit_mode == "cover" and (sw != vw or sh != vh):
+        video_scale_filter = f"scale={sw}:{sh},crop={vw}:{vh}"
+    else:
+        video_scale_filter = f"scale={vw}:{vh}"
+
     # Build filter graph
     if watermark_params and watermark_params.get("path"):
         extra_inputs.extend(["-i", watermark_params["path"]])
@@ -601,7 +1101,7 @@ def build_render_ffmpeg_cmd(
             position=watermark_params.get("position", DEFAULT_POSITION),
         )
         filter_complex = (
-            f"[0:v]scale={vw}:{vh}[vscaled];"
+            f"[0:v]{video_scale_filter}[vscaled];"
             f"[2:v]{logo_chain}[wmark];"
             f"[vscaled][wmark]overlay={lx}:{ly}[vwithlogo];"
             f"[vwithlogo]pad={cw}:{ch}:{vx}:{vy}:color={bg_color}[vbase];"
@@ -609,7 +1109,7 @@ def build_render_ffmpeg_cmd(
         )
     else:
         filter_complex = (
-            f"[0:v]scale={vw}:{vh},pad={cw}:{ch}:{vx}:{vy}:color={bg_color}[vbase];"
+            f"[0:v]{video_scale_filter},pad={cw}:{ch}:{vx}:{vy}:color={bg_color}[vbase];"
             f"[vbase][1:v]overlay=0:0"
         )
 
@@ -667,34 +1167,32 @@ def render_viral_video(
     os.close(fd)
 
     try:
+        canvas_w = int(_extract_field(template, "width", 1080))
+        canvas_h = int(_extract_field(template, "height", 1920))
+        bg_color = str(_extract_field(template, "background_color", "#0D1117") or "#0D1117")
+        video_fit = str(_extract_field(template, "video_fit", "contain"))
+
+        video_placement = calculate_video_placement(
+            canvas_width=canvas_w,
+            canvas_height=canvas_h,
+            top_used_height=350,
+            bottom_margin=80,
+            source_width=src_w,
+            source_height=src_h,
+            video_fit=video_fit,
+            video_y=_extract_field(template, "video_y"),
+            video_height=_extract_field(template, "video_height"),
+            video_scale=_extract_field(template, "video_scale"),
+            video_x=_extract_field(template, "video_x"),
+            video_width=_extract_field(template, "video_width"),
+        )
+
         layout_meta = generate_header_overlay(
             brand=brand,
             template=template,
             headline=headline,
             output_image_path=tmp_overlay_path,
-        )
-
-        canvas_w = layout_meta["canvas_width"]
-        canvas_h = layout_meta["canvas_height"]
-        top_used = layout_meta["top_used_height"]
-        bg_color = str(_extract_field(template, "background_color", "#FFFFFF"))
-        video_fit = str(_extract_field(template, "video_fit", "contain"))
-
-        # 3. Calculate contain-fit video area
-        configured_bottom_margin = _extract_field(template, "bottom_margin")
-        if configured_bottom_margin is not None:
-            effective_bottom_margin = int(configured_bottom_margin)
-        else:
-            effective_bottom_margin = 80 if top_used > 0 else 0
-
-        video_placement = calculate_video_placement(
-            canvas_width=canvas_w,
-            canvas_height=canvas_h,
-            top_used_height=top_used,
-            bottom_margin=effective_bottom_margin,
-            source_width=src_w,
-            source_height=src_h,
-            video_fit=video_fit,
+            video_placement=video_placement,
         )
 
         # 4. Resolve watermark parameters
