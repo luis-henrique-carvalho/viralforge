@@ -448,7 +448,9 @@ async def test_all_channels_failure_sets_item_status_failed(tmp_path, spy_publis
     assert receipts[0].status == "failed"
 
     item_after = viral_studio_store.get_item("item_fail_all_1")
-    assert item_after["status"] == "FAILED"
+    assert item_after["status"] == "APPROVED"
+    assert len(item_after["publication_records"]) == 1
+    assert item_after["publication_records"][0]["status"] == "failed"
 
 
 # ---------------------------------------------------------------------------
@@ -665,4 +667,77 @@ def test_get_next_available_slots_edge_cases():
     )
     assert len(slots_malformed) == 2
     assert (slots_malformed[0].hour, slots_malformed[0].minute) == (18, 0)
+
+
+def test_get_next_available_slots_reserves_in_flight_dispatch_queue_jobs(tmp_path):
+    """get_next_available_slots must treat in-flight QUEUED/UPLOADING jobs in dispatch_queue as occupied."""
+    tz_str = "America/Sao_Paulo"
+    tz = ZoneInfo(tz_str)
+    future_start = (datetime.now(tz) + timedelta(days=3)).strftime("%Y-%m-%d")
+    start_date_obj = datetime.strptime(future_start, "%Y-%m-%d").date()
+
+    # Pre-occupy 10:00 on future_start via dispatch_queue.json
+    queue_path = Path(viral_studio_store.DATA_DIR) / "dispatch_queue.json"
+    queue_path.write_text(json.dumps({
+        "job_in_flight_1": {
+            "job_id": "job_in_flight_1",
+            "item_id": "item_inf_1",
+            "brand_id": "brand_dispatch_test",
+            "channel_ids": ["ch_tiktok_1"],
+            "status": "UPLOADING",
+            "scheduled_for": f"{future_start}T10:00:00-03:00",
+        }
+    }), encoding="utf-8")
+
+    slots = viral_studio_store.get_next_available_slots(
+        brand_id="brand_dispatch_test",
+        account_id="ch_tiktok_1",
+        count=2,
+        slots=["10:00", "15:00", "20:00"],
+        start_date=future_start,
+        timezone_str=tz_str,
+    )
+
+    assert len(slots) == 2
+    # 10:00 was occupied by in-flight job, so 1st slot MUST be 15:00
+    assert slots[0].date() == start_date_obj
+    assert (slots[0].hour, slots[0].minute) == (15, 0)
+    # 2nd slot is 20:00
+    assert slots[1].date() == start_date_obj
+    assert (slots[1].hour, slots[1].minute) == (20, 0)
+
+
+def test_dispatch_queue_cancelled_jobs_do_not_block_slots():
+    """Jobs in dispatch_queue marked CANCELLED or FAILED must NOT block slots."""
+    tz_str = "America/Sao_Paulo"
+    tz = ZoneInfo(tz_str)
+    future_start = (datetime.now(tz) + timedelta(days=3)).strftime("%Y-%m-%d")
+    start_date_obj = datetime.strptime(future_start, "%Y-%m-%d").date()
+
+    queue_path = Path(viral_studio_store.DATA_DIR) / "dispatch_queue.json"
+    queue_path.write_text(json.dumps({
+        "job_cancelled_1": {
+            "job_id": "job_cancelled_1",
+            "item_id": "item_canc_1",
+            "brand_id": "brand_dispatch_test",
+            "channel_ids": ["ch_tiktok_1"],
+            "status": "CANCELLED",
+            "scheduled_for": f"{future_start}T10:00:00-03:00",
+        }
+    }), encoding="utf-8")
+
+    slots = viral_studio_store.get_next_available_slots(
+        brand_id="brand_dispatch_test",
+        account_id="ch_tiktok_1",
+        count=1,
+        slots=["10:00", "15:00", "20:00"],
+        start_date=future_start,
+        timezone_str=tz_str,
+    )
+
+    assert len(slots) == 1
+    # 10:00 was cancelled, so it must be available
+    assert slots[0].date() == start_date_obj
+    assert (slots[0].hour, slots[0].minute) == (10, 0)
+
 

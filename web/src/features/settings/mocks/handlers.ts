@@ -17,7 +17,7 @@ export const mockSystemConfig: SystemConfig = {
   DEFAULT_AI_MODEL: 'gemini-2.5-flash',
   LM_STUDIO_BASE_URL: 'http://localhost:1234',
   OLLAMA_BASE_URL: 'http://localhost:11434',
-  TRANSCRIPTION_PROVIDER: 'deepgram',
+  TRANSCRIPTION_PROVIDER: 'whisper',
   PUBLISHING_PROVIDER: 'postiz',
   DEEPGRAM_API_KEY: 'dg_...1234',
   ELEVENLABS_API_KEY: '',

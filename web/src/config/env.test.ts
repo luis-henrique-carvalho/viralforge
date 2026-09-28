@@ -6,5 +6,6 @@ describe('env config', () => {
     expect(env.VITE_API_BASE_URL).toBeDefined()
     expect(typeof env.VITE_API_BASE_URL).toBe('string')
     expect(env.VITE_APP_TITLE).toBe('ViralForge')
+    expect(typeof env.VITE_POSTIZ_PUBLIC_URL).toBe('string')
   })
 })

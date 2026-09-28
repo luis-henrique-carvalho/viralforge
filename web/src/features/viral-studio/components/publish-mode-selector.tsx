@@ -22,7 +22,9 @@ export function PublishModeSelector({ mode, onChangeMode, brand }: PublishModeSe
     if (slots && slots.length > 0) {
       const count = slots.length
       const countLabel = count === 1 ? '1 post por dia' : `${count} posts por dia`
-      const tz = sched.timezone ? ` (${sched.timezone.split('/').pop()?.replace('_', ' ') || 'BRT'})` : ''
+      const tz = sched.timezone
+        ? ` (${sched.timezone.split('/').pop()?.replace('_', ' ') || 'BRT'})`
+        : ''
       return `${countLabel} às ${slots.join(', ')}${tz}, continuando automaticamente a partir do próximo slot livre sem sobreposição.`
     }
     return 'Fila inteligente contínua com base na grade da marca, continuando automaticamente a partir do próximo slot livre sem sobreposição.'

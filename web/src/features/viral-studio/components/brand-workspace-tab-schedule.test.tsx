@@ -27,7 +27,7 @@ describe('BrandWorkspaceTabSchedule', () => {
       expect(screen.getByText('Suporte Magnético 360')).toBeInTheDocument()
     })
 
-    const cancelBtn = screen.getByRole('button', { name: /Cancelar Agendamento/i })
+    const cancelBtn = screen.getByRole('button', { name: /Cancelar/i })
     fireEvent.click(cancelBtn)
 
     await waitFor(() => {
@@ -72,7 +72,7 @@ describe('BrandWorkspaceTabSchedule', () => {
     // Assert that scheduled date is formatted instead of "Horário a definir"
     expect(screen.queryByText('Horário a definir')).not.toBeInTheDocument()
 
-    const cancelBtn = screen.getByRole('button', { name: /Cancelar Agendamento/i })
+    const cancelBtn = screen.getByRole('button', { name: /Cancelar/i })
     fireEvent.click(cancelBtn)
 
     await waitFor(() => {

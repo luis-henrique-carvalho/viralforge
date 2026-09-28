@@ -75,7 +75,8 @@ export function BrandSettingsIdentityCard({
             Identidade & Diretrizes Editoriais
           </CardTitle>
           <CardDescription className="text-xs">
-            Configure os metadados da marca, foto de perfil, template visual padrão e textos de conversão.
+            Configure os metadados da marca, foto de perfil, template visual padrão e textos de
+            conversão.
           </CardDescription>
         </div>
       </CardHeader>

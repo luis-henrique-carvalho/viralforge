@@ -231,7 +231,7 @@ def transcribe_video(video_path: str, ai_model: str | None = None):
     prompt builder can inline them. Faster-Whisper populates the same
     field as the Deepgram path.
     """
-    provider = (os.getenv("TRANSCRIPTION_PROVIDER") or "deepgram").strip().lower()
+    provider = (os.getenv("TRANSCRIPTION_PROVIDER") or "whisper").strip().lower()
 
     # Strip to an audio-only track once so neither backend ingests the full
     # video (see diarization.extract_audio_for_asr). Massively shrinks the

@@ -22,7 +22,7 @@ import time
 import uuid
 from datetime import datetime
 from datetime import timezone as dt_timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from clippyme.api.viral_studio_schemas import (
     DEFAULT_BRAND,

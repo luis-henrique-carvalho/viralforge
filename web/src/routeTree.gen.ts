@@ -17,6 +17,7 @@ import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppViralStudioIndexRouteImport } from './routes/_app/viral-studio/index'
 import { Route as AppViralStudioIdRouteImport } from './routes/_app/viral-studio/$id'
 import { Route as AppViralStudioNewRouteImport } from './routes/_app/viral-studio/new'
+import { Route as AppViralStudioQueueRouteImport } from './routes/_app/viral-studio/queue'
 import { Route as AppViralStudioBrandsIndexRouteImport } from './routes/_app/viral-studio/brands/index'
 import { Route as AppViralStudioBrandsBrandIdRouteImport } from './routes/_app/viral-studio/brands/$brandId'
 import { Route as AppViralStudioTemplatesIndexRouteImport } from './routes/_app/viral-studio/templates/index'
@@ -62,6 +63,11 @@ const AppViralStudioNewRoute = AppViralStudioNewRouteImport.update({
   path: '/viral-studio/new',
   getParentRoute: () => AppRoute,
 } as any)
+const AppViralStudioQueueRoute = AppViralStudioQueueRouteImport.update({
+  id: '/viral-studio/queue',
+  path: '/viral-studio/queue',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppViralStudioBrandsIndexRoute =
   AppViralStudioBrandsIndexRouteImport.update({
     id: '/viral-studio/brands/',
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AppSettingsRoute
   '/viral-studio/$id': typeof AppViralStudioIdRoute
   '/viral-studio/new': typeof AppViralStudioNewRoute
+  '/viral-studio/queue': typeof AppViralStudioQueueRoute
   '/viral-studio/': typeof AppViralStudioIndexRoute
   '/viral-studio/brands/$brandId': typeof AppViralStudioBrandsBrandIdRoute
   '/viral-studio/templates/$templateId': typeof AppViralStudioTemplatesTemplateIdRoute
@@ -114,6 +121,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AppSettingsRoute
   '/viral-studio/$id': typeof AppViralStudioIdRoute
   '/viral-studio/new': typeof AppViralStudioNewRoute
+  '/viral-studio/queue': typeof AppViralStudioQueueRoute
   '/viral-studio': typeof AppViralStudioIndexRoute
   '/viral-studio/brands/$brandId': typeof AppViralStudioBrandsBrandIdRoute
   '/viral-studio/templates/$templateId': typeof AppViralStudioTemplatesTemplateIdRoute
@@ -130,6 +138,7 @@ export interface FileRoutesById {
   '/_app/settings': typeof AppSettingsRoute
   '/_app/viral-studio/$id': typeof AppViralStudioIdRoute
   '/_app/viral-studio/new': typeof AppViralStudioNewRoute
+  '/_app/viral-studio/queue': typeof AppViralStudioQueueRoute
   '/_app/viral-studio/': typeof AppViralStudioIndexRoute
   '/_app/viral-studio/brands/$brandId': typeof AppViralStudioBrandsBrandIdRoute
   '/_app/viral-studio/templates/$templateId': typeof AppViralStudioTemplatesTemplateIdRoute
@@ -146,6 +155,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/viral-studio/$id'
     | '/viral-studio/new'
+    | '/viral-studio/queue'
     | '/viral-studio/'
     | '/viral-studio/brands/$brandId'
     | '/viral-studio/templates/$templateId'
@@ -160,6 +170,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/viral-studio/$id'
     | '/viral-studio/new'
+    | '/viral-studio/queue'
     | '/viral-studio'
     | '/viral-studio/brands/$brandId'
     | '/viral-studio/templates/$templateId'
@@ -175,6 +186,7 @@ export interface FileRouteTypes {
     | '/_app/settings'
     | '/_app/viral-studio/$id'
     | '/_app/viral-studio/new'
+    | '/_app/viral-studio/queue'
     | '/_app/viral-studio/'
     | '/_app/viral-studio/brands/$brandId'
     | '/_app/viral-studio/templates/$templateId'
@@ -246,6 +258,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppViralStudioNewRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/viral-studio/queue': {
+      id: '/_app/viral-studio/queue'
+      path: '/viral-studio/queue'
+      fullPath: '/viral-studio/queue'
+      preLoaderRoute: typeof AppViralStudioQueueRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/viral-studio/brands/': {
       id: '/_app/viral-studio/brands/'
       path: '/viral-studio/brands'
@@ -290,6 +309,7 @@ interface AppRouteChildren {
   AppSettingsRoute: typeof AppSettingsRoute
   AppViralStudioIdRoute: typeof AppViralStudioIdRoute
   AppViralStudioNewRoute: typeof AppViralStudioNewRoute
+  AppViralStudioQueueRoute: typeof AppViralStudioQueueRoute
   AppViralStudioIndexRoute: typeof AppViralStudioIndexRoute
   AppViralStudioBrandsBrandIdRoute: typeof AppViralStudioBrandsBrandIdRoute
   AppViralStudioTemplatesTemplateIdRoute: typeof AppViralStudioTemplatesTemplateIdRoute
@@ -304,6 +324,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsRoute: AppSettingsRoute,
   AppViralStudioIdRoute: AppViralStudioIdRoute,
   AppViralStudioNewRoute: AppViralStudioNewRoute,
+  AppViralStudioQueueRoute: AppViralStudioQueueRoute,
   AppViralStudioIndexRoute: AppViralStudioIndexRoute,
   AppViralStudioBrandsBrandIdRoute: AppViralStudioBrandsBrandIdRoute,
   AppViralStudioTemplatesTemplateIdRoute:

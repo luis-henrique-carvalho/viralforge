@@ -172,6 +172,13 @@ async def lifespan(app: FastAPI):
         await live_monitor.auto_resume()
     except Exception:
         logger.exception("live monitor auto-resume failed")
+
+    # Recover and resume in-flight dispatch publishing jobs from previous server life
+    try:
+        from clippyme.domain.publish_dispatch_service import dispatch_service
+        await dispatch_service.recover_on_startup()
+    except Exception:
+        logger.exception("Publish dispatch startup recovery failed")
     yield
     # Stop the live monitor first so its in-flight capture/publish tasks unwind
     # cleanly before we tear down the worker loops they depend on. shutdown()

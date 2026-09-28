@@ -100,6 +100,7 @@ BRANDS_FILE: Optional[str] = None
 TEMPLATES_FILE: Optional[str] = None
 BATCHES_FILE: Optional[str] = None
 ITEMS_FILE: Optional[str] = None
+DISPATCH_QUEUE_FILE: Optional[str] = None
 
 _STORE_THREAD_LOCK = threading.RLock()
 _LOCK_DEPTH = 0
@@ -317,12 +318,18 @@ def get_store_dir() -> str:
 
 
 def set_store_dir(directory: str) -> None:
-    global DATA_DIR, BRANDS_FILE, TEMPLATES_FILE, BATCHES_FILE, ITEMS_FILE
+    global DATA_DIR, BRANDS_FILE, TEMPLATES_FILE, BATCHES_FILE, ITEMS_FILE, DISPATCH_QUEUE_FILE
     DATA_DIR = directory
     BRANDS_FILE = None
     TEMPLATES_FILE = None
     BATCHES_FILE = None
     ITEMS_FILE = None
+    DISPATCH_QUEUE_FILE = None
+    try:
+        from clippyme.domain import publish_dispatch_service
+        publish_dispatch_service.DISPATCH_QUEUE_PATH = os.path.join(directory, "dispatch_queue.json")
+    except (ImportError, AttributeError):
+        pass
 
 
 def get_brands_path() -> str:
@@ -335,6 +342,18 @@ def get_templates_path() -> str:
 
 def get_batches_path() -> str:
     return BATCHES_FILE or os.path.join(DATA_DIR, BATCHES_FILENAME)
+
+
+def get_dispatch_queue_path() -> str:
+    if DISPATCH_QUEUE_FILE:
+        return DISPATCH_QUEUE_FILE
+    try:
+        from clippyme.domain import publish_dispatch_service
+        if getattr(publish_dispatch_service, "DISPATCH_QUEUE_PATH", None):
+            return publish_dispatch_service.DISPATCH_QUEUE_PATH
+    except (ImportError, AttributeError):
+        pass
+    return os.path.join(DATA_DIR, "dispatch_queue.json")
 
 
 def _atomic_write_json(file_path: str, data: Dict[str, Any]) -> None:
@@ -420,6 +439,13 @@ def list_brands() -> List[Dict[str, Any]]:
         return sorted(res, key=lambda b: (b.get("name") or b.get("id", "")).lower())
 
 
+DEFAULT_BRAND_SCHEDULE: Dict[str, Any] = {
+    "frequency": 3,
+    "slots": ["10:00", "15:00", "20:00"],
+    "timezone": "America/Sao_Paulo",
+}
+
+
 def get_brand(brand_id: str) -> Optional[Dict[str, Any]]:
     if not brand_id:
         return None
@@ -430,6 +456,8 @@ def get_brand(brand_id: str) -> Optional[Dict[str, Any]]:
             return None
         res = dict(brand)
         res.pop("_is_seed", None)
+        if not res.get("posting_schedule"):
+            res["posting_schedule"] = dict(DEFAULT_BRAND_SCHEDULE)
         return res
 
 
@@ -454,6 +482,8 @@ def create_brand(brand: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
         data["avatar_path"] = validate_safe_asset_path(data["avatar_path"])
     if "logo_path" in data and data["logo_path"] is not None:
         data["logo_path"] = validate_safe_asset_path(data["logo_path"])
+
+    data.setdefault("posting_schedule", dict(DEFAULT_BRAND_SCHEDULE))
 
     with _STORE_LOCK:
         brands = _load_brands_locked()
@@ -609,6 +639,21 @@ def find_item_batch(item_id: str) -> tuple[Dict[str, Any], str, Dict[str, Any]]:
     raise NotFoundError(f"Video item not found: {item_id}")
 
 
+def find_item_by_post_id(post_id: str) -> Optional[tuple[Dict[str, Any], str, Dict[str, Any]]]:
+    """Locate item, parent batch ID, and batch dict linked to a post_id in publication records."""
+    if not post_id:
+        return None
+    with _STORE_LOCK:
+        batches = _load_batches_locked()
+        for batch_id, batch in batches.items():
+            b_id = batch.get("batch_id") or batch.get("id") or batch_id
+            for item in batch.get("items", []):
+                for rec in item.get("publication_records", []):
+                    if rec.get("post_id") == post_id or rec.get("id") == post_id:
+                        return dict(item), str(b_id), dict(batch)
+    return None
+
+
 def update_item_status_by_post_id(
     post_id: str,
     new_status: str,
@@ -665,7 +710,12 @@ def append_publication_record(
             for idx, item in enumerate(batch.get("items", [])):
                 if item.get("id") == item_id or item.get("item_id") == item_id:
                     records = list(item.get("publication_records") or [])
-                    records.append(record)
+                    rec_id = record.get("id")
+                    existing_idx = next((i for i, r in enumerate(records) if rec_id and r.get("id") == rec_id), None)
+                    if existing_idx is not None:
+                        records[existing_idx] = record
+                    else:
+                        records.append(record)
                     item["publication_records"] = records
                     item["updated_at"] = _utcnow_iso()
                     batch["items"][idx] = item
@@ -894,7 +944,17 @@ def _derive_batch_status(items: List[Dict[str, Any]]) -> str:
 
 def _load_batches_locked() -> Dict[str, Dict[str, Any]]:
     path = get_batches_path()
-    return _read_json_file(path)
+    batches = _read_json_file(path)
+    healed = False
+    for batch in batches.values():
+        for item in batch.get("items", []):
+            if item.get("status") == "FAILED" and item.get("rendered_path"):
+                if os.path.isfile(item.get("rendered_path")):
+                    item["status"] = "APPROVED"
+                    healed = True
+    if healed:
+        _atomic_write_json(path, batches)
+    return batches
 
 
 def list_batches() -> List[Dict[str, Any]]:
@@ -1365,6 +1425,38 @@ def get_next_available_slots(
                         occupied_datetimes.add(dt.replace(second=0, microsecond=0))
                     except (ValueError, TypeError):
                         continue
+
+        # Also reserve slots from active/queued dispatch queue jobs
+        dispatch_path = get_dispatch_queue_path()
+        if os.path.isfile(dispatch_path):
+            try:
+                with open(dispatch_path, "r", encoding="utf-8") as f:
+                    queue_data = json.load(f)
+                for job in queue_data.values():
+                    if not isinstance(job, dict):
+                        continue
+                    j_status = str(job.get("status") or "").upper()
+                    if j_status in ("CANCELLED", "CANCELED", "FAILED"):
+                        continue
+                    j_brand = job.get("brand_id")
+                    if brand_id and j_brand and j_brand != brand_id:
+                        continue
+                    j_channels = job.get("channel_ids") or []
+                    if account_id and j_channels and account_id not in j_channels:
+                        continue
+                    j_sched = job.get("scheduled_for")
+                    if j_sched:
+                        try:
+                            dt = datetime.fromisoformat(str(j_sched).replace("Z", "+00:00"))
+                            if dt.tzinfo is None:
+                                dt = dt.replace(tzinfo=tz)
+                            else:
+                                dt = dt.astimezone(tz)
+                            occupied_datetimes.add(dt.replace(second=0, microsecond=0))
+                        except (ValueError, TypeError):
+                            pass
+            except Exception as exc:
+                logger.warning("Could not inspect dispatch_queue in get_next_available_slots: %s", exc)
 
     # Determine base date
     if start_date:

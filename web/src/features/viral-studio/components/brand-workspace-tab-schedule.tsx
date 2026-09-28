@@ -7,8 +7,9 @@ import {
   useBrandScheduled,
   useBrandWorkspace,
   useCancelBrandScheduledPost,
+  usePublishBrandScheduledNow,
 } from '../hooks/use-brand-workspace'
-import { BrandSchedulePostItem } from './brand-schedule-post-item'
+import { ScheduledTimelineCard } from './scheduled-timeline-card'
 import { BrandCancelScheduleDialog } from './brand-cancel-schedule-dialog'
 import type { Brand, ScheduledPost } from '../data/batch.types'
 
@@ -17,11 +18,23 @@ interface BrandWorkspaceTabScheduleProps {
 }
 
 export function BrandWorkspaceTabSchedule({ brand }: BrandWorkspaceTabScheduleProps) {
-  const { data: scheduleData, isLoading } = useBrandScheduled(brand.id)
   const { data: workspaceData } = useBrandWorkspace(brand.id)
   const cancelMutation = useCancelBrandScheduledPost(brand.id)
+  const publishNowMutation = usePublishBrandScheduledNow(brand.id)
 
   const [postToCancel, setPostToCancel] = useState<ScheduledPost | null>(null)
+
+  const { data: scheduleData, isLoading } = useBrandScheduled(brand.id, undefined, undefined, {
+    refetchInterval: (query: unknown) => {
+      const queryData = (query as { state?: { data?: { posts?: ScheduledPost[] } } })?.state?.data
+      const currentPosts = queryData?.posts || []
+      const hasActive = currentPosts.some((p) => {
+        const s = (p.status || '').toUpperCase()
+        return s === 'QUEUED' || s === 'UPLOADING'
+      })
+      return hasActive ? 3000 : false
+    },
+  })
 
   const posts = scheduleData?.posts || []
   const nextSlot = workspaceData?.next_slot
@@ -35,6 +48,12 @@ export function BrandWorkspaceTabSchedule({ brand }: BrandWorkspaceTabSchedulePr
     }
     await cancelMutation.mutateAsync(targetPostId)
     setPostToCancel(null)
+  }
+
+  const handlePublishNow = async (post: ScheduledPost) => {
+    const targetPostId = post.post_id || post.id
+    if (!targetPostId) return
+    await publishNowMutation.mutateAsync(targetPostId)
   }
 
   const formatDateTime = (isoString?: string | null) => {
@@ -68,7 +87,7 @@ export function BrandWorkspaceTabSchedule({ brand }: BrandWorkspaceTabSchedulePr
             variant="muted"
             className="text-xs"
           >
-            Acompanhe publicações agendadas e posts concluídos para a marca {brand.name}.
+            Acompanhe publicações na fila, agendadas e posts concluídos para a marca {brand.name}.
           </Typography>
         </div>
 
@@ -99,10 +118,12 @@ export function BrandWorkspaceTabSchedule({ brand }: BrandWorkspaceTabSchedulePr
       ) : posts.length > 0 ? (
         <div className="space-y-3">
           {posts.map((post, index) => (
-            <BrandSchedulePostItem
-              key={post.post_id || post.id || `sched-post-${index}`}
+            <ScheduledTimelineCard
+              key={post.job_id || post.post_id || post.id || `sched-post-${index}`}
               post={post}
               onCancelClick={setPostToCancel}
+              onPublishNowClick={handlePublishNow}
+              isPublishingNow={publishNowMutation.isPending}
             />
           ))}
         </div>

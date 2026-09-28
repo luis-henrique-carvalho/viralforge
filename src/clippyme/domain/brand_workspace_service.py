@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from clippyme.domain.errors import NotFoundError, ValidationError
@@ -79,6 +79,18 @@ def get_brand_customer_id(brand: Dict[str, Any], provider_name: str) -> Optional
         if cid and cid.lower() not in ("auto", "none", "default"):
             return cid
     return None
+
+
+def get_brand_channel_ids(brand: Dict[str, Any], provider_name: str) -> List[str]:
+    """Retrieve list of channel IDs bound to this brand on the active provider."""
+    profiles = brand.get("publishing_profiles") or {}
+    if isinstance(profiles, dict):
+        p_data = profiles.get(provider_name) or {}
+        if isinstance(p_data, dict) and p_data.get("channel_ids"):
+            return [str(cid) for cid in p_data["channel_ids"] if cid]
+    if brand.get("channel_ids"):
+        return [str(cid) for cid in brand["channel_ids"] if cid]
+    return []
 
 
 async def get_brand_channels(brand_id: str, *, all_available: bool = False) -> List[SocialChannel]:
@@ -290,7 +302,39 @@ async def get_workspace_summary(brand_id: str) -> Dict[str, Any]:
 def get_brand_videos(brand_id: str, status: Optional[str] = None) -> List[Dict[str, Any]]:
     """Retrieve video items belonging to a specific brand with optional status filtering."""
     _ = viral_studio_store.get_brand_or_raise(brand_id)
-    return viral_studio_store.get_items_by_brand(brand_id=brand_id, status=status)
+    items = viral_studio_store.get_items_by_brand(brand_id=brand_id, status=status)
+
+    # In-flight dispatch queue enrichment so UI reflects SCHEDULED/PUBLISHED immediately
+    try:
+        from clippyme.domain.publish_dispatch_service import _load_queue_sync
+        queue = _load_queue_sync()
+        if queue:
+            active_jobs = {}
+            for job in queue.values():
+                if isinstance(job, dict) and job.get("brand_id") == brand_id:
+                    j_status = str(job.get("status") or "").upper()
+                    if j_status in ("QUEUED", "UPLOADING", "SCHEDULED", "PUBLISHED"):
+                        active_jobs[job.get("item_id")] = job
+
+            if active_jobs:
+                enriched = []
+                for item in items:
+                    i_copy = dict(item)
+                    i_id = i_copy.get("id") or i_copy.get("item_id")
+                    if i_id in active_jobs:
+                        job = active_jobs[i_id]
+                        j_status = str(job.get("status") or "").upper()
+                        if j_status in ("SCHEDULED", "QUEUED", "UPLOADING"):
+                            i_copy["status"] = "SCHEDULED"
+                            if job.get("scheduled_for"):
+                                i_copy["scheduled_for"] = job.get("scheduled_for")
+                        elif j_status == "PUBLISHED":
+                            i_copy["status"] = "PUBLISHED"
+                    enriched.append(i_copy)
+                return enriched
+    except Exception:
+        pass
+    return items
 
 
 def _validate_item_for_brand(
@@ -363,10 +407,12 @@ def _record_receipts(
             },
         )
     elif all(r.status == "failed" for r in receipts) and receipts:
-        viral_studio_store.update_item_status(
-            batch_id=batch_id,
+        # Crucial rule: KEEP APPROVED on publish failure! Never set to FAILED (which is reserved for video render errors)!
+        viral_studio_store.update_item(
             item_id=item_id,
-            status="FAILED",
+            updates={
+                "status": "APPROVED",
+            },
         )
 
 
@@ -399,8 +445,8 @@ async def auto_schedule_brand_video(
 
     # 1. Resolve posting schedule and calculate synchronized slot
     posting_schedule = brand.get("posting_schedule") or {}
-    slots_list = posting_schedule.get("slots") or ["18:00"]
-    timezone_str = posting_schedule.get("timezone") or "America/Sao_Paulo"
+    slots_list = posting_schedule.get("slots") or viral_studio_store.DEFAULT_BRAND_SCHEDULE["slots"]
+    timezone_str = posting_schedule.get("timezone") or viral_studio_store.DEFAULT_BRAND_SCHEDULE["timezone"]
 
     primary_acc = channel_ids[0] if channel_ids else None
     avail_slots = viral_studio_store.get_next_available_slots(
@@ -509,19 +555,59 @@ async def publish_brand_video(
 
 
 async def cancel_brand_scheduled_post(brand_id: str, post_id: str) -> bool:
-    """Cancel scheduled post in provider and atomically revert item status to APPROVED."""
+    """Cancel scheduled post in provider and/or dispatch queue, and atomically revert item status to APPROVED."""
     brand = viral_studio_store.get_brand_or_raise(brand_id)
     provider_name = get_brand_active_provider(brand)
     port = get_social_publisher(provider=provider_name)
 
-    # 1. Cancel in provider
-    await port.cancel(post_id)
+    from clippyme.domain.publish_dispatch_service import _load_queue_sync, _save_queue_sync
+    queue = _load_queue_sync()
 
-    # 2. Revert local item status to APPROVED and write cancellation audit record
+    # 1. If post_id is an in-flight / queued dispatch job (e.g. job_pub_...)
+    is_dispatch_job = post_id in queue or post_id.startswith("job_")
+    if is_dispatch_job:
+        job_data = queue.get(post_id)
+        if job_data:
+            job_data["status"] = "CANCELLED"
+            job_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+            queue[post_id] = job_data
+            _save_queue_sync(queue)
+
+            # Revert underlying item to APPROVED
+            item_id = job_data.get("item_id")
+            if item_id:
+                try:
+                    _, batch_id, _ = viral_studio_store.find_item_batch(item_id)
+                    viral_studio_store.update_item_status(batch_id, item_id, "APPROVED")
+                except Exception:
+                    pass
+        return True
+
+    # 2. Cancel in external provider (Postiz / Zernio)
+    try:
+        await port.cancel(post_id)
+    except Exception as exc:
+        logger.warning("Provider cancel failed for post %s: %s", post_id, exc)
+
+    # 3. Revert local item status to APPROVED and write cancellation audit record
     reverted_item = viral_studio_store.update_item_status_by_post_id(
         post_id=post_id,
         new_status="APPROVED",
     )
+
+    # Also check if any in-flight dispatch record matches this post_id or item_id and mark CANCELLED
+    modified_queue = False
+    for j_id, j_val in queue.items():
+        if (
+            j_val.get("post_id") == post_id
+            or j_id == post_id
+            or (reverted_item and j_val.get("item_id") == (reverted_item.get("item_id") or reverted_item.get("id")))
+        ):
+            j_val["status"] = "CANCELLED"
+            j_val["updated_at"] = datetime.now(timezone.utc).isoformat()
+            modified_queue = True
+    if modified_queue:
+        _save_queue_sync(queue)
 
     if reverted_item:
         logger.info(
@@ -530,6 +616,133 @@ async def cancel_brand_scheduled_post(brand_id: str, post_id: str) -> bool:
             post_id,
         )
     return True
+
+
+def _enrich_post_metadata(
+    post: Dict[str, Any],
+    channel_map: Dict[str, SocialChannel],
+    provider_name: str,
+) -> Dict[str, Any]:
+    """Populate platform, channel metadata, thumbnail and URLs on a scheduled post."""
+    p = dict(post)
+    ch_id = p.get("channel_id")
+    raw_integ = (p.get("raw_response") or {}).get("integration") or {}
+    raw_ch_id = raw_integ.get("id") if isinstance(raw_integ, dict) else None
+
+    matched_ch = channel_map.get(str(ch_id)) or channel_map.get(str(raw_ch_id))
+    if not matched_ch and p.get("channels"):
+        for c in p["channels"]:
+            if str(c) in channel_map:
+                matched_ch = channel_map[str(c)]
+                break
+
+    if matched_ch:
+        p["channel_name"] = matched_ch.name
+        p["channel_handle"] = matched_ch.handle
+        p["channel_avatar_url"] = matched_ch.avatar_url
+        p["platform"] = matched_ch.platform
+    elif not p.get("platform"):
+        p["platform"] = "postiz" if provider_name == "postiz" else "social"
+
+    post_id = p.get("post_id") or p.get("id")
+    p.setdefault("provider", provider_name)
+    if provider_name == "postiz":
+        from clippyme.storage.config_store import load_persistent_config
+        cfg = load_persistent_config() or {}
+        default_postiz_url = (
+            os.environ.get("POSTIZ_PUBLIC_URL")
+            or cfg.get("POSTIZ_PUBLIC_URL")
+            or "http://localhost:4007"
+        ).rstrip("/")
+        provider_target = p.get("provider_post_url")
+        if not provider_target or provider_target.endswith("/posts"):
+            if post_id:
+                provider_target = f"{default_postiz_url}/p/{post_id}?share=true"
+            else:
+                provider_target = f"{default_postiz_url}/launches"
+        if "postiz:5000" in provider_target:
+            provider_target = provider_target.replace("http://postiz:5000", default_postiz_url)
+        p["provider_url"] = provider_target
+        p["provider_post_url"] = provider_target
+    elif provider_name == "zernio":
+        p.setdefault("provider_url", "https://zernio.com/posts")
+    item_id = p.get("item_id")
+    matched_item = None
+    batch_id = None
+
+    if post_id:
+        item_match = viral_studio_store.find_item_by_post_id(str(post_id))
+        if item_match:
+            matched_item, batch_id, _ = item_match
+            item_id = matched_item.get("id") or matched_item.get("item_id")
+            p["item_id"] = item_id
+
+    if not matched_item and item_id:
+        try:
+            matched_item, batch_id, _ = viral_studio_store.find_item_batch(item_id)
+        except Exception:
+            pass
+
+    if matched_item and batch_id and item_id:
+        video_title = (
+            matched_item.get("selected_headline")
+            or matched_item.get("headline")
+            or matched_item.get("title")
+        )
+        if video_title:
+            p["title"] = video_title
+        if matched_item.get("caption") and not p.get("content"):
+            p["content"] = matched_item.get("caption")
+        if not p.get("thumbnail_url"):
+            p["thumbnail_url"] = f"/videos/viral_studio/{batch_id}/{item_id}/rendered_thumbnail.jpg"
+        if not p.get("video_url"):
+            p["video_url"] = f"/videos/viral_studio/{batch_id}/{item_id}/rendered.mp4"
+
+    return p
+
+
+def _get_active_queue_posts(
+    brand_id: str,
+    channel_map: Dict[str, SocialChannel],
+    provider_name: str,
+) -> List[Dict[str, Any]]:
+    """Retrieve in-flight QUEUED or UPLOADING dispatch jobs converted to timeline posts."""
+    from clippyme.domain.publish_dispatch_service import dispatch_service
+    active_records = dispatch_service.list_dispatch_records(brand_id=brand_id)
+    active_jobs = [j for j in active_records if str(j.status).upper() in ("QUEUED", "UPLOADING")]
+    
+    result = []
+    for job in active_jobs:
+        primary_cid = job.channel_ids[0] if job.channel_ids else None
+        ch = channel_map.get(str(primary_cid)) if primary_cid else None
+        
+        post_dict = {
+            "id": job.job_id,
+            "post_id": job.job_id,
+            "job_id": job.job_id,
+            "brand_id": brand_id,
+            "item_id": job.item_id,
+            "title": job.title or "Publicação",
+            "content": job.caption or "",
+            "status": str(job.status).upper(),
+            "scheduled_for": job.scheduled_for,
+            "scheduled_time": job.scheduled_for,
+            "published_at": None,
+            "post_url": None,
+            "external_url": None,
+            "thumbnail_url": job.thumbnail_url,
+            "provider": job.provider or provider_name,
+            "channel_id": primary_cid,
+            "channels": job.channel_ids,
+            "channel_name": ch.name if ch else (job.channel_names[0] if job.channel_names else None),
+            "channel_handle": ch.handle if ch else None,
+            "channel_avatar_url": ch.avatar_url if ch else None,
+            "platform": ch.platform if ch else ("postiz" if job.provider == "postiz" else "social"),
+            "metrics": {},
+            "raw_response": None,
+        }
+        result.append(post_dict)
+    return result
 
 
 async def list_brand_scheduled_posts(
@@ -543,6 +756,12 @@ async def list_brand_scheduled_posts(
     port = get_social_publisher(provider=provider_name)
     customer_id = get_brand_customer_id(brand, provider_name)
 
+    all_channels = await get_brand_channels(brand_id, all_available=True)
+    channel_map = {str(ch.id): ch for ch in all_channels}
+
+    active_queue_posts = _get_active_queue_posts(brand_id, channel_map, provider_name)
+    active_item_ids = {p.get("item_id") for p in active_queue_posts if p.get("item_id")}
+
     posts = await port.list_scheduled(
         customer_id=customer_id,
         start_date=start_date or "",
@@ -553,36 +772,170 @@ async def list_brand_scheduled_posts(
         items = viral_studio_store.get_items_by_brand(brand_id=brand_id)
         result_posts = []
         for item in items:
-            for rec in item.get("publication_records", []):
-                rec_status = str(rec.get("status", "")).lower()
-                if rec_status in ("cancelled", "canceled"):
-                    continue
-                p_id = str(rec.get("post_id") or rec.get("id") or f"post_{item.get('item_id', 'unknown')}")
-                sched = rec.get("scheduled_for") or rec.get("scheduled_time")
-                result_posts.append({
-                    "id": p_id,
-                    "post_id": p_id,
-                    "brand_id": brand_id,
-                    "item_id": item.get("item_id") or item.get("id"),
-                    "title": item.get("selected_headline") or item.get("headline") or "Publicação",
-                    "content": item.get("caption") or "",
-                    "status": rec.get("status", "scheduled"),
-                    "scheduled_for": sched,
-                    "scheduled_time": sched,
-                    "published_at": rec.get("published_at"),
-                    "post_url": rec.get("post_url") or rec.get("external_url"),
-                    "external_url": rec.get("post_url") or rec.get("external_url"),
-                    "channels": [rec.get("channel_id")] if rec.get("channel_id") else [],
-                })
-        return result_posts
+            item_id = item.get("item_id") or item.get("id")
+            if item_id in active_item_ids:
+                continue
+            item_status = str(item.get("status") or "").upper()
+            if item_status not in ("SCHEDULED", "PUBLISHED"):
+                continue
 
-    # When provider returns posts, ensure brand_id and filter cancelled
+            valid_recs = [
+                r for r in item.get("publication_records", [])
+                if str(r.get("status", "")).lower() in ("scheduled", "published")
+            ]
+            rec = valid_recs[-1] if valid_recs else {}
+            p_id = str(rec.get("post_id") or rec.get("id") or f"post_{item_id or 'unknown'}")
+            sched = rec.get("scheduled_for") or rec.get("scheduled_time") or item.get("scheduled_for")
+            raw_post = {
+                "id": p_id,
+                "post_id": p_id,
+                "brand_id": brand_id,
+                "item_id": item_id,
+                "title": item.get("selected_headline") or item.get("headline") or "Publicação",
+                "content": item.get("caption") or "",
+                "status": "published" if item_status == "PUBLISHED" else "scheduled",
+                "scheduled_for": sched,
+                "scheduled_time": sched,
+                "published_at": rec.get("published_at"),
+                "post_url": rec.get("post_url") or rec.get("external_url"),
+                "external_url": rec.get("post_url") or rec.get("external_url"),
+                "channels": [rec.get("channel_id")] if rec.get("channel_id") else [],
+                "channel_id": rec.get("channel_id"),
+            }
+            result_posts.append(_enrich_post_metadata(raw_post, channel_map, provider_name))
+        return active_queue_posts + result_posts
+
+    # When provider returns posts, ensure brand_id, isolate by brand channels, and filter cancelled
+    brand_channel_ids = set(get_brand_channel_ids(brand, provider_name))
     filtered = []
     for p in posts:
         if isinstance(p, dict):
             if str(p.get("status", "")).lower() in ("cancelled", "canceled"):
                 continue
+            ch_id = p.get("channel_id")
+            raw_integ = (p.get("raw_response") or {}).get("integration") or {}
+            raw_ch_id = raw_integ.get("id") if isinstance(raw_integ, dict) else None
+            
+            # Brand isolation: only include posts matching the brand's connected channels
+            if brand_channel_ids:
+                matches_ch = (ch_id and str(ch_id) in brand_channel_ids) or (raw_ch_id and str(raw_ch_id) in brand_channel_ids)
+                if not matches_ch and (ch_id or raw_ch_id):
+                    continue
+
             p_copy = dict(p)
             p_copy.setdefault("brand_id", brand_id)
-            filtered.append(p_copy)
-    return filtered
+            enriched = _enrich_post_metadata(p_copy, channel_map, provider_name)
+            filtered.append(enriched)
+
+    # Ensure any local scheduled/published item from the store not already in filtered/active is included
+    seen_item_ids = {
+        p.get("item_id") for p in (active_queue_posts + filtered) if p.get("item_id")
+    }
+    seen_post_ids = {
+        str(p.get("id")) for p in (active_queue_posts + filtered) if p.get("id")
+    } | {
+        str(p.get("post_id")) for p in (active_queue_posts + filtered) if p.get("post_id")
+    }
+
+    local_items = viral_studio_store.get_items_by_brand(brand_id=brand_id)
+    for item in local_items:
+        i_id = item.get("item_id") or item.get("id")
+        i_status = str(item.get("status") or "").upper()
+        if i_status in ("SCHEDULED", "PUBLISHED") and i_id not in seen_item_ids:
+            valid_recs = [
+                r for r in item.get("publication_records", [])
+                if str(r.get("status", "")).lower() in ("scheduled", "published")
+            ]
+            rec = valid_recs[-1] if valid_recs else {}
+            p_id = str(rec.get("post_id") or rec.get("id") or f"post_{i_id}")
+            if p_id in seen_post_ids:
+                continue
+            sched = rec.get("scheduled_for") or rec.get("scheduled_time") or item.get("scheduled_for")
+            raw_post = {
+                "id": p_id,
+                "post_id": p_id,
+                "brand_id": brand_id,
+                "item_id": i_id,
+                "title": item.get("selected_headline") or item.get("headline") or item.get("title") or "Publicação",
+                "content": item.get("caption") or "",
+                "status": "published" if i_status == "PUBLISHED" else "scheduled",
+                "scheduled_for": sched,
+                "scheduled_time": sched,
+                "published_at": rec.get("published_at"),
+                "post_url": rec.get("post_url") or rec.get("external_url"),
+                "external_url": rec.get("post_url") or rec.get("external_url"),
+                "channels": [rec.get("channel_id")] if rec.get("channel_id") else [],
+                "channel_id": rec.get("channel_id"),
+            }
+            filtered.append(_enrich_post_metadata(raw_post, channel_map, provider_name))
+
+    return active_queue_posts + filtered
+
+
+async def publish_brand_scheduled_now(brand_id: str, post_id: str) -> Dict[str, Any]:
+    """Trigger immediate publication of a scheduled post."""
+    brand = viral_studio_store.get_brand_or_raise(brand_id)
+    provider_name = get_brand_active_provider(brand)
+    port = get_social_publisher(provider=provider_name)
+
+    item_id: Optional[str] = None
+    channel_ids: List[str] = []
+
+    from clippyme.domain.publish_dispatch_service import dispatch_service
+    queue_jobs = dispatch_service.list_dispatch_records(brand_id=brand_id)
+    for j in queue_jobs:
+        if j.job_id == post_id or j.item_id == post_id:
+            item_id = j.item_id
+            channel_ids = j.channel_ids
+            break
+
+    if not item_id:
+        items = viral_studio_store.get_items_by_brand(brand_id=brand_id)
+        for it in items:
+            it_id = str(it.get("item_id") or it.get("id") or "")
+            if it_id == post_id:
+                item_id = it_id
+                channel_ids = [r.get("channel_id") for r in it.get("publication_records", []) if r.get("channel_id")]
+                break
+            for rec in it.get("publication_records", []):
+                if str(rec.get("post_id") or rec.get("id") or "") == str(post_id):
+                    item_id = it_id
+                    ch = rec.get("channel_id")
+                    if ch:
+                        channel_ids.append(str(ch))
+                    break
+            if item_id:
+                break
+
+    if not item_id:
+        scheduled = await list_brand_scheduled_posts(brand_id)
+        for sp in scheduled:
+            if str(sp.get("id") or sp.get("post_id") or "") == str(post_id):
+                item_id = sp.get("item_id")
+                if sp.get("channel_id"):
+                    channel_ids = [str(sp["channel_id"])]
+                elif sp.get("channels"):
+                    channel_ids = [str(c) for c in sp["channels"]]
+                break
+
+    if not item_id:
+        raise NotFoundError(f"Scheduled post or item '{post_id}' not found for brand '{brand_id}'")
+
+    try:
+        await port.cancel(post_id)
+    except Exception as exc:
+        logger.debug("Failed cancelling scheduled post before publish_now (non-fatal): %s", exc)
+
+    job = await dispatch_service.enqueue_publish(
+        brand_id=brand_id,
+        item_id=item_id,
+        channel_ids=channel_ids or None,
+    )
+    return {
+        "success": True,
+        "job_id": job.job_id,
+        "item_id": item_id,
+        "post_id": post_id,
+        "status": job.status,
+        "message": "Publicação imediata disparada com sucesso",
+    }

@@ -405,3 +405,24 @@ uv run --extra host-tests --with pytest pytest tests/test_postiz_publisher_adapt
 # - Conectar uma conta de teste no Postiz
 # - Agendar um vídeo gerado no ViralForge e confirmar recebimento na fila do Temporal (http://localhost:8080)
 ```
+
+---
+
+## 10. Infraestrutura de Domínio Público e Túneis (Cloudflare Tunnel)
+
+Para viabilizar a comunicação com provedores sociais externos (OAuth da Meta/Instagram/Facebook/TikTok e Webhooks) sem restrições de tráfego, a infraestrutura pública do ambiente utiliza **Cloudflare Tunnel (`cloudflared`)** com um domínio próprio configurado via `.env` (`CLOUDFLARE_DOMAIN` e `POSTIZ_PUBLIC_URL`), substituindo permanentemente túneis com limite rígido de banda (como o plano gratuito do ngrok de 1 GB/mês).
+
+### 10.1 Mapeamento de Subdomínios e Portas
+
+| Serviço | Subdomínio Modelo | Porta Local | Finalidade |
+|---|---|---|---|
+| **Postiz** | `https://postiz.<seu-dominio.online>` | `4007` | Interface web do Postiz, OAuth callback e Webhooks da Meta |
+| **ViralForge API** | `https://api.<seu-dominio.online>` | `8000` | Backend FastAPI, webhooks e documentação Swagger (`/docs`) |
+| **ViralForge Studio** | `https://studio.<seu-dominio.online>` | `5176` | Frontend Vite Dashboard |
+
+### 10.2 Configuração dos Túneis
+
+* **Configuração local:** `~/.cloudflared/config.yml` mapeia o túnel nomeado `viralforge` com regras de *ingress* para cada subdomínio com protocolo HTTP/2.
+* **Execução em segundo plano:** Gerenciado pelo serviço de usuário do systemd (`~/.config/systemd/user/cloudflared.service`), ativo 24/7 e sobrevivendo a reinicializações.
+* **Script de controle:** `./scripts/start_tunnels.sh {status|start|stop|restart}`.
+

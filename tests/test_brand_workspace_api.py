@@ -308,7 +308,7 @@ def test_auto_schedule_brand_video_success(temp_studio_store, mock_publisher_env
         "item_id": "item_1",
         "channel_ids": ["acc_tiktok_1"],
     }
-    response = client.post("/api/viral-studio/brands/brand_test/auto-schedule", json=payload)
+    response = client.post("/api/viral-studio/brands/brand_test/auto-schedule?sync=true", json=payload)
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
@@ -345,7 +345,7 @@ def test_auto_schedule_unapproved_item_fails(temp_studio_store, mock_publisher_e
     }
     response = client.post("/api/viral-studio/brands/brand_test/auto-schedule", json=payload)
     assert response.status_code == 400
-    assert "Only APPROVED items can be auto-scheduled" in response.text
+    assert "Only ready items can be auto-scheduled" in response.text
 
 
 def test_publish_brand_video_direct(temp_studio_store, mock_publisher_env):
@@ -355,7 +355,7 @@ def test_publish_brand_video_direct(temp_studio_store, mock_publisher_env):
         "channel_ids": ["acc_tiktok_1"],
         "publish_now": True,
     }
-    response = client.post("/api/viral-studio/brands/brand_test/publish", json=payload)
+    response = client.post("/api/viral-studio/brands/brand_test/publish?sync=true", json=payload)
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
@@ -402,7 +402,7 @@ def test_cancel_brand_scheduled_post_reverts_status_to_approved(temp_studio_stor
 
     # First auto-schedule item_1 to create a post and set status to SCHEDULED
     schedule_res = client.post(
-        "/api/viral-studio/brands/brand_test/auto-schedule",
+        "/api/viral-studio/brands/brand_test/auto-schedule?sync=true",
         json={"item_id": "item_1", "channel_ids": ["acc_tiktok_1"]},
     )
     assert schedule_res.status_code == 200
@@ -481,3 +481,123 @@ def test_list_publishing_workspaces(temp_studio_store, mock_publisher_env):
     res = client.get("/api/viral-studio/publishing/workspaces")
     assert res.status_code == 200
     assert isinstance(res.json(), list)
+
+
+def test_auto_schedule_and_publish_return_channels_count(temp_studio_store, mock_publisher_env):
+    client = TestClient(app)
+    # 1. Auto schedule async
+    res_sched = client.post(
+        "/api/viral-studio/brands/brand_test/auto-schedule",
+        json={"item_id": "item_1", "channel_ids": ["acc_tiktok_1", "acc_instagram_1"]},
+    )
+    assert res_sched.status_code == 202
+    data_sched = res_sched.json()
+    assert data_sched["success"] is True
+    assert data_sched["channels_count"] == 2
+
+    # 2. Publish async
+    res_pub = client.post(
+        "/api/viral-studio/brands/brand_test/publish",
+        json={"item_id": "item_1", "channel_ids": ["acc_tiktok_1"], "publish_now": True},
+    )
+    assert res_pub.status_code == 202
+    data_pub = res_pub.json()
+    assert data_pub["success"] is True
+    assert data_pub["channels_count"] == 1
+
+
+def test_publish_brand_scheduled_now(temp_studio_store, mock_publisher_env):
+    client = TestClient(app)
+    # First auto-schedule
+    schedule_res = client.post(
+        "/api/viral-studio/brands/brand_test/auto-schedule?sync=true",
+        json={"item_id": "item_1", "channel_ids": ["acc_tiktok_1"]},
+    )
+    assert schedule_res.status_code == 200
+    post_id = schedule_res.json()["receipts"][0]["post_id"]
+
+    # Now trigger publish-now
+    pub_now_res = client.post(f"/api/viral-studio/brands/brand_test/scheduled/{post_id}/publish-now")
+    assert pub_now_res.status_code == 202
+    data = pub_now_res.json()
+    assert data["success"] is True
+    assert data["item_id"] == "item_1"
+
+
+def test_list_brand_scheduled_timeline_includes_active_queue_jobs(temp_studio_store, mock_publisher_env):
+    from clippyme.domain.publish_dispatch_service import _save_queue_sync, DispatchJob
+    # Add a mock active job in dispatch queue
+    active_job = DispatchJob(
+        job_id="job_active_123",
+        item_id="item_1",
+        brand_id="brand_test",
+        channel_ids=["acc_tiktok_1"],
+        status="UPLOADING",
+        title="Active Uploading Video",
+    )
+    _save_queue_sync({"job_active_123": active_job.to_dict()})
+
+    client = TestClient(app)
+    res = client.get("/api/viral-studio/brands/brand_test/scheduled")
+    assert res.status_code == 200
+    posts = res.json()["posts"]
+    assert any(p["id"] == "job_active_123" and p["status"] == "UPLOADING" for p in posts)
+    active_post = next(p for p in posts if p["id"] == "job_active_123")
+    assert active_post["channel_name"] == "Brand TikTok"
+    assert active_post["platform"] == "tiktok"
+
+
+def test_cancel_queued_dispatch_job_removes_from_timeline(temp_studio_store, mock_publisher_env):
+    from clippyme.domain.publish_dispatch_service import _save_queue_sync, _load_queue_sync, DispatchJob
+    # Add a mock active job in dispatch queue
+    queued_job = DispatchJob(
+        job_id="job_queued_cancel_test",
+        item_id="item_1",
+        brand_id="brand_test",
+        channel_ids=["acc_tiktok_1"],
+        status="QUEUED",
+        title="Queued Test Video",
+    )
+    _save_queue_sync({"job_queued_cancel_test": queued_job.to_dict()})
+
+    client = TestClient(app)
+    # Check it is in timeline
+    res_before = client.get("/api/viral-studio/brands/brand_test/scheduled")
+    assert any(p["id"] == "job_queued_cancel_test" for p in res_before.json()["posts"])
+
+    # Cancel the queued job
+    del_res = client.delete("/api/viral-studio/brands/brand_test/scheduled/job_queued_cancel_test")
+    assert del_res.status_code == 200
+    assert del_res.json()["success"] is True
+
+    # Invariant: Job status is CANCELLED in queue and not in timeline
+    q = _load_queue_sync()
+    assert q["job_queued_cancel_test"]["status"] == "CANCELLED"
+
+    res_after = client.get("/api/viral-studio/brands/brand_test/scheduled")
+    assert not any(p["id"] == "job_queued_cancel_test" for p in res_after.json()["posts"])
+
+
+def test_get_brand_videos_reflects_in_flight_dispatch_queue_status(temp_studio_store, mock_publisher_env):
+    """GET /api/viral-studio/brands/{id}/videos must reflect in-flight QUEUED/UPLOADING jobs as SCHEDULED."""
+    from clippyme.domain.publish_dispatch_service import _save_queue_sync, DispatchJob
+    # Pre-add active dispatch queue job
+    job = DispatchJob(
+        job_id="job_inflight_videos_tab",
+        item_id="item_1",
+        brand_id="brand_test",
+        channel_ids=["acc_tiktok_1"],
+        status="UPLOADING",
+        scheduled_for="2026-09-28T15:00:00-03:00",
+        title="In-flight Uploading Video",
+    )
+    _save_queue_sync({"job_inflight_videos_tab": job.to_dict()})
+
+    client = TestClient(app)
+    res = client.get("/api/viral-studio/brands/brand_test/videos")
+    assert res.status_code == 200
+    items = res.json()
+    item1 = next(i for i in items if i["id"] == "item_1")
+    assert item1["status"] == "SCHEDULED"
+    assert item1["scheduled_for"] == "2026-09-28T15:00:00-03:00"
+

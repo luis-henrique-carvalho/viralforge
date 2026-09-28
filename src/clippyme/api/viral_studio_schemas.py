@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+import uuid
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -361,13 +362,19 @@ class ScheduledTimelinePost(BaseModel):
     post_id: Optional[str] = None
     brand_id: Optional[str] = None
     item_id: Optional[str] = None
+    job_id: Optional[str] = None
     platform: Optional[str] = None
     channel_id: Optional[str] = None
     channel_name: Optional[str] = None
+    channel_handle: Optional[str] = None
+    channel_avatar_url: Optional[str] = None
     channels: List[str] = Field(default_factory=list)
+    provider: Optional[str] = "postiz"
+    provider_url: Optional[str] = None
+    provider_post_url: Optional[str] = None
     title: Optional[str] = None
     content: Optional[str] = None
-    status: str  # "scheduled" | "published" | "failed"
+    status: str = "scheduled"  # "scheduled" | "published" | "failed" | "QUEUED" | "UPLOADING"
     scheduled_for: Optional[str] = None
     scheduled_time: Optional[str] = None
     published_at: Optional[str] = None
@@ -384,9 +391,14 @@ class ScheduledTimelinePost(BaseModel):
         if isinstance(data, dict):
             d = dict(data)
             p_id = str(d.get("id") or d.get("post_id") or d.get("_id") or "")
-            if p_id:
-                d["id"] = p_id
-                d["post_id"] = p_id
+            if not p_id or p_id == "None":
+                p_id = f"post_{d.get('item_id', 'unknown')}_{uuid.uuid4().hex[:8]}"
+            d["id"] = p_id
+            d["post_id"] = p_id
+
+            if not d.get("status"):
+                d["status"] = "scheduled"
+
             s_time = d.get("scheduled_for") or d.get("scheduled_time") or d.get("date") or d.get("publishAt")
             if s_time:
                 d["scheduled_for"] = str(s_time)
@@ -412,6 +424,50 @@ class ScheduledTimelineResponse(BaseModel):
     brand_id: Optional[str] = None
     posts: List[ScheduledTimelinePost] = Field(default_factory=list)
     total: int = 0
+
+
+# ============================================================================
+# Publishing Queue & Dispatch Schemas
+# ============================================================================
+
+class DispatchJobRecord(BaseModel):
+    job_id: str
+    item_id: str
+    brand_id: str
+    brand_name: Optional[str] = None
+    channel_ids: List[str] = Field(default_factory=list)
+    channel_names: List[str] = Field(default_factory=list)
+    provider: str = "postiz"
+    status: str = "QUEUED"  # QUEUED, UPLOADING, SCHEDULED, PUBLISHED, FAILED, PARTIAL_FAILED
+    scheduled_for: Optional[str] = None
+    publish_now: bool = False
+    title: Optional[str] = None
+    caption: Optional[str] = None
+    video_path: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    receipts: List[Dict[str, Any]] = Field(default_factory=list)
+    error: Optional[str] = None
+
+
+class DispatchQueueResponse(BaseModel):
+    jobs: List[DispatchJobRecord] = Field(default_factory=list)
+    total: int = 0
+    active_count: int = 0
+    failed_count: int = 0
+
+
+class DispatchJobAcceptedResponse(BaseModel):
+    success: bool = True
+    job_id: Optional[str] = None
+    item_id: str
+    brand_id: Optional[str] = None
+    status: str = "QUEUED"
+    scheduled_for: Optional[str] = None
+    channels_count: int = 0
+    message: str = "Publicação enfileirada para envio em background"
+    receipts: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 # ============================================================================

@@ -37,7 +37,7 @@ export function TranscriptionProviderCard() {
   const form = useForm<TranscriptionProviderFormData>({
     resolver: zodResolver(transcriptionProviderSchema),
     defaultValues: {
-      TRANSCRIPTION_PROVIDER: config?.TRANSCRIPTION_PROVIDER || 'deepgram',
+      TRANSCRIPTION_PROVIDER: config?.TRANSCRIPTION_PROVIDER || 'whisper',
       DEEPGRAM_API_KEY: '',
       ELEVENLABS_API_KEY: '',
       HF_TOKEN: '',

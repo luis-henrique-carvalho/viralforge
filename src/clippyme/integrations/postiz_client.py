@@ -7,10 +7,12 @@ Follows /codebase-design and /ponytail principles:
 """
 from __future__ import annotations
 
+import asyncio
 import logging
+import mimetypes
 import os
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Union
 import httpx
 
 logger = logging.getLogger("clippyme.postiz_client")
@@ -48,22 +50,31 @@ class PostizClient:
 
     def __init__(
         self,
-        base_url: str = "http://localhost:4007",
-        api_key: str = "",
-        timeout: float = 60.0,
+        base_url: Optional[str] = None,
+        api_key: Optional[str] = None,
+        timeout: float = 120.0,
         client: Optional[httpx.AsyncClient] = None,
     ):
-        self.base_url = base_url.rstrip("/")
-        self.api_key = api_key.strip()
+        resolved_base_url = base_url if base_url is not None else os.environ.get("POSTIZ_BASE_URL", "http://localhost:4007")
+        resolved_api_key = api_key if api_key is not None else os.environ.get("POSTIZ_API_KEY", "")
+        self.base_url = (resolved_base_url or "http://localhost:4007").rstrip("/")
+        self.api_key = (resolved_api_key or "").strip()
         self.timeout = timeout
         self._external_client = client is not None
         if client is not None:
             self._client = client
         else:
+            # Dedicated timeout configuration for streaming uploads and large video payloads
+            timeout_cfg = httpx.Timeout(
+                connect=20.0,
+                read=180.0,
+                write=300.0,
+                pool=30.0,
+            )
             self._client = httpx.AsyncClient(
                 base_url=self.base_url,
                 headers=self._auth_headers(),
-                timeout=self.timeout,
+                timeout=timeout_cfg,
             )
 
     async def __aenter__(self) -> PostizClient:
@@ -86,6 +97,11 @@ class PostizClient:
             headers["Authorization"] = self.api_key
         return headers
 
+    @staticmethod
+    def _read_file_sync(path: str) -> bytes:
+        with open(path, "rb") as f:
+            return f.read()
+
     async def _request(
         self,
         method: str,
@@ -95,20 +111,24 @@ class PostizClient:
         json: Optional[Dict[str, Any]] = None,
         files: Optional[Dict[str, Any]] = None,
         data: Optional[Dict[str, Any]] = None,
+        timeout: Optional[Union[float, httpx.Timeout]] = None,
     ) -> Any:
         """Execute HTTP request with error translation."""
         url = path if path.startswith("http") else f"{self.base_url}{path}"
         headers = self._auth_headers()
         try:
-            response = await self._client.request(
-                method=method,
-                url=url,
-                params=params,
-                json=json,
-                files=files,
-                data=data,
-                headers=headers,
-            )
+            req_kwargs: Dict[str, Any] = {
+                "method": method,
+                "url": url,
+                "params": params,
+                "json": json,
+                "files": files,
+                "data": data,
+                "headers": headers,
+            }
+            if timeout is not None:
+                req_kwargs["timeout"] = timeout
+            response = await self._client.request(**req_kwargs)
             if response.is_error:
                 error_body = response.text
                 logger.warning(
@@ -127,9 +147,10 @@ class PostizClient:
                 return {}
             return response.json()
         except httpx.RequestError as exc:
-            logger.error("Postiz connection error on %s %s: %s", method, path, exc)
+            err_msg = str(exc) or repr(exc) or type(exc).__name__
+            logger.error("Postiz connection error on %s %s: %s", method, path, err_msg)
             raise PostizError(
-                message=f"Network error connecting to Postiz at {self.base_url}: {exc}",
+                message=f"Network error connecting to Postiz at {self.base_url}: {err_msg}",
                 raw_error=exc,
             ) from exc
 
@@ -144,17 +165,32 @@ class PostizClient:
             raise PostizError(f"Upload failed: file does not exist at {file_path}")
 
         filename = os.path.basename(file_path)
-        content_type = "video/mp4" if file_path.lower().endswith(".mp4") else "image/jpeg"
+        content_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
+        file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+        logger.info(
+            "Starting Postiz media upload: %s (%0.2f MB) -> POST %s/api/public/v1/upload",
+            filename,
+            file_size_mb,
+            self.base_url,
+        )
 
-        with open(file_path, "rb") as f:
-            files = {"file": (filename, f, content_type)}
-            result = await self._request("POST", "/api/public/v1/upload", files=files)
+        upload_timeout = httpx.Timeout(connect=30.0, read=600.0, write=600.0, pool=30.0)
+        file_bytes = await asyncio.to_thread(self._read_file_sync, file_path)
+        files = {"file": (filename, file_bytes, content_type)}
+        result = await self._request("POST", "/api/public/v1/upload", files=files, timeout=upload_timeout)
 
         if not isinstance(result, dict) or not result.get("id"):
+            logger.error("Postiz upload invalid response: %s", result)
             raise PostizError(
                 message=f"Invalid upload response from Postiz: expected dict with 'id', got {result}",
                 body=str(result),
             )
+        logger.info(
+            "Postiz upload finished successfully: %s -> media_id=%s, path=%s",
+            filename,
+            result.get("id"),
+            result.get("path"),
+        )
         return result
 
     async def create_post(
@@ -195,7 +231,16 @@ class PostizClient:
         elif post_type == "now":
             payload["date"] = datetime.now(timezone.utc).isoformat()
 
-        return await self._request("POST", "/api/public/v1/posts", json=payload)
+        logger.info(
+            "Submitting Postiz post: integration_id=%s, type=%s, date=%s, media_id=%s",
+            integration_id,
+            payload.get("type"),
+            payload.get("date"),
+            media_id,
+        )
+        res = await self._request("POST", "/api/public/v1/posts", json=payload)
+        logger.info("Postiz post creation completed: %s", res)
+        return res
 
     async def find_slot(self, integration_id: str) -> datetime:
         """Find next available publication slot for given integration.
@@ -318,10 +363,15 @@ class PostizClient:
         params: Dict[str, Any] = {}
         if customer_id:
             params["customer"] = customer_id
-        if start_date:
-            params["startDate"] = start_date
-        if end_date:
-            params["endDate"] = end_date
+
+        now = datetime.now(timezone.utc)
+        if not start_date:
+            start_date = (now - timedelta(days=7)).isoformat()
+        if not end_date:
+            end_date = (now + timedelta(days=60)).isoformat()
+
+        params["startDate"] = start_date
+        params["endDate"] = end_date
 
         res = await self._request("GET", "/api/public/v1/posts", params=params)
         if isinstance(res, list):

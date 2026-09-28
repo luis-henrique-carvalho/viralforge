@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Calendar, Loader2, Send, Sparkles } from 'lucide-react'
+import { Loader2, Send, Sparkles } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -49,10 +49,10 @@ export function BrandQuickPublishDialog({
     1,
     undefined,
     undefined,
-    video?.brand_id,
+    video?.brand_id || undefined,
     { enabled: Boolean(video) && publishMode === 'slot' },
   )
-  const nextSlotFormatted = previewData?.slots?.[0]?.formatted
+  const nextSlotFormatted = previewData?.projected_slots?.[0]?.formatted
 
   if (!video) return null
 

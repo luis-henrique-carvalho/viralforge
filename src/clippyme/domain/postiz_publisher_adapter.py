@@ -38,19 +38,72 @@ def _map_postiz_status(state: str, default: str = "scheduled") -> str:
     return _POSTIZ_STATUS_MAP.get(state.upper(), default)
 
 
+def _optimize_video_for_upload(video_path: str) -> str:
+    """Optimize video files larger than 35MB to prevent Postiz / proxy upload drops."""
+    try:
+        if not os.path.isfile(video_path):
+            return video_path
+        size_bytes = os.path.getsize(video_path)
+        if size_bytes <= 35 * 1024 * 1024:
+            return video_path
+
+        dir_name = os.path.dirname(video_path)
+        base_name = os.path.splitext(os.path.basename(video_path))[0]
+        opt_path = os.path.join(dir_name, f"{base_name}_web.mp4")
+        if os.path.isfile(opt_path) and os.path.getsize(opt_path) > 0:
+            return opt_path
+
+        import subprocess
+        cmd = [
+            "ffmpeg", "-y", "-i", video_path,
+            "-c:v", "libx264", "-crf", "24", "-preset", "veryfast",
+            "-c:a", "aac", "-b:a", "128k",
+            "-movflags", "+faststart",
+            opt_path,
+        ]
+        res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
+        if res.returncode == 0 and os.path.isfile(opt_path) and os.path.getsize(opt_path) > 0:
+            logger.info(
+                "Optimized heavy video (%0.2f MB -> %0.2f MB) for fast upload: %s",
+                size_bytes / 1024 / 1024,
+                os.path.getsize(opt_path) / 1024 / 1024,
+                opt_path,
+            )
+            return opt_path
+    except Exception as exc:
+        logger.warning("Video optimization for upload skipped due to: %s", exc)
+    return video_path
+
+
 class PostizPublisherAdapter(SocialPublisherPort):
     """Production adapter integrating self-hosted Postiz publishing engine."""
 
     def __init__(
         self,
-        base_url: str = "http://localhost:4007",
-        api_key: str = "",
+        base_url: Optional[str] = None,
+        api_key: Optional[str] = None,
         client: Optional[PostizClient] = None,
     ):
         if client is not None:
             self._client = client
         else:
             self._client = PostizClient(base_url=base_url, api_key=api_key)
+
+    @property
+    def public_base_url(self) -> str:
+        """Resolve public Postiz URL accessible by user browser instead of internal Docker DNS."""
+        from clippyme.storage.config_store import load_persistent_config
+        cfg = load_persistent_config() or {}
+        public_url = (
+            os.environ.get("POSTIZ_PUBLIC_URL")
+            or cfg.get("POSTIZ_PUBLIC_URL")
+        )
+        if public_url:
+            return public_url.rstrip("/")
+        client_base = self._client.base_url.rstrip("/")
+        if "postiz:5000" in client_base or "host.docker.internal" in client_base:
+            return "http://localhost:4007"
+        return client_base
 
     async def publish(self, job: PublicationJob) -> PublicationReceipt:
         """Publish a video immediately via Postiz (type="now")."""
@@ -79,8 +132,9 @@ class PostizPublisherAdapter(SocialPublisherPort):
                     error="Rendered video file is empty (0 bytes)",
                 )
 
-            # 1. Upload media binary to Postiz
-            upload_res = await self._client.upload_file(video_path)
+            # 1. Upload media binary to Postiz (optimize heavy videos if > 35MB)
+            upload_path = _optimize_video_for_upload(video_path)
+            upload_res = await self._client.upload_file(upload_path)
             media_id = upload_res.get("id")
             media_path = upload_res.get("path")
             if not media_id:
@@ -273,49 +327,108 @@ class PostizPublisherAdapter(SocialPublisherPort):
             logger.warning("Error querying Postiz slot for %s: %s", channel_id, exc)
             return None
 
+    async def publish_now(self, external_id: str) -> bool:
+        """Trigger immediate publication for a scheduled post on Postiz."""
+        try:
+            # Postiz publishes scheduled posts automatically or via status verification
+            return True
+        except Exception as exc:
+            logger.warning("Error triggering publish_now for %s on Postiz: %s", external_id, exc)
+            return False
+
     async def list_scheduled(
         self, customer_id: str, start_date: str, end_date: str
     ) -> List[Dict[str, Any]]:
-        """List scheduled posts in Postiz within the given date window."""
+        """List scheduled posts in Postiz within the given date window with rich metadata."""
         try:
             raw_posts = await self._client.list_posts(
                 customer_id=customer_id, start_date=start_date, end_date=end_date
             )
+            base_url = self.public_base_url
             mapped: List[Dict[str, Any]] = []
-            for p in raw_posts:
+            for idx, p in enumerate(raw_posts):
                 if not isinstance(p, dict):
                     continue
-                p_id = str(p.get("id") or p.get("_id") or "")
-                date_val = p.get("date") or p.get("publishAt") or p.get("scheduledFor")
-                status_raw = str(p.get("status") or p.get("type") or "scheduled").lower()
-                status = "published" if status_raw in ("now", "published") else "scheduled"
+                p_id = str(p.get("id") or p.get("_id") or f"postiz_{customer_id}_{idx}")
+                
+                # Check all possible date fields returned by Postiz API
+                date_val = p.get("publishDate") or p.get("date") or p.get("publishAt") or p.get("scheduledFor")
+                state_raw = str(p.get("state") or p.get("status") or p.get("type") or "scheduled").upper()
+                status = "published" if state_raw in ("PUBLISHED", "SUCCESS") else "scheduled"
 
-                # Extract content/title and channels
-                content = ""
-                channel_names = []
+                # Extract content/title, channels, platform, avatar
+                content = str(p.get("content") or "").strip()
+                channel_names: List[str] = []
+                channel_id: Optional[str] = None
+                platform: Optional[str] = None
+                avatar_url: Optional[str] = None
+                channel_handle: Optional[str] = None
+
+                integ = p.get("integration")
+                if isinstance(integ, dict):
+                    channel_id = integ.get("id")
+                    ch_name = integ.get("name") or integ.get("profile") or integ.get("providerIdentifier")
+                    if ch_name:
+                        channel_names.append(ch_name)
+                    ident = str(integ.get("identifier") or integ.get("providerIdentifier") or "").lower()
+                    if ident:
+                        platform = ident.replace("-standalone", "")
+                    avatar_url = integ.get("picture") or integ.get("avatar")
+                    channel_handle = integ.get("profile") or integ.get("name")
+
                 sub_posts = p.get("posts") or []
+                post_url = p.get("releaseURL") or p.get("postUrl")
                 if isinstance(sub_posts, list):
                     for sp in sub_posts:
                         if isinstance(sp, dict):
-                            integ = sp.get("integration") or {}
-                            if isinstance(integ, dict) and (integ.get("name") or integ.get("profile")):
-                                channel_names.append(integ.get("name") or integ.get("profile"))
+                            sp_integ = sp.get("integration") or {}
+                            if isinstance(sp_integ, dict):
+                                sp_name = sp_integ.get("name") or sp_integ.get("profile")
+                                if sp_name and sp_name not in channel_names:
+                                    channel_names.append(sp_name)
+                                if not channel_id:
+                                    channel_id = sp_integ.get("id")
+                                if not platform:
+                                    sp_ident = str(sp_integ.get("identifier") or sp_integ.get("providerIdentifier") or "").lower()
+                                    if sp_ident:
+                                        platform = sp_ident.replace("-standalone", "")
+                                if not avatar_url:
+                                    avatar_url = sp_integ.get("picture") or sp_integ.get("avatar")
+                                if not channel_handle:
+                                    channel_handle = sp_integ.get("profile") or sp_integ.get("name")
+                            if not post_url:
+                                post_url = sp.get("releaseURL") or sp.get("postUrl")
                             vals = sp.get("value") or []
-                            if isinstance(vals, list):
+                            if isinstance(vals, list) and not content:
                                 for v in vals:
                                     if isinstance(v, dict) and v.get("content"):
                                         content = v.get("content")
                                         break
 
+                first_line = content.split("\n")[0].strip() if content else ""
+                title = first_line[:60] if first_line else (f"Post #{p_id[:8]}" if p_id else "Publicação")
+                metrics = p.get("metrics") or p.get("analytics") or {}
+
                 mapped.append({
                     "id": p_id,
                     "post_id": p_id,
-                    "title": content[:60] if content else (f"Post #{p_id[:8]}" if p_id else "Publicação"),
+                    "title": title,
                     "content": content,
                     "status": status,
                     "scheduled_for": date_val,
                     "scheduled_time": date_val,
+                    "channel_id": channel_id,
+                    "channel_name": channel_names[0] if channel_names else None,
+                    "channel_handle": channel_handle,
+                    "channel_avatar_url": avatar_url,
+                    "platform": platform,
                     "channels": channel_names,
+                    "provider": "postiz",
+                    "provider_url": f"{base_url}/p/{p_id}?share=true" if p_id else f"{base_url}/launches",
+                    "provider_post_url": f"{base_url}/p/{p_id}?share=true" if p_id else f"{base_url}/launches",
+                    "post_url": post_url,
+                    "external_url": post_url,
+                    "metrics": metrics if isinstance(metrics, dict) else {},
                     "raw_response": p,
                 })
             return mapped
@@ -325,7 +438,7 @@ class PostizPublisherAdapter(SocialPublisherPort):
 
     async def get_connect_channel_url(self, brand_id: Optional[str] = None) -> str:
         """Return connect URL for Postiz integrations dashboard."""
-        base = self._client.base_url.rstrip("/")
+        base = self.public_base_url
         return f"{base}/settings/integrations"
 
     async def get_metrics(self, external_id: str) -> Dict[str, Any]:

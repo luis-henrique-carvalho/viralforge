@@ -136,7 +136,7 @@ export function ViralPublishDialog({
     items.length,
     undefined,
     undefined,
-    singleBrandId,
+    singleBrandId || undefined,
   )
 
   const publishMutation = usePublishItems(batchId)

@@ -28,11 +28,17 @@ export function useBrandVideos(brandId: string, status?: string) {
   })
 }
 
-export function useBrandScheduled(brandId: string, startDate?: string, endDate?: string) {
+export function useBrandScheduled(
+  brandId: string,
+  startDate?: string,
+  endDate?: string,
+  options?: { refetchInterval?: number | false | ((query: unknown) => number | false) },
+) {
   return useQuery({
     queryKey: viralStudioKeys.brandScheduled(brandId, startDate, endDate),
     queryFn: () => viralStudioApi.fetchBrandScheduled(brandId, startDate, endDate),
     enabled: Boolean(brandId),
+    refetchInterval: options?.refetchInterval,
   })
 }
 
@@ -78,6 +84,9 @@ export function useAutoScheduleBrandVideo(brandId: string) {
     onSuccess: () => {
       toast.success('Vídeo agendado com sucesso no próximo horário disponível!')
       queryClient.invalidateQueries({ queryKey: viralStudioKeys.brand(brandId) })
+      queryClient.invalidateQueries({ queryKey: viralStudioKeys.brandScheduled(brandId) })
+      queryClient.invalidateQueries({ queryKey: viralStudioKeys.brandVideos(brandId) })
+      queryClient.invalidateQueries({ queryKey: viralStudioKeys.brandWorkspace(brandId) })
       queryClient.invalidateQueries({ queryKey: viralStudioKeys.batches() })
     },
     onError: (err: Error) => {
@@ -103,6 +112,9 @@ export function usePublishBrandVideo(brandId: string) {
           : 'Vídeo agendado com sucesso!',
       )
       queryClient.invalidateQueries({ queryKey: viralStudioKeys.brand(brandId) })
+      queryClient.invalidateQueries({ queryKey: viralStudioKeys.brandScheduled(brandId) })
+      queryClient.invalidateQueries({ queryKey: viralStudioKeys.brandVideos(brandId) })
+      queryClient.invalidateQueries({ queryKey: viralStudioKeys.brandWorkspace(brandId) })
       queryClient.invalidateQueries({ queryKey: viralStudioKeys.batches() })
     },
     onError: (err: Error) => {
@@ -125,6 +137,24 @@ export function useCancelBrandScheduledPost(brandId: string) {
     },
     onError: (err: Error) => {
       toast.error(`Falha ao cancelar agendamento: ${err.message}`)
+    },
+  })
+}
+
+export function usePublishBrandScheduledNow(brandId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (postId: string) => viralStudioApi.publishBrandScheduledNow(brandId, postId),
+    onSuccess: () => {
+      toast.success('Publicação imediata disparada com sucesso!')
+      queryClient.invalidateQueries({ queryKey: viralStudioKeys.brand(brandId) })
+      queryClient.invalidateQueries({ queryKey: viralStudioKeys.brandScheduled(brandId) })
+      queryClient.invalidateQueries({ queryKey: viralStudioKeys.brandVideos(brandId) })
+      queryClient.invalidateQueries({ queryKey: viralStudioKeys.batches() })
+    },
+    onError: (err: Error) => {
+      toast.error(`Falha ao disparar publicação: ${err.message}`)
     },
   })
 }

@@ -43,8 +43,16 @@ output/
 .idea/
 .vscode/
 
-# Secrets
+# Secrets and environments
 .env
+.env.*
+.env.local
+.env.*.local
+!.env.example
+!.env.*.example
+web/.env
+web/.env.*
+!web/.env.example
 data/
 config.json
 cookies.txt

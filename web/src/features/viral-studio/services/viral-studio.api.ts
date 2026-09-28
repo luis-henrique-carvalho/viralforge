@@ -58,6 +58,42 @@ export interface ScheduledTimelineResponse {
   total: number
 }
 
+export interface DispatchJobRecord {
+  job_id: string
+  item_id: string
+  brand_id: string
+  brand_name?: string
+  channel_ids: string[]
+  channel_names?: string[]
+  provider: string
+  status: 'QUEUED' | 'UPLOADING' | 'SCHEDULED' | 'PUBLISHED' | 'FAILED' | 'PARTIAL_FAILED' | string
+  scheduled_for?: string
+  publish_now: boolean
+  title?: string
+  caption?: string
+  video_path?: string
+  thumbnail_url?: string
+  created_at: string
+  updated_at: string
+  receipts: Array<{
+    id?: string
+    post_id?: string
+    channel_id?: string
+    status: string
+    error?: string
+    scheduled_for?: string
+    post_url?: string
+  }>
+  error?: string
+}
+
+export interface DispatchQueueResponse {
+  jobs: DispatchJobRecord[]
+  total: number
+  active_count: number
+  failed_count: number
+}
+
 export const viralStudioApi = {
   // Batches
   async fetchBatches(): Promise<BatchListResponse> {
@@ -235,6 +271,19 @@ export const viralStudioApi = {
     return response.data
   },
 
+  async publishBrandScheduledNow(
+    brandId: string,
+    postId: string,
+  ): Promise<{ success: boolean; job_id?: string; item_id?: string; message?: string }> {
+    const response = await apiClient.post<{
+      success: boolean
+      job_id?: string
+      item_id?: string
+      message?: string
+    }>(`/viral-studio/brands/${brandId}/scheduled/${postId}/publish-now`)
+    return response.data
+  },
+
   async updateBrandScheduleSlots(brandId: string, payload: ScheduleSlotsUpdate): Promise<Brand> {
     const response = await apiClient.post<Brand>(
       `/viral-studio/brands/${brandId}/schedule-slots`,
@@ -295,6 +344,25 @@ export const viralStudioApi = {
 
   async cancelItemSchedule(itemId: string): Promise<ViralItem> {
     const response = await apiClient.post<ViralItem>(`/viral-studio/publishing/${itemId}/cancel`)
+    return response.data
+  },
+
+  // Publishing Queue & Outbox Dispatches
+  async fetchPublishingQueue(brandId?: string, status?: string): Promise<DispatchQueueResponse> {
+    const params = new URLSearchParams()
+    if (brandId) params.set('brand_id', brandId)
+    if (status) params.set('status', status)
+    const url = `/viral-studio/publishing/queue${params.toString() ? `?${params.toString()}` : ''}`
+    const response = await apiClient.get<DispatchQueueResponse>(url)
+    return response.data
+  },
+
+  async retryPublishingDispatch(
+    jobId: string,
+  ): Promise<{ success: boolean; job_id: string; message: string }> {
+    const response = await apiClient.post<{ success: boolean; job_id: string; message: string }>(
+      `/viral-studio/publishing/queue/retry/${jobId}`,
+    )
     return response.data
   },
 }

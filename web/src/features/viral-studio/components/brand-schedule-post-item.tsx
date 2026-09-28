@@ -23,7 +23,7 @@ interface BrandSchedulePostItemProps {
 export function BrandSchedulePostItem({ post, onCancelClick }: BrandSchedulePostItemProps) {
   const isScheduled = post.status.toLowerCase() === 'scheduled'
   const isPublished = post.status.toLowerCase() === 'published'
-  const metrics = (post.metrics || {}) as Record<string, any>
+  const metrics = (post.metrics || {}) as Record<string, unknown>
   const postId = post.post_id || post.id || ''
   const scheduledTime = post.scheduled_time || post.scheduled_for || post.published_at
   const externalUrl = post.external_url || post.post_url
@@ -102,21 +102,21 @@ export function BrandSchedulePostItem({ post, onCancelClick }: BrandSchedulePost
                 title="Visualizações"
               >
                 <Eye className="size-3.5 text-blue-400" />
-                {metrics.views || 0}
+                {typeof metrics.views === 'number' ? metrics.views : 0}
               </span>
               <span
                 className="flex items-center gap-1"
                 title="Curtidas"
               >
                 <Heart className="size-3.5 text-rose-400" />
-                {metrics.likes || 0}
+                {typeof metrics.likes === 'number' ? metrics.likes : 0}
               </span>
               <span
                 className="flex items-center gap-1"
                 title="Comentários"
               >
                 <MessageCircle className="size-3.5 text-emerald-400" />
-                {metrics.comments || 0}
+                {typeof metrics.comments === 'number' ? metrics.comments : 0}
               </span>
             </div>
           )}

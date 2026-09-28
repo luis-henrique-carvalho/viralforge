@@ -125,7 +125,7 @@ export function BrandWorkspaceTabVideos({ brand, onNavigateToTab }: BrandWorkspa
             disabled={autoScheduleMutation.isPending}
             className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
           >
-            <Zap className="size-3.5 fill-current" />⚡ Auto-Agendar Próximo Slot ({approvedCount})
+            <Zap className="size-3.5 fill-current" /> Auto-Agendar Próximo Slot ({approvedCount})
           </Button>
         )}
       </Card>

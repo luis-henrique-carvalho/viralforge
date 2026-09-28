@@ -29,6 +29,9 @@ export function BrandVideoCard({
   const isScheduled = statusUpper === 'SCHEDULED'
   const isPublished = statusUpper === 'PUBLISHED'
 
+  const lastPubRecord = video.publication_records?.[video.publication_records.length - 1]
+  const hasPublishError = isApproved && lastPubRecord?.status === 'failed'
+
   return (
     <Card className="flex flex-col justify-between border-border bg-card/60 backdrop-blur-xs transition-all hover:border-primary/40 overflow-hidden group">
       <div className="p-2 pb-0">
@@ -68,24 +71,28 @@ export function BrandVideoCard({
                         : 'outline'
                 }
                 className={`text-[10px] font-semibold tracking-wide ${
-                  isApproved
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                    : isScheduled
-                      ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                      : isPublished
-                        ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                        : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                  hasPublishError
+                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                    : isApproved
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : isScheduled
+                        ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                        : isPublished
+                          ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                          : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                 }`}
               >
-                {isApproved
-                  ? 'Aprovado'
-                  : isScheduled
-                    ? 'Agendado'
-                    : isPublished
-                      ? 'Publicado'
-                      : isReady
-                        ? 'Pronto p/ Revisão'
-                        : video.status}
+                {hasPublishError
+                  ? '⚠️ Falha no Envio'
+                  : isApproved
+                    ? 'Aprovado'
+                    : isScheduled
+                      ? 'Agendado'
+                      : isPublished
+                        ? 'Publicado'
+                        : isReady
+                          ? 'Pronto p/ Revisão'
+                          : video.status}
               </Badge>
             </div>
           </div>
@@ -108,6 +115,12 @@ export function BrandVideoCard({
               {video.caption}
             </Typography>
           )}
+
+          {hasPublishError && Boolean(lastPubRecord?.error) && (
+            <div className="p-1.5 rounded bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-400 line-clamp-2">
+              Erro de envio: {String(lastPubRecord?.error)}
+            </div>
+          )}
         </div>
 
         <div className="pt-2 border-t border-border/40 flex items-center justify-between text-[11px] text-muted-foreground font-mono">
@@ -128,7 +141,30 @@ export function BrandVideoCard({
           </Button>
         )}
 
-        {isApproved && (
+        {hasPublishError && (
+          <div className="grid grid-cols-2 gap-1.5 w-full">
+            <Button
+              size="sm"
+              onClick={() => onAutoSchedule(video)}
+              disabled={isAutoSchedulePending}
+              className="gap-1 text-xs bg-amber-600 hover:bg-amber-700 text-white px-2"
+              title="Tentar reenviar imediatamente"
+            >
+              <Zap className="size-3 fill-current" />
+              Retentar Envio
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onOpenPublishModal(video)}
+              className="text-xs px-2"
+            >
+              Opções...
+            </Button>
+          </div>
+        )}
+
+        {isApproved && !hasPublishError && (
           <div className="grid grid-cols-2 gap-1.5 w-full">
             <Button
               size="sm"

@@ -155,6 +155,9 @@ docker compose run --rm -u root backend sh -lc "pip install -q pytest && pytest 
 
 # Web Frontend (Typecheck + ESLint + Vitest + Build)
 pnpm --dir web typecheck && pnpm --dir web lint && pnpm --dir web test:coverage && pnpm --dir web build
+
+# Public Tunnels (Cloudflare Tunnel: Postiz, API, Dashboard)
+./scripts/start_tunnels.sh {status|start|stop|restart}
 ```
 
 CI (`.github/workflows/ci.yml`): backend host suite (with report-only
@@ -205,9 +208,9 @@ as `clip_filename` in metadata (re-dumped atomically per cut iteration) and
 every consumer resolves through `clip_resolve.clip_filename_for`
 (clip_filename → video_url → positional legacy fallback).
 
-**Transcription & Hardware Acceleration**: `TRANSCRIPTION_PROVIDER` = `deepgram` (default, Nova-3
-REST) | `elevenlabs` (Scribe; audio-event tags feed the Gemini prompt) |
-`whisper` (local). Both cloud providers silently fall back to Whisper on any
+**Transcription & Hardware Acceleration**: `TRANSCRIPTION_PROVIDER` = `whisper` (default, local) |
+`deepgram` (Nova-3 REST) | `elevenlabs` (Scribe; audio-event tags feed the Gemini prompt).
+Both cloud providers silently fall back to Whisper on any
 failure. All paths transcribe an extracted mono-16kHz FLAC, not the video.
 Transcripts are cached 7 days under `data/cache/` keyed by URL hash.
 - **Compute Architecture & Dynamic Routing**:

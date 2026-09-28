@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import os
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, File, HTTPException, Request, Response, UploadFile, status
 
@@ -39,12 +39,15 @@ from clippyme.api.viral_studio_schemas import (
     TemplateUpdate,
     TestGenerationRequest,
     TestGenerationResponse,
-    VisualTemplate,
     ViralItem,
     ViralItemUpdate,
     ViralPublishRequest,
     ViralPublishResponse,
+    VisualTemplate,
     WorkspaceSummaryResponse,
+    DispatchJobAcceptedResponse,
+    DispatchJobRecord,
+    DispatchQueueResponse,
 )
 from clippyme.domain import (
     brand_workspace_service,
@@ -52,6 +55,7 @@ from clippyme.domain import (
     viral_studio_orchestrator,
     viral_studio_store,
 )
+from clippyme.domain.publish_dispatch_service import dispatch_service
 from clippyme.domain.social_publisher_port import get_social_publisher
 
 router = APIRouter(tags=["viral-studio"])
@@ -216,35 +220,124 @@ async def get_brand_videos(id: str, status: Optional[str] = None):
     return [ViralItem(**item) for item in items]
 
 
-@router.post("/brands/{id}/auto-schedule")
-async def auto_schedule_video(id: str, payload: AutoScheduleRequest):
-    """1-Click auto-schedule an approved video into next available slot(s)."""
-    receipts = await brand_workspace_service.auto_schedule_brand_video(
-        brand_id=id,
-        item_id=payload.item_id,
-        channel_ids=payload.channel_ids,
+async def _handle_brand_dispatch(
+    brand_id: str,
+    item_id: str,
+    channel_ids: Optional[List[str]],
+    scheduled_for: Optional[str],
+    publish_now: bool,
+    is_sync: bool,
+    response: Response,
+) -> Dict[str, Any]:
+    """Internal helper to dispatch or schedule a video synchronously or via async queue."""
+    if is_sync:
+        if not publish_now and not scheduled_for:
+            receipts = await brand_workspace_service.auto_schedule_brand_video(
+                brand_id=brand_id,
+                item_id=item_id,
+                channel_ids=channel_ids,
+            )
+        else:
+            receipts = await brand_workspace_service.publish_brand_video(
+                brand_id=brand_id,
+                item_id=item_id,
+                channel_ids=channel_ids or [],
+                scheduled_for=scheduled_for,
+                publish_now=publish_now,
+            )
+        return {
+            "success": True,
+            "job_id": None,
+            "item_id": item_id,
+            "brand_id": brand_id,
+            "status": "PUBLISHED" if publish_now else "SCHEDULED",
+            "scheduled_for": scheduled_for,
+            "channels_count": len(channel_ids or receipts),
+            "receipts": [dataclasses.asdict(r) for r in receipts],
+        }
+
+    job = await dispatch_service.enqueue_dispatch(
+        brand_id=brand_id,
+        item_id=item_id,
+        channel_ids=channel_ids,
+        scheduled_for=scheduled_for,
+        publish_now=publish_now,
     )
+    response.status_code = status.HTTP_202_ACCEPTED
     return {
         "success": True,
-        "item_id": payload.item_id,
-        "receipts": [dataclasses.asdict(r) for r in receipts],
+        "job_id": job.job_id,
+        "item_id": item_id,
+        "brand_id": brand_id,
+        "status": job.status,
+        "scheduled_for": job.scheduled_for,
+        "channels_count": len(job.channel_ids),
+        "receipts": [],
     }
 
 
-@router.post("/brands/{id}/publish")
-async def publish_brand_video(id: str, payload: BrandPublishRequest):
-    """Publish or schedule a brand video to target channels."""
-    receipts = await brand_workspace_service.publish_brand_video(
+@router.post(
+    "/brands/{id}/auto-schedule",
+    response_model=DispatchJobAcceptedResponse,
+)
+async def auto_schedule_video(id: str, payload: AutoScheduleRequest, request: Request, response: Response):
+    """1-Click auto-schedule an approved video into next available slot(s) via async dispatch queue."""
+    return await _handle_brand_dispatch(
+        brand_id=id,
+        item_id=payload.item_id,
+        channel_ids=payload.channel_ids,
+        scheduled_for=None,
+        publish_now=False,
+        is_sync=request.query_params.get("sync") == "true",
+        response=response,
+    )
+
+
+@router.post(
+    "/brands/{id}/publish",
+    response_model=DispatchJobAcceptedResponse,
+)
+async def publish_brand_video(id: str, payload: BrandPublishRequest, request: Request, response: Response):
+    """Publish or schedule a brand video to target channels via async dispatch queue."""
+    return await _handle_brand_dispatch(
         brand_id=id,
         item_id=payload.item_id,
         channel_ids=payload.channel_ids,
         scheduled_for=payload.scheduled_for,
         publish_now=payload.publish_now,
+        is_sync=request.query_params.get("sync") == "true",
+        response=response,
     )
+
+
+@router.get("/publishing/queue", response_model=DispatchQueueResponse)
+async def list_publishing_queue(
+    brand_id: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 50,
+):
+    """List persistent dispatch queue jobs and publication audit logs."""
+    jobs = await asyncio.to_thread(dispatch_service.list_dispatches, brand_id=brand_id, status=status, limit=limit)
+    active = sum(1 for j in jobs if j.status in ("QUEUED", "UPLOADING"))
+    failed = sum(1 for j in jobs if j.status in ("FAILED", "PARTIAL_FAILED"))
+    return DispatchQueueResponse(
+        jobs=[DispatchJobRecord(**j.to_dict()) for j in jobs],
+        total=len(jobs),
+        active_count=active,
+        failed_count=failed,
+    )
+
+
+@router.post("/publishing/queue/retry/{job_id}", status_code=status.HTTP_202_ACCEPTED)
+async def retry_publishing_dispatch(job_id: str):
+    """1-Click retry a failed dispatch job without re-rendering media."""
+    job = await dispatch_service.retry_dispatch(job_id)
     return {
         "success": True,
-        "item_id": payload.item_id,
-        "receipts": [dataclasses.asdict(r) for r in receipts],
+        "job_id": job.job_id,
+        "item_id": job.item_id,
+        "status": job.status,
+        "message": "Envio re-enfileirado com sucesso",
     }
 
 
@@ -281,6 +374,13 @@ async def cancel_brand_scheduled(id: str, post_id: str):
     """Cancel a scheduled post in provider and revert item status to APPROVED."""
     success = await brand_workspace_service.cancel_brand_scheduled_post(brand_id=id, post_id=post_id)
     return {"success": success, "post_id": post_id}
+
+
+@router.post("/brands/{id}/scheduled/{post_id}/publish-now", status_code=status.HTTP_202_ACCEPTED)
+async def publish_brand_scheduled_now(id: str, post_id: str):
+    """Trigger immediate publication of a scheduled post."""
+    result = await brand_workspace_service.publish_brand_scheduled_now(brand_id=id, post_id=post_id)
+    return result
 
 
 # ---------------------------------------------------------------------------

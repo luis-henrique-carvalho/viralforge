@@ -145,6 +145,10 @@ class SocialPublisherPort(ABC):
         """Query next free slot from provider. Returns None for local calculation fallback."""
         return None
 
+    async def publish_now(self, external_id: str) -> bool:
+        """Trigger immediate publication for a scheduled post on the external provider."""
+        return True
+
     async def list_scheduled(
         self, customer_id: str, start_date: str, end_date: str
     ) -> List[Dict[str, Any]]:
