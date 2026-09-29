@@ -19,7 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useBrands, useTemplates } from '@/features/viral-studio/hooks/use-brands'
+import { useBrands } from '@/features/brands'
+import { useTemplates } from '@/features/viral-studio/hooks/use-templates'
 import { useCreateBatch } from '@/features/viral-studio/hooks/use-create-batch'
 import { useLocalAIModels } from '@/features/viral-studio/hooks/use-local-ai-models'
 import { DiscoveryBrandPicker } from './discovery-brand-picker'

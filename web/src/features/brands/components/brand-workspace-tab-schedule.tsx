@@ -9,9 +9,9 @@ import {
   useCancelBrandScheduledPost,
   usePublishBrandScheduledNow,
 } from '../hooks/use-brand-workspace'
-import { ScheduledTimelineCard } from './scheduled-timeline-card'
+import { ScheduledTimelineCard } from '@/features/viral-studio/components/scheduled-timeline-card'
 import { BrandCancelScheduleDialog } from './brand-cancel-schedule-dialog'
-import type { Brand, ScheduledPost } from '../data/batch.types'
+import type { Brand, ScheduledPost } from '../data/brand.types'
 
 interface BrandWorkspaceTabScheduleProps {
   brand: Brand

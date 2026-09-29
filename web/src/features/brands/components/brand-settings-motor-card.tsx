@@ -11,19 +11,19 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import type { Brand, WorkspaceSummary } from '../data/batch.types'
+import type { Brand, PublishingProfileRecord, WorkspaceSummary } from '../data/brand.types'
 
 interface BrandSettingsMotorCardProps {
   brand: Brand
   workspaces?: WorkspaceSummary[]
-  onSave: (profiles: Record<string, any>) => Promise<void>
+  onSave: (profiles: PublishingProfileRecord) => Promise<void>
   isPending: boolean
 }
 
 const VALID_PROVIDERS = ['postiz', 'zernio', 'mock']
 
 export function getBrandActiveProvider(brand: Brand): string {
-  const profiles = (brand.publishing_profiles || {}) as Record<string, any>
+  const profiles = (brand.publishing_profiles || {}) as PublishingProfileRecord
   for (const [provider, data] of Object.entries(profiles)) {
     if (
       VALID_PROVIDERS.includes(provider) &&
@@ -50,7 +50,7 @@ export function getBrandActiveProvider(brand: Brand): string {
 }
 
 export function BrandSettingsMotorCard({ brand, onSave, isPending }: BrandSettingsMotorCardProps) {
-  const profiles = (brand.publishing_profiles || {}) as Record<string, any>
+  const profiles = (brand.publishing_profiles || {}) as PublishingProfileRecord
   const activeProvider = getBrandActiveProvider(brand)
   const [selectedProvider, setSelectedProvider] = useState<string>(activeProvider)
 
@@ -59,7 +59,7 @@ export function BrandSettingsMotorCard({ brand, onSave, isPending }: BrandSettin
   }
 
   const handleSave = async () => {
-    const updatedProfiles: Record<string, any> = {}
+    const updatedProfiles: PublishingProfileRecord = {}
     for (const [k, v] of Object.entries(profiles)) {
       if (v && typeof v === 'object') {
         updatedProfiles[k] = {
@@ -68,8 +68,9 @@ export function BrandSettingsMotorCard({ brand, onSave, isPending }: BrandSettin
         }
       }
     }
+    const currentSelected = profiles[selectedProvider] || {}
     updatedProfiles[selectedProvider] = {
-      ...(profiles[selectedProvider] || {}),
+      ...currentSelected,
       active: true,
       linked_at: new Date().toISOString(),
     }

@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Typography } from '@/components/ui/typography'
 import { getBrandActiveProvider } from './brand-settings-motor-card'
-import type { Brand } from '../data/batch.types'
+import type { Brand, PublishingProfileRecord } from '../data/brand.types'
 
 interface BrandCardProps {
   brand: Brand
@@ -23,7 +23,7 @@ interface BrandCardProps {
 }
 
 export function BrandCard({ brand, videoCount = 0 }: BrandCardProps) {
-  const profiles = (brand.publishing_profiles || {}) as Record<string, any>
+  const profiles = (brand.publishing_profiles || {}) as PublishingProfileRecord
   const channelCount = Object.keys(profiles).length
   const activeProvider = getBrandActiveProvider(brand)
   const schedule = brand.posting_schedule || { frequency: 3, slots: ['10:00', '15:00', '20:00'] }
@@ -168,7 +168,7 @@ export function BrandCard({ brand, videoCount = 0 }: BrandCardProps) {
           size="sm"
         >
           <Link
-            to="/viral-studio/brands/$brandId"
+            to="/brands/$brandId"
             params={{ brandId: brand.id }}
           >
             Acessar Workspace

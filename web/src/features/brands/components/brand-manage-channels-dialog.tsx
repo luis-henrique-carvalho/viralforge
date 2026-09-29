@@ -15,7 +15,7 @@ import { Typography } from '@/components/ui/typography'
 import { useBrandAvailableChannels, useBindBrandChannels } from '../hooks/use-brand-workspace'
 import { getBrandActiveProvider } from './brand-settings-motor-card'
 import { BrandChannelRow } from './brand-channel-row'
-import type { Brand, SocialChannel } from '../data/batch.types'
+import type { Brand, PublishingProfileRecord, SocialChannel } from '../data/brand.types'
 
 interface BrandManageChannelsDialogProps {
   brand: Brand
@@ -29,7 +29,7 @@ export function BrandManageChannelsDialog({
   onOpenChange,
 }: BrandManageChannelsDialogProps) {
   const activeProvider = getBrandActiveProvider(brand)
-  const profiles = (brand.publishing_profiles || {}) as Record<string, any>
+  const profiles = (brand.publishing_profiles || {}) as PublishingProfileRecord
   const currentProfile = profiles[activeProvider] || {}
 
   const {

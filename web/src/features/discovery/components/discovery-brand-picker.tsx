@@ -2,7 +2,7 @@ import { Check, Tag, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Typography } from '@/components/ui/typography'
-import type { Brand } from '@/features/viral-studio/data/batch.types'
+import type { Brand } from '@/features/brands'
 
 export interface DiscoveryBrandPickerProps {
   brands: Brand[]

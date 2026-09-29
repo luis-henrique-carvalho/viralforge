@@ -70,6 +70,7 @@ from clippyme.storage.config_store import (
 from clippyme.domain.job_worker import make_workers
 from clippyme.domain.history_service import scan_history, is_valid_job_id
 from clippyme.api.config_routes import router as config_router
+from clippyme.api.brand_routes import router as brand_router
 from clippyme.api.viral_studio_routes import router as viral_studio_router
 from clippyme.api.discovery_routes import router as discovery_router
 
@@ -317,6 +318,8 @@ app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 # router — they touch none of the job runtime state, so keeping them out of
 # app.py lets this module stay focused on the job lifecycle.
 app.include_router(config_router)
+app.include_router(brand_router, prefix="/api/brands")
+app.include_router(brand_router, prefix="/api/viral-studio/brands")
 app.include_router(viral_studio_router, prefix="/api/viral-studio")
 app.include_router(discovery_router)
 

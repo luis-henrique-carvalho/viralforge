@@ -13,10 +13,10 @@ import { Form } from '@/components/ui/form'
 import { Button } from '@/components/ui/button'
 import { BrandFormFields } from './brand-form-fields'
 import { BrandSocialProfilesSection } from './brand-social-profiles-section'
-import { brandFormSchema, type BrandFormData } from '../data/brand.schema'
+import { brandFormSchema } from '../data/brand.schema'
 import { useCreateBrand, useUpdateBrand } from '../hooks/use-brands'
-import { usePublishingAccounts } from '../hooks/use-publishing'
-import type { Brand, SocialChannelBinding } from '../data/batch.types'
+import { usePublishingAccounts } from '@/features/viral-studio/hooks/use-publishing'
+import type { Brand, BrandFormData, SocialChannelBinding } from '../data/brand.types'
 
 interface BrandFormDialogProps {
   isOpen: boolean

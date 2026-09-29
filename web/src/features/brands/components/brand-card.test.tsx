@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { BrandCard } from './brand-card'
-import type { Brand } from '../data/batch.types'
+import type { Brand } from '../data/brand.types'
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
@@ -13,8 +13,8 @@ vi.mock('@tanstack/react-router', () => ({
   }: {
     children: React.ReactNode
     to: string
-    params?: any
-    search?: any
+    params?: Record<string, unknown>
+    search?: Record<string, unknown>
     className?: string
   }) => (
     <a

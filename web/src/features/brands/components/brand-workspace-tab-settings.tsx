@@ -1,9 +1,9 @@
 import { useUpdateBrandDetails, useUpdateBrandScheduleSlots } from '../hooks/use-brand-workspace'
-import { useTemplates } from '../hooks/use-templates'
+import { useTemplates } from '@/features/viral-studio/hooks/use-templates'
 import { BrandSettingsMotorCard } from './brand-settings-motor-card'
 import { BrandSettingsScheduleCard } from './brand-settings-schedule-card'
 import { BrandSettingsIdentityCard } from './brand-settings-identity-card'
-import type { Brand, BrandUpdate, ScheduleSlotsUpdate } from '../data/batch.types'
+import type { Brand, BrandUpdate, ScheduleSlotsUpdate } from '../data/brand.types'
 
 interface BrandWorkspaceTabSettingsProps {
   brand: Brand

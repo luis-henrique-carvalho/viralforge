@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { BrandVideoCard } from './brand-video-card'
-import type { ViralItem } from '../data/batch.types'
+import type { ViralItem } from '@/features/viral-studio/data/batch.types'
 
 const baseVideo: ViralItem = {
   id: 'item-101',

@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test-utils/server'
 import { renderWithProviders } from '@/test-utils/render'
 import { BrandWorkspaceTabSchedule } from './brand-workspace-tab-schedule'
-import type { Brand } from '../data/batch.types'
+import type { Brand } from '../data/brand.types'
 
 const mockBrand: Brand = {
   id: 'vale-o-clique',
@@ -42,6 +42,25 @@ describe('BrandWorkspaceTabSchedule', () => {
     let capturedDeletedPostId: string | null = null
 
     server.use(
+      http.get('/api/brands/:id/scheduled', () => {
+        return HttpResponse.json({
+          brand_id: 'vale-o-clique',
+          posts: [
+            {
+              id: 'post_real_999',
+              title: 'A mesa de desenho que toda criança ama! 😍',
+              status: 'scheduled',
+              scheduled_for: '2026-10-15T14:30:00Z',
+              channels: ['tiktok'],
+            },
+          ],
+          total: 1,
+        })
+      }),
+      http.delete('/api/brands/:id/scheduled/:postId', ({ params }) => {
+        capturedDeletedPostId = params.postId as string
+        return HttpResponse.json({ success: true, post_id: params.postId })
+      }),
       http.get('/api/viral-studio/brands/:id/scheduled', () => {
         return HttpResponse.json({
           brand_id: 'vale-o-clique',

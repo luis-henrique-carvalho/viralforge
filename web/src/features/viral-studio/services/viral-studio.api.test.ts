@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { brandKeys } from '@/features/brands'
 import { viralStudioApi } from './viral-studio.api'
 import { viralStudioKeys } from './viral-studio.keys'
 
@@ -8,8 +9,28 @@ describe('viralStudioKeys', () => {
     expect(viralStudioKeys.batches()).toEqual(['viral-studio', 'batches'])
     expect(viralStudioKeys.batch('b1')).toEqual(['viral-studio', 'batch', 'b1'])
     expect(viralStudioKeys.item('i1')).toEqual(['viral-studio', 'item', 'i1'])
-    expect(viralStudioKeys.brands()).toEqual(['viral-studio', 'brands'])
-    expect(viralStudioKeys.brand('brand1')).toEqual(['viral-studio', 'brand', 'brand1'])
+    expect(viralStudioKeys.brands()).toEqual(brandKeys.all)
+    expect(viralStudioKeys.brandWorkspace('b1')).toEqual(brandKeys.workspace('b1'))
+    expect(viralStudioKeys.brandChannels('b1')).toEqual(brandKeys.channels('b1'))
+    expect(viralStudioKeys.brandAvailableChannels('b1')).toEqual(brandKeys.availableChannels('b1'))
+    expect(viralStudioKeys.brandVideos('b1', 'ready')).toEqual(brandKeys.videos('b1', 'ready'))
+    expect(viralStudioKeys.brandScheduled('b1', '2026-01-01', '2026-01-02')).toEqual(
+      brandKeys.scheduled('b1', '2026-01-01', '2026-01-02'),
+    )
+    expect(viralStudioKeys.publishingAccounts()).toEqual(['viral-studio', 'publishing', 'accounts'])
+    expect(viralStudioKeys.publishingWorkspaces('postiz')).toEqual(
+      brandKeys.publishingWorkspaces('postiz'),
+    )
+    expect(viralStudioKeys.previewSlots('acc1', 3)).toEqual([
+      'viral-studio',
+      'publishing',
+      'preview-slots',
+      'acc1',
+      3,
+      undefined,
+      undefined,
+      undefined,
+    ])
     expect(viralStudioKeys.templates()).toEqual(['viral-studio', 'templates'])
     expect(viralStudioKeys.template('t1')).toEqual(['viral-studio', 'template', 't1'])
   })
@@ -70,30 +91,69 @@ describe('viralStudioApi Service', () => {
     expect(data.status).toBeDefined()
   })
 
-  it('fetches brands list', async () => {
+  it('calls brand methods delegated to brandApi', async () => {
     const data = await viralStudioApi.fetchBrands()
     expect(data.brands.length).toBeGreaterThan(0)
-  })
 
-  it('fetches a single brand', async () => {
-    const data = await viralStudioApi.fetchBrand('vale-o-clique')
-    expect(data.id).toBe('vale-o-clique')
-  })
+    const brand = await viralStudioApi.fetchBrand('vale-o-clique')
+    expect(brand.id).toBe('vale-o-clique')
 
-  it('creates a brand', async () => {
-    const data = await viralStudioApi.createBrand({
+    const created = await viralStudioApi.createBrand({
       name: 'Marca Teste API',
       handle: '@marcateste',
       default_cta: 'Clique aqui!',
     })
-    expect(data.name).toBe('Marca Teste API')
-  })
+    expect(created.name).toBe('Marca Teste API')
 
-  it('updates a brand', async () => {
-    const data = await viralStudioApi.updateBrand('vale-o-clique', {
+    const updated = await viralStudioApi.updateBrand('vale-o-clique', {
       name: 'Vale o Clique Atualizado',
     })
-    expect(data.name).toBe('Vale o Clique Atualizado')
+    expect(updated.name).toBe('Vale o Clique Atualizado')
+
+    const ws = await viralStudioApi.fetchBrandWorkspace('vale-o-clique')
+    expect(ws.brand.id).toBe('vale-o-clique')
+
+    const channels = await viralStudioApi.fetchBrandChannels('vale-o-clique')
+    expect(channels.length).toBeGreaterThan(0)
+
+    const avail = await viralStudioApi.fetchAvailableBrandChannels('vale-o-clique')
+    expect(avail.length).toBeGreaterThan(0)
+
+    const bind = await viralStudioApi.bindBrandChannels('vale-o-clique', { channel_ids: ['ch1'] })
+    expect(bind.id).toBe('vale-o-clique')
+
+    const conn = await viralStudioApi.getBrandConnectUrl('vale-o-clique')
+    expect(conn.url).toBeDefined()
+
+    const vids = await viralStudioApi.fetchBrandVideos('vale-o-clique', 'all')
+    expect(Array.isArray(vids)).toBe(true)
+
+    const autoSched = await viralStudioApi.autoScheduleBrandVideo('vale-o-clique', 'item-1')
+    expect(autoSched.success).toBe(true)
+
+    const pub = await viralStudioApi.publishBrandVideo('vale-o-clique', {
+      item_id: 'item-1',
+      publish_now: true,
+    })
+    expect(pub.success).toBe(true)
+
+    const sched = await viralStudioApi.fetchBrandScheduled('vale-o-clique')
+    expect(sched.posts.length).toBeGreaterThan(0)
+
+    const cancel = await viralStudioApi.cancelBrandScheduledPost('vale-o-clique', 'post-1')
+    expect(cancel.success).toBe(true)
+
+    const pubNow = await viralStudioApi.publishBrandScheduledNow('vale-o-clique', 'post-1')
+    expect(pubNow.success).toBe(true)
+
+    const slots = await viralStudioApi.updateBrandScheduleSlots('vale-o-clique', {
+      slots: ['10:00'],
+      timezone: 'America/Sao_Paulo',
+    })
+    expect(slots.id).toBe('vale-o-clique')
+
+    const pubWs = await viralStudioApi.fetchPublishingWorkspaces('postiz')
+    expect(pubWs.length).toBeGreaterThan(0)
   })
 
   it('fetches templates list', async () => {

@@ -11,9 +11,10 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
+from clippyme.domain import viral_studio_store
 from clippyme.domain.errors import NotFoundError, ValidationError
 from clippyme.domain.social_publisher_port import (
     PublicationJob,
@@ -21,7 +22,6 @@ from clippyme.domain.social_publisher_port import (
     SocialChannel,
     get_social_publisher,
 )
-from clippyme.domain import viral_studio_store
 
 logger = logging.getLogger("clippyme.brand_workspace_service")
 
@@ -29,7 +29,7 @@ logger = logging.getLogger("clippyme.brand_workspace_service")
 KNOWN_PROVIDERS = {"postiz", "zernio", "mock"}
 
 
-def get_brand_active_provider(brand: Dict[str, Any]) -> str:
+def get_brand_active_provider(brand: dict[str, Any]) -> str:
     """Resolve the active publishing provider for a brand.
 
     Precedence:
@@ -66,7 +66,7 @@ def get_brand_active_provider(brand: Dict[str, Any]) -> str:
     return (os.environ.get("PUBLISHING_PROVIDER") or cfg.get("PUBLISHING_PROVIDER", "postiz")).strip().lower()
 
 
-def get_brand_customer_id(brand: Dict[str, Any], provider_name: str) -> Optional[str]:
+def get_brand_customer_id(brand: dict[str, Any], provider_name: str) -> str | None:
     """Resolve customer/workspace identifier for a brand on a specific provider."""
     profiles = brand.get("publishing_profiles") or {}
     profile_data = profiles.get(provider_name) if isinstance(profiles, dict) else None
@@ -81,7 +81,7 @@ def get_brand_customer_id(brand: Dict[str, Any], provider_name: str) -> Optional
     return None
 
 
-def get_brand_channel_ids(brand: Dict[str, Any], provider_name: str) -> List[str]:
+def get_brand_channel_ids(brand: dict[str, Any], provider_name: str) -> list[str]:
     """Retrieve list of channel IDs bound to this brand on the active provider."""
     profiles = brand.get("publishing_profiles") or {}
     if isinstance(profiles, dict):
@@ -93,7 +93,7 @@ def get_brand_channel_ids(brand: Dict[str, Any], provider_name: str) -> List[str
     return []
 
 
-async def get_brand_channels(brand_id: str, *, all_available: bool = False) -> List[SocialChannel]:
+async def get_brand_channels(brand_id: str, *, all_available: bool = False) -> list[SocialChannel]:
     """Retrieve social channels for a brand from its active publisher provider.
 
     If all_available is True:
@@ -109,7 +109,7 @@ async def get_brand_channels(brand_id: str, *, all_available: bool = False) -> L
     if all_available:
         all_accounts = await port.list_accounts(customer_id=None)
         all_brands = viral_studio_store.list_brands()
-        channel_to_brand: Dict[str, tuple[str, str]] = {}
+        channel_to_brand: dict[str, tuple[str, str]] = {}
         for b in all_brands:
             b_id = str(b.get("id") or "")
             b_name = str(b.get("name") or b_id)
@@ -121,7 +121,7 @@ async def get_brand_channels(brand_id: str, *, all_available: bool = False) -> L
                     for cid in p_data.get("channel_ids") or []:
                         channel_to_brand[str(cid)] = (b_id, b_name)
 
-        enriched: List[SocialChannel] = []
+        enriched: list[SocialChannel] = []
         for ch in all_accounts:
             bound_b_id, bound_b_name = channel_to_brand.get(str(ch.id), (None, None))
             enriched.append(
@@ -162,9 +162,9 @@ async def get_brand_channels(brand_id: str, *, all_available: bool = False) -> L
 
 async def bind_brand_channels(
     brand_id: str,
-    channel_ids: List[str],
-    workspace_id: Optional[str] = None,
-) -> Dict[str, Any]:
+    channel_ids: list[str],
+    workspace_id: str | None = None,
+) -> dict[str, Any]:
     """Bind specific channel IDs and optionally a workspace_id to the brand's active provider profile.
     
     Enforces 1:1 Exclusive Channel Ownership: Any selected channel is automatically
@@ -227,9 +227,9 @@ async def bind_brand_channels(
             except Exception as exc:
                 logger.warning("Failed assigning channel %s to workspace %s: %s", ch_id, final_ws, exc)
 
-    current_profile["linked_at"] = datetime.now(timezone.utc).isoformat()
+    current_profile["linked_at"] = datetime.now(UTC).isoformat()
     profiles[provider_name] = current_profile
-    brand_updates: Dict[str, Any] = {"publishing_profiles": profiles}
+    brand_updates: dict[str, Any] = {"publishing_profiles": profiles}
 
     # If brand doesn't have an avatar_url or avatar_path, inherit from the first bound channel with an avatar
     if not brand.get("avatar_path") and not (brand.get("avatar_url") or "").strip():
@@ -245,7 +245,7 @@ async def bind_brand_channels(
     return viral_studio_store.update_brand(brand_id, brand_updates)
 
 
-async def get_workspace_summary(brand_id: str) -> Dict[str, Any]:
+async def get_workspace_summary(brand_id: str) -> dict[str, Any]:
     """Aggregate complete state for the Brand Workspace view."""
     brand = viral_studio_store.get_brand_or_raise(brand_id)
     provider_name = get_brand_active_provider(brand)
@@ -299,7 +299,7 @@ async def get_workspace_summary(brand_id: str) -> Dict[str, Any]:
     }
 
 
-def get_brand_videos(brand_id: str, status: Optional[str] = None) -> List[Dict[str, Any]]:
+def get_brand_videos(brand_id: str, status: str | None = None) -> list[dict[str, Any]]:
     """Retrieve video items belonging to a specific brand with optional status filtering."""
     _ = viral_studio_store.get_brand_or_raise(brand_id)
     items = viral_studio_store.get_items_by_brand(brand_id=brand_id, status=status)
@@ -341,7 +341,7 @@ def _validate_item_for_brand(
     brand_id: str,
     item_id: str,
     require_approved: bool = False,
-) -> tuple[Dict[str, Any], str, str]:
+) -> tuple[dict[str, Any], str, str]:
     """Locate and validate item belongs to brand and has rendered media."""
     item, batch_id, batch = viral_studio_store.find_item_batch(item_id)
     item_brand = item.get("brand_id") or batch.get("brand_id")
@@ -367,13 +367,13 @@ def _validate_item_for_brand(
 def _record_receipts(
     batch_id: str,
     item_id: str,
-    receipts: List[PublicationReceipt],
-    scheduled_for: Optional[str] = None,
+    receipts: list[PublicationReceipt],
+    scheduled_for: str | None = None,
     publish_now: bool = False,
-    channel_ids: Optional[List[str]] = None,
+    channel_ids: list[str] | None = None,
 ) -> None:
     """Durably record publication receipts and advance item status."""
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     for idx, receipt in enumerate(receipts):
         ch_id = (
             channel_ids[idx]
@@ -419,8 +419,8 @@ def _record_receipts(
 async def auto_schedule_brand_video(
     brand_id: str,
     item_id: str,
-    channel_ids: Optional[List[str]] = None,
-) -> List[PublicationReceipt]:
+    channel_ids: list[str] | None = None,
+) -> list[PublicationReceipt]:
     """1-Click auto-schedule an approved video using the brand's posting schedule and next available slot.
 
     Enforces:
@@ -460,13 +460,13 @@ async def auto_schedule_brand_video(
     if avail_slots:
         slot_iso = avail_slots[0].isoformat()
     else:
-        now_tz = datetime.now(timezone.utc)
+        now_tz = datetime.now(UTC)
         slot_iso = (now_tz + timedelta(days=1)).replace(hour=18, minute=0, second=0, microsecond=0).isoformat()
 
     title = item.get("selected_headline") or item.get("headline") or brand.get("name")
     caption = item.get("caption") or brand.get("default_cta") or ""
 
-    receipts: List[PublicationReceipt] = []
+    receipts: list[PublicationReceipt] = []
 
     # 2. Dispatch to Publisher Port for each channel (Omnichannel with Failure Isolation)
     for channel_id in channel_ids:
@@ -504,10 +504,10 @@ async def auto_schedule_brand_video(
 async def publish_brand_video(
     brand_id: str,
     item_id: str,
-    channel_ids: List[str],
-    scheduled_for: Optional[str] = None,
+    channel_ids: list[str],
+    scheduled_for: str | None = None,
     publish_now: bool = False,
-) -> List[PublicationReceipt]:
+) -> list[PublicationReceipt]:
     """Publish or schedule video to specified channels with failure isolation."""
     brand = viral_studio_store.get_brand_or_raise(brand_id)
     item, batch_id, video_path = _validate_item_for_brand(brand_id, item_id, require_approved=False)
@@ -521,7 +521,7 @@ async def publish_brand_video(
     title = item.get("selected_headline") or item.get("headline") or brand.get("name")
     caption = item.get("caption") or brand.get("default_cta") or ""
 
-    receipts: List[PublicationReceipt] = []
+    receipts: list[PublicationReceipt] = []
 
     for channel_id in channel_ids:
         job = PublicationJob(
@@ -560,7 +560,10 @@ async def cancel_brand_scheduled_post(brand_id: str, post_id: str) -> bool:
     provider_name = get_brand_active_provider(brand)
     port = get_social_publisher(provider=provider_name)
 
-    from clippyme.domain.publish_dispatch_service import _load_queue_sync, _save_queue_sync
+    from clippyme.domain.publish_dispatch_service import (
+        _load_queue_sync,
+        _save_queue_sync,
+    )
     queue = _load_queue_sync()
 
     # 1. If post_id is an in-flight / queued dispatch job (e.g. job_pub_...)
@@ -569,7 +572,7 @@ async def cancel_brand_scheduled_post(brand_id: str, post_id: str) -> bool:
         job_data = queue.get(post_id)
         if job_data:
             job_data["status"] = "CANCELLED"
-            job_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+            job_data["updated_at"] = datetime.now(UTC).isoformat()
             queue[post_id] = job_data
             _save_queue_sync(queue)
 
@@ -604,7 +607,7 @@ async def cancel_brand_scheduled_post(brand_id: str, post_id: str) -> bool:
             or (reverted_item and j_val.get("item_id") == (reverted_item.get("item_id") or reverted_item.get("id")))
         ):
             j_val["status"] = "CANCELLED"
-            j_val["updated_at"] = datetime.now(timezone.utc).isoformat()
+            j_val["updated_at"] = datetime.now(UTC).isoformat()
             modified_queue = True
     if modified_queue:
         _save_queue_sync(queue)
@@ -619,10 +622,10 @@ async def cancel_brand_scheduled_post(brand_id: str, post_id: str) -> bool:
 
 
 def _enrich_post_metadata(
-    post: Dict[str, Any],
-    channel_map: Dict[str, SocialChannel],
+    post: dict[str, Any],
+    channel_map: dict[str, SocialChannel],
     provider_name: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Populate platform, channel metadata, thumbnail and URLs on a scheduled post."""
     p = dict(post)
     ch_id = p.get("channel_id")
@@ -703,9 +706,9 @@ def _enrich_post_metadata(
 
 def _get_active_queue_posts(
     brand_id: str,
-    channel_map: Dict[str, SocialChannel],
+    channel_map: dict[str, SocialChannel],
     provider_name: str,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Retrieve in-flight QUEUED or UPLOADING dispatch jobs converted to timeline posts."""
     from clippyme.domain.publish_dispatch_service import dispatch_service
     active_records = dispatch_service.list_dispatch_records(brand_id=brand_id)
@@ -747,9 +750,9 @@ def _get_active_queue_posts(
 
 async def list_brand_scheduled_posts(
     brand_id: str,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> list[dict[str, Any]]:
     """Query scheduled and published posts for brand from active provider."""
     brand = viral_studio_store.get_brand_or_raise(brand_id)
     provider_name = get_brand_active_provider(brand)
@@ -872,14 +875,14 @@ async def list_brand_scheduled_posts(
     return active_queue_posts + filtered
 
 
-async def publish_brand_scheduled_now(brand_id: str, post_id: str) -> Dict[str, Any]:
+async def publish_brand_scheduled_now(brand_id: str, post_id: str) -> dict[str, Any]:
     """Trigger immediate publication of a scheduled post."""
     brand = viral_studio_store.get_brand_or_raise(brand_id)
     provider_name = get_brand_active_provider(brand)
     port = get_social_publisher(provider=provider_name)
 
-    item_id: Optional[str] = None
-    channel_ids: List[str] = []
+    item_id: str | None = None
+    channel_ids: list[str] = []
 
     from clippyme.domain.publish_dispatch_service import dispatch_service
     queue_jobs = dispatch_service.list_dispatch_records(brand_id=brand_id)

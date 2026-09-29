@@ -67,363 +67,35 @@ def _validate_hex(v: str, field_name: str = "Color") -> str:
 
 
 # ============================================================================
-# Brand Schemas
+# Brand Schemas & Workspace (Re-exported from clippyme.api.brand_schemas)
 # ============================================================================
-
-class SocialChannelBinding(BaseModel):
-    account_id: str = Field(..., min_length=1, max_length=128)
-    name: Optional[str] = Field(None, max_length=128)
-    platform: str = Field(..., max_length=64)
-    avatar_url: Optional[str] = Field(None, max_length=1024)
-    handle: Optional[str] = Field(None, max_length=128)
-
-
-class BrandBase(BaseModel):
-    name: str = Field(..., min_length=1, max_length=100)
-    handle: str = Field(..., min_length=1, max_length=60)
-    niche: Optional[str] = Field(None, max_length=150)
-    discovery_keywords: List[str] = Field(default_factory=list)
-    avatar_path: Optional[str] = Field(None, max_length=512)
-    avatar_url: Optional[str] = Field(None, max_length=1024)
-    logo_path: Optional[str] = Field(None, max_length=512)
-    default_cta: str = Field("Confira os achadinhos no link da bio!", max_length=500)
-    default_affiliate_url: Optional[str] = Field(None, max_length=2048)
-    template_id: str = Field("classic-affiliate", max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
-    posting_schedule: Optional[Dict[str, Any]] = Field(
-        default_factory=lambda: {
-            "frequency": 3,
-            "slots": ["10:00", "15:00", "20:00"],
-            "timezone": "America/Sao_Paulo",
-        }
-    )
-    publishing_profiles: Dict[str, Any] = Field(default_factory=dict)
-
-    @field_validator("posting_schedule", mode="before")
-    @classmethod
-    def _default_posting_schedule(cls, v: Any) -> Optional[Dict[str, Any]]:
-        if v is None:
-            return {
-                "frequency": 3,
-                "slots": ["10:00", "15:00", "20:00"],
-                "timezone": "America/Sao_Paulo",
-            }
-        return v
-
-    @field_validator("name")
-    @classmethod
-    def _clean_name(cls, v: str) -> str:
-        v = (v or "").strip()
-        if not v:
-            raise ValueError("Brand name must not be blank")
-        return v
-
-    @field_validator("handle")
-    @classmethod
-    def _clean_handle(cls, v: str) -> str:
-        v = (v or "").strip()
-        if not v:
-            raise ValueError("Handle must not be blank")
-        clean = v.lstrip("@")
-        if not clean:
-            raise ValueError("Handle must contain characters after '@'")
-        if not HANDLE_CHARS_RE.match(clean):
-            raise ValueError("Handle contains invalid characters (allowed: letters, numbers, dot, underscore, dash)")
-        return f"@{clean}"
-
-    @field_validator("default_affiliate_url")
-    @classmethod
-    def _check_affiliate_url(cls, v: Optional[str]) -> Optional[str]:
-        return validate_affiliate_url(v)
-
-    @field_validator("avatar_path", "logo_path")
-    @classmethod
-    def _check_asset_path(cls, v: Optional[str]) -> Optional[str]:
-        return validate_safe_asset_path(v)
-
-    @field_validator("publishing_profiles")
-    @classmethod
-    def _check_publishing_profiles(cls, v: Dict[str, Any]) -> Dict[str, Any]:
-        if not isinstance(v, dict):
-            raise ValueError("publishing_profiles must be an object/dict")
-        if len(v) > 16:
-            raise ValueError("Too many publishing profiles (maximum 16)")
-        for key in v:
-            if not isinstance(key, str) or not key.strip():
-                raise ValueError("publishing_profiles keys must be non-empty strings")
-        return v
-
-
-class Brand(BrandBase):
-    id: str = Field(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-
-
-class BrandCreate(BaseModel):
-    id: Optional[str] = Field(None, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
-    name: str = Field(..., min_length=1, max_length=100)
-    handle: str = Field(..., min_length=1, max_length=60)
-    niche: Optional[str] = Field(None, max_length=150)
-    discovery_keywords: List[str] = Field(default_factory=list)
-    avatar_path: Optional[str] = Field(None, max_length=512)
-    avatar_url: Optional[str] = Field(None, max_length=1024)
-    logo_path: Optional[str] = Field(None, max_length=512)
-    default_cta: str = Field("Confira os achadinhos no link da bio!", max_length=500)
-    default_affiliate_url: Optional[str] = Field(None, max_length=2048)
-    template_id: str = Field("classic-affiliate", max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
-    posting_schedule: Optional[Dict[str, Any]] = None
-    publishing_profiles: Dict[str, Any] = Field(default_factory=dict)
-
-    @model_validator(mode="before")
-    @classmethod
-    def _auto_generate_id(cls, values: Any) -> Any:
-        if isinstance(values, dict):
-            raw_id = values.get("id")
-            if not raw_id or (isinstance(raw_id, str) and not raw_id.strip()):
-                name = values.get("name")
-                if isinstance(name, str) and name.strip():
-                    values["id"] = slugify(name)[:64].rstrip("-_") or "unnamed"
-        return values
-
-    @field_validator("name")
-    @classmethod
-    def _clean_name(cls, v: str) -> str:
-        v = (v or "").strip()
-        if not v:
-            raise ValueError("Brand name must not be blank")
-        return v
-
-    @field_validator("handle")
-    @classmethod
-    def _clean_handle(cls, v: str) -> str:
-        v = (v or "").strip()
-        if not v:
-            raise ValueError("Handle must not be blank")
-        clean = v.lstrip("@")
-        if not clean:
-            raise ValueError("Handle must contain characters after '@'")
-        if not HANDLE_CHARS_RE.match(clean):
-            raise ValueError("Handle contains invalid characters (allowed: letters, numbers, dot, underscore, dash)")
-        return f"@{clean}"
-
-    @field_validator("default_affiliate_url")
-    @classmethod
-    def _check_affiliate_url(cls, v: Optional[str]) -> Optional[str]:
-        return validate_affiliate_url(v)
-
-    @field_validator("avatar_path", "logo_path")
-    @classmethod
-    def _check_asset_path(cls, v: Optional[str]) -> Optional[str]:
-        return validate_safe_asset_path(v)
-
-    @field_validator("publishing_profiles")
-    @classmethod
-    def _check_publishing_profiles(cls, v: Dict[str, Any]) -> Dict[str, Any]:
-        if not isinstance(v, dict):
-            raise ValueError("publishing_profiles must be an object/dict")
-        if len(v) > 16:
-            raise ValueError("Too many publishing profiles (maximum 16)")
-        for key in v:
-            if not isinstance(key, str) or not key.strip():
-                raise ValueError("publishing_profiles keys must be non-empty strings")
-        return v
-
-
-class BrandUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
-    handle: Optional[str] = Field(None, min_length=1, max_length=60)
-    niche: Optional[str] = Field(None, max_length=150)
-    discovery_keywords: Optional[List[str]] = None
-    avatar_path: Optional[str] = Field(None, max_length=512)
-    avatar_url: Optional[str] = Field(None, max_length=1024)
-    logo_path: Optional[str] = Field(None, max_length=512)
-    default_cta: Optional[str] = Field(None, max_length=500)
-    default_affiliate_url: Optional[str] = Field(None, max_length=2048)
-    template_id: Optional[str] = Field(None, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
-    posting_schedule: Optional[Dict[str, Any]] = None
-    publishing_profiles: Optional[Dict[str, Any]] = None
-
-    @field_validator("name")
-    @classmethod
-    def _clean_name(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return None
-        v = v.strip()
-        if not v:
-            raise ValueError("Brand name must not be blank")
-        return v
-
-    @field_validator("handle")
-    @classmethod
-    def _clean_handle(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return None
-        v = v.strip()
-        if not v:
-            raise ValueError("Handle must not be blank")
-        clean = v.lstrip("@")
-        if not clean:
-            raise ValueError("Handle must contain characters after '@'")
-        if not HANDLE_CHARS_RE.match(clean):
-            raise ValueError("Handle contains invalid characters (allowed: letters, numbers, dot, underscore, dash)")
-        return f"@{clean}"
-
-    @field_validator("default_affiliate_url")
-    @classmethod
-    def _check_affiliate_url(cls, v: Optional[str]) -> Optional[str]:
-        return validate_affiliate_url(v)
-
-    @field_validator("avatar_path", "logo_path")
-    @classmethod
-    def _check_asset_path(cls, v: Optional[str]) -> Optional[str]:
-        return validate_safe_asset_path(v)
-
-    @field_validator("publishing_profiles")
-    @classmethod
-    def _check_publishing_profiles(cls, v: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-        if v is None:
-            return None
-        if not isinstance(v, dict):
-            raise ValueError("publishing_profiles must be an object/dict")
-        if len(v) > 16:
-            raise ValueError("Too many publishing profiles (maximum 16)")
-        for key in v:
-            if not isinstance(key, str) or not key.strip():
-                raise ValueError("publishing_profiles keys must be non-empty strings")
-        return v
-
-
-class BrandResponse(Brand):
-    """Response model for a single brand (matches Brand schema directly)."""
-    pass
-
-
-class BrandListResponse(BaseModel):
-    """Response model for listing brands."""
-    brands: List[Brand] = Field(default_factory=list)
-    total: int = 0
-
-    @model_validator(mode="before")
-    @classmethod
-    def _set_total(cls, values: Any) -> Any:
-        if isinstance(values, dict):
-            if "total" not in values and "brands" in values and isinstance(values["brands"], list):
-                values["total"] = len(values["brands"])
-        return values
-
-
-# ============================================================================
-# Brand Workspace & Scheduling Schemas
-# ============================================================================
-
-class BrandWorkspaceCounts(BaseModel):
-    total_videos: int = 0
-    approved_videos: int = 0
-    scheduled_posts: int = 0
-    published_posts: int = 0
-
-
-class BrandSocialChannel(BaseModel):
-    id: str
-    platform: str
-    name: str
-    connected: bool = True
-    avatar_url: Optional[str] = None
-
-
-class BrandWorkspaceResponse(BaseModel):
-    brand: Brand
-    provider: str = "postiz"
-    counts: BrandWorkspaceCounts
-    channels: List[BrandSocialChannel] = Field(default_factory=list)
-    template: Optional[Dict[str, Any]] = None
-
-
-class AutoScheduleRequest(BaseModel):
-    item_id: str
-    channel_ids: Optional[List[str]] = None
-
-
-class BrandPublishRequest(BaseModel):
-    item_id: str
-    channel_ids: List[str] = Field(..., min_length=1)
-    scheduled_for: Optional[str] = None
-    publish_now: bool = False
-
-
-class ScheduleSlotsRequest(BaseModel):
-    slots: List[str] = Field(..., min_length=1)
-    timezone: str = "America/Sao_Paulo"
-    frequency: Optional[int] = None
-
-
-class ScheduledTimelinePost(BaseModel):
-    id: str
-    post_id: Optional[str] = None
-    brand_id: Optional[str] = None
-    item_id: Optional[str] = None
-    job_id: Optional[str] = None
-    platform: Optional[str] = None
-    channel_id: Optional[str] = None
-    channel_name: Optional[str] = None
-    channel_handle: Optional[str] = None
-    channel_avatar_url: Optional[str] = None
-    channels: List[str] = Field(default_factory=list)
-    provider: Optional[str] = "postiz"
-    provider_url: Optional[str] = None
-    provider_post_url: Optional[str] = None
-    title: Optional[str] = None
-    content: Optional[str] = None
-    status: str = "scheduled"  # "scheduled" | "published" | "failed" | "QUEUED" | "UPLOADING"
-    scheduled_for: Optional[str] = None
-    scheduled_time: Optional[str] = None
-    published_at: Optional[str] = None
-    post_url: Optional[str] = None
-    external_url: Optional[str] = None
-    thumbnail_url: Optional[str] = None
-    error: Optional[str] = None
-    metrics: Dict[str, Any] = Field(default_factory=dict)
-    raw_response: Optional[Dict[str, Any]] = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def _normalize_timeline_post(cls, data: Any) -> Any:
-        if isinstance(data, dict):
-            d = dict(data)
-            p_id = str(d.get("id") or d.get("post_id") or d.get("_id") or "")
-            if not p_id or p_id == "None":
-                p_id = f"post_{d.get('item_id', 'unknown')}_{uuid.uuid4().hex[:8]}"
-            d["id"] = p_id
-            d["post_id"] = p_id
-
-            if not d.get("status"):
-                d["status"] = "scheduled"
-
-            s_time = d.get("scheduled_for") or d.get("scheduled_time") or d.get("date") or d.get("publishAt")
-            if s_time:
-                d["scheduled_for"] = str(s_time)
-                d["scheduled_time"] = str(s_time)
-            url = d.get("post_url") or d.get("external_url") or d.get("url")
-            if url:
-                d["post_url"] = str(url)
-                d["external_url"] = str(url)
-            if "channels" not in d or not d["channels"]:
-                chs = []
-                if d.get("channel_id"):
-                    chs.append(str(d["channel_id"]))
-                elif d.get("platform"):
-                    chs.append(str(d["platform"]))
-                if d.get("channel_name") and d["channel_name"] not in chs:
-                    chs.append(str(d["channel_name"]))
-                d["channels"] = chs
-            return d
-        return data
-
-
-class ScheduledTimelineResponse(BaseModel):
-    brand_id: Optional[str] = None
-    posts: List[ScheduledTimelinePost] = Field(default_factory=list)
-    total: int = 0
+from clippyme.api.brand_schemas import (
+    SocialChannelBinding,
+    BrandBase,
+    Brand,
+    BrandCreate,
+    BrandUpdate,
+    BrandResponse,
+    BrandListResponse,
+    BrandWorkspaceCounts,
+    BrandSocialChannel,
+    BrandWorkspaceResponse,
+    AutoScheduleRequest,
+    BrandPublishRequest,
+    ScheduleSlotsRequest,
+    ScheduledTimelinePost,
+    ScheduledTimelineResponse,
+    SocialChannelResponse,
+    WorkspaceSummaryResponse,
+    BrandChannelBindRequest,
+    SocialAccountResponse,
+    ScheduleSlotsUpdateRequest,
+    BrandCreateRequest,
+    BrandUpdateRequest,
+    BrandAutoScheduleRequest,
+    BrandAutoScheduleResponse,
+    BrandPublishResponse,
+)
 
 
 # ============================================================================
@@ -1141,35 +813,6 @@ class PreviewSlotsResponse(BaseModel):
     count: int
     last_scheduled_slot: Optional[str] = None
     projected_slots: List[SlotProjection] = Field(default_factory=list)
-
-
-class SocialChannelResponse(BaseModel):
-    id: str
-    name: str
-    platform: str
-    avatar_url: Optional[str] = None
-    handle: Optional[str] = None
-    connected: bool = True
-    provider: Optional[str] = None
-    group_id: Optional[str] = None
-    group_name: Optional[str] = None
-    bound_to_brand_id: Optional[str] = None
-    bound_to_brand_name: Optional[str] = None
-
-
-class WorkspaceSummaryResponse(BaseModel):
-    id: str
-    name: str
-    provider: str
-
-
-class BrandChannelBindRequest(BaseModel):
-    channel_ids: List[str] = Field(default_factory=list)
-    workspace_id: Optional[str] = None
-
-
-# Backward compatibility alias
-SocialAccountResponse = SocialChannelResponse
 
 
 class ViralPublishResult(BaseModel):

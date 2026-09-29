@@ -12,7 +12,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { BrandSettingsConversionFields } from './brand-settings-conversion-fields'
-import type { Brand, BrandUpdate, VisualTemplate } from '../data/batch.types'
+import type { Brand, BrandUpdate } from '../data/brand.types'
+import type { VisualTemplate } from '@/features/viral-studio/data/template.types'
 
 interface BrandSettingsIdentityCardProps {
   brand: Brand

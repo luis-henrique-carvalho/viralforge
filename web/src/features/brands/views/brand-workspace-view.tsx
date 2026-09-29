@@ -57,7 +57,7 @@ export function BrandWorkspaceView({ brandId }: BrandWorkspaceViewProps) {
           size="sm"
           className="gap-1.5 text-xs"
         >
-          <Link to="/viral-studio/brands">
+          <Link to="/brands">
             <ArrowLeft className="size-4" />
             Voltar para Marcas
           </Link>

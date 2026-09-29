@@ -139,7 +139,17 @@ def _resolve_cookies_path(explicit: str | None) -> str | None:
 # from hard-failing when no avc1 rendition exists.
 _FORMAT_LADDER = (
     'bestvideo[vcodec^=avc1][ext=mp4]+bestaudio[ext=m4a]/'
+    'bestvideo[vcodec^=h264][ext=mp4]+bestaudio[ext=m4a]/'
     'bestvideo[vcodec^=avc1]+bestaudio/'
+    'bestvideo[vcodec^=h264]+bestaudio/'
+    'bestvideo[ext=mp4]+bestaudio[ext=m4a]/'
+    'bestvideo+bestaudio/'
+    'best[vcodec^=h264][acodec!=none][ext=mp4]/'
+    'best[vcodec^=avc1][acodec!=none][ext=mp4]/'
+    'best[vcodec^=h264][ext=mp4]/'
+    'best[vcodec^=avc1][ext=mp4]/'
+    'best[acodec!=none][ext=mp4]/'
+    'best[acodec!=none]/'
     'best[ext=mp4]/bestvideo*+bestaudio/best'
 )
 

@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { Brand, ScheduleSlotsUpdate } from '../data/batch.types'
+import type { Brand, ScheduleSlotsUpdate } from '../data/brand.types'
 
 interface BrandSettingsScheduleCardProps {
   brand: Brand

@@ -1,5 +1,5 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { Compass, Film, Scissors, Settings, Sparkles } from 'lucide-react'
+import { Bookmark, Compass, Film, Scissors, Settings, Sparkles } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -30,6 +30,11 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Viral Studio',
     icon: Sparkles,
     badge: 'CORE',
+  },
+  {
+    to: '/brands',
+    label: 'Marcas',
+    icon: Bookmark,
   },
   {
     to: '/discovery',

@@ -325,11 +325,23 @@ def set_store_dir(directory: str) -> None:
     BATCHES_FILE = None
     ITEMS_FILE = None
     DISPATCH_QUEUE_FILE = None
+    brand_store.set_store_dir(directory)
     try:
         from clippyme.domain import publish_dispatch_service
         publish_dispatch_service.DISPATCH_QUEUE_PATH = os.path.join(directory, "dispatch_queue.json")
     except (ImportError, AttributeError):
         pass
+
+
+def reset_store() -> None:
+    global DATA_DIR, BRANDS_FILE, TEMPLATES_FILE, BATCHES_FILE, ITEMS_FILE, DISPATCH_QUEUE_FILE
+    DATA_DIR = os.environ.get("CLIPPYME_VIRAL_STUDIO_DIR") or os.path.join("data", "viral_studio")
+    BRANDS_FILE = None
+    TEMPLATES_FILE = None
+    BATCHES_FILE = None
+    ITEMS_FILE = None
+    DISPATCH_QUEUE_FILE = None
+    brand_store.reset_store()
 
 
 def get_brands_path() -> str:
@@ -416,183 +428,27 @@ def _read_json_file(file_path: str) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Brand Storage Operations
+# Brand Storage Operations (Delegated and Re-exported from sovereign brand_store)
 # ---------------------------------------------------------------------------
+from clippyme.domain.brand_store import (
+    DEFAULT_BRAND_DICT,
+    DEFAULT_BRAND_ID,
+    DEFAULT_BRAND_SCHEDULE,
+    create_brand,
+    delete_brand,
+    get_brand,
+    get_brand_or_raise,
+    get_brands_path,
+    list_brands,
+    save_brand,
+    update_brand,
+    update_brand_schedule,
+)
+from clippyme.domain import brand_store
 
-def _load_brands_locked() -> Dict[str, Dict[str, Any]]:
-    path = get_brands_path()
-    brands = _read_json_file(path)
-    if not brands:
-        brands = {DEFAULT_BRAND_ID: dict(DEFAULT_BRAND_DICT)}
-        _atomic_write_json(path, brands)
-    return brands
-
-
-def list_brands() -> List[Dict[str, Any]]:
-    with _STORE_LOCK:
-        brands = _load_brands_locked()
-        res = []
-        for b in brands.values():
-            item = dict(b)
-            item.pop("_is_seed", None)
-            res.append(item)
-        return sorted(res, key=lambda b: (b.get("name") or b.get("id", "")).lower())
-
-
-DEFAULT_BRAND_SCHEDULE: Dict[str, Any] = {
-    "frequency": 3,
-    "slots": ["10:00", "15:00", "20:00"],
-    "timezone": "America/Sao_Paulo",
-}
-
-
-def get_brand(brand_id: str) -> Optional[Dict[str, Any]]:
-    if not brand_id:
-        return None
-    with _STORE_LOCK:
-        brands = _load_brands_locked()
-        brand = brands.get(brand_id)
-        if not brand:
-            return None
-        res = dict(brand)
-        res.pop("_is_seed", None)
-        if not res.get("posting_schedule"):
-            res["posting_schedule"] = dict(DEFAULT_BRAND_SCHEDULE)
-        return res
-
-
-def get_brand_or_raise(brand_id: str) -> Dict[str, Any]:
-    brand = get_brand(brand_id)
-    if brand is None:
-        raise NotFoundError(f"Brand not found: {brand_id}")
-    return brand
-
-
-def create_brand(brand: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
-    data = _to_dict(brand)
-    brand_id = data.get("id")
-    if not brand_id or (isinstance(brand_id, str) and not brand_id.strip()):
-        name = data.get("name")
-        if not name or (isinstance(name, str) and not name.strip()):
-            raise ValidationError("Brand id or name is required")
-        brand_id = _slugify(name)
-        data["id"] = brand_id
-
-    if "avatar_path" in data and data["avatar_path"] is not None:
-        data["avatar_path"] = validate_safe_asset_path(data["avatar_path"])
-    if "logo_path" in data and data["logo_path"] is not None:
-        data["logo_path"] = validate_safe_asset_path(data["logo_path"])
-
-    data.setdefault("posting_schedule", dict(DEFAULT_BRAND_SCHEDULE))
-
-    with _STORE_LOCK:
-        brands = _load_brands_locked()
-        if brand_id in brands:
-            existing = brands[brand_id]
-            if existing.get("_is_seed"):
-                # Replacing placeholder seed with genuine user brand
-                pass
-            else:
-                raise ConflictError(f"Brand already exists: {brand_id}")
-
-        now = _utcnow_iso()
-        data.setdefault("created_at", now)
-        data["updated_at"] = now
-        data.pop("_is_seed", None)
-
-        brands[brand_id] = data
-        _atomic_write_json(get_brands_path(), brands)
-        return dict(data)
-
-
-def update_brand(brand_id: str, updates: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
-    if not brand_id:
-        raise ValidationError("Brand id is required")
-    patch = _to_dict(updates)
-
-    if "avatar_path" in patch and patch["avatar_path"] is not None:
-        patch["avatar_path"] = validate_safe_asset_path(patch["avatar_path"])
-    if "logo_path" in patch and patch["logo_path"] is not None:
-        patch["logo_path"] = validate_safe_asset_path(patch["logo_path"])
-
-    with _STORE_LOCK:
-        brands = _load_brands_locked()
-        if brand_id not in brands:
-            raise NotFoundError(f"Brand not found: {brand_id}")
-
-        existing = brands[brand_id]
-        for k, v in patch.items():
-            if k in ("id", "created_at", "_is_seed"):
-                continue
-            if v is not None:
-                existing[k] = v
-
-        existing["updated_at"] = _utcnow_iso()
-        existing.pop("_is_seed", None)
-        brands[brand_id] = existing
-        _atomic_write_json(get_brands_path(), brands)
-        res = dict(existing)
-        return res
-
-
-def save_brand(brand: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
-    data = _to_dict(brand)
-    brand_id = data.get("id")
-    if not brand_id or (isinstance(brand_id, str) and not brand_id.strip()):
-        name = data.get("name")
-        if not name or (isinstance(name, str) and not name.strip()):
-            raise ValidationError("Brand id or name is required")
-        brand_id = _slugify(name)
-        data["id"] = brand_id
-
-    if "avatar_path" in data and data["avatar_path"] is not None:
-        data["avatar_path"] = validate_safe_asset_path(data["avatar_path"])
-    if "logo_path" in data and data["logo_path"] is not None:
-        data["logo_path"] = validate_safe_asset_path(data["logo_path"])
-
-    with _STORE_LOCK:
-        brands = _load_brands_locked()
-        now = _utcnow_iso()
-        if brand_id in brands:
-            data.setdefault("created_at", brands[brand_id].get("created_at", now))
-        else:
-            data.setdefault("created_at", now)
-        data["updated_at"] = now
-        data.pop("_is_seed", None)
-
-        brands[brand_id] = data
-        _atomic_write_json(get_brands_path(), brands)
-        return dict(data)
-
-
-
-def delete_brand(brand_id: str) -> bool:
-    if not brand_id:
-        raise ValidationError("Brand id is required")
-    with _STORE_LOCK:
-        brands = _load_brands_locked()
-        if brand_id not in brands:
-            raise NotFoundError(f"Brand not found: {brand_id}")
-        del brands[brand_id]
-        _atomic_write_json(get_brands_path(), brands)
-        return True
-
-
-def update_brand_schedule(
-    brand_id: str,
-    slots: List[str],
-    timezone: str = "America/Sao_Paulo",
-    frequency: Optional[int] = None,
-) -> Dict[str, Any]:
-    """Atomically update a brand's daily posting schedule."""
-    if not slots:
-        raise ValidationError("Posting schedule must include at least one slot")
-    schedule = {
-        "frequency": frequency or len(slots),
-        "slots": slots,
-        "timezone": timezone,
-    }
-    return update_brand(brand_id, {"posting_schedule": schedule})
+# Backward-compatibility alias for test monkeypatching
+def _load_brands_locked() -> dict[str, dict[str, Any]]:
+    return brand_store._load_brands_locked()
 
 
 def get_items_by_brand(

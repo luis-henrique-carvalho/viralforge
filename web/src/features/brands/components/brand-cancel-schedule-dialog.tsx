@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import type { ScheduledPost } from '../data/batch.types'
+import type { ScheduledPost } from '../data/brand.types'
 
 interface BrandCancelScheduleDialogProps {
   post: ScheduledPost | null

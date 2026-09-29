@@ -4,7 +4,8 @@ import { renderWithProviders } from '@/test-utils/render'
 import { BrandSettingsMotorCard, getBrandActiveProvider } from './brand-settings-motor-card'
 import { BrandSettingsScheduleCard } from './brand-settings-schedule-card'
 import { BrandSettingsIdentityCard } from './brand-settings-identity-card'
-import type { Brand } from '../data/batch.types'
+import { visualTemplateSchema } from '@/features/viral-studio/data/template.schema'
+import type { Brand } from '../data/brand.types'
 
 const mockBrand: Brand = {
   id: 'vale-o-clique',
@@ -108,10 +109,14 @@ describe('Brand Settings Cards', () => {
 
   it('renders and saves Identity Card', async () => {
     const onSave = vi.fn()
+    const mockTmpl = visualTemplateSchema.parse({
+      id: 'classic-affiliate',
+      name: 'Classic Affiliate',
+    })
     renderWithProviders(
       <BrandSettingsIdentityCard
         brand={mockBrand}
-        templates={[{ id: 'classic-affiliate', name: 'Classic Affiliate' } as any]}
+        templates={[mockTmpl]}
         onSave={onSave}
         isPending={false}
       />,

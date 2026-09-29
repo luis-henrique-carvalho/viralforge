@@ -6,10 +6,11 @@ import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Typography } from '@/components/ui/typography'
 import { useBrands } from '../hooks/use-brands'
-import { useBatches } from '../hooks/use-batches'
+import { useBatches } from '@/features/viral-studio/hooks/use-batches'
 import { BrandCard } from '../components/brand-card'
 import { BrandFormDialog } from '../components/brand-form-dialog'
 import { BrandsFilterBar } from '../components/brands-filter-bar'
+import type { PublishingProfileRecord } from '../data/brand.types'
 
 export function BrandsView() {
   const { data, isLoading, error } = useBrands()
@@ -44,7 +45,7 @@ export function BrandsView() {
         (brand.discovery_keywords &&
           brand.discovery_keywords.some((k) => k.toLowerCase().includes(q)))
 
-      const profiles = (brand.publishing_profiles || {}) as Record<string, any>
+      const profiles = (brand.publishing_profiles || {}) as PublishingProfileRecord
       const activeProvider = Object.keys(profiles)[0] || 'postiz'
       const matchesProvider =
         providerFilter === 'all' || activeProvider.toLowerCase() === providerFilter.toLowerCase()

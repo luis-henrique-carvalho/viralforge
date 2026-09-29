@@ -3,7 +3,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '@/test-utils/render'
 import { BrandManageChannelsDialog } from './brand-manage-channels-dialog'
-import type { Brand } from '../data/batch.types'
+import type { Brand } from '../data/brand.types'
 
 const mockBrand: Brand = {
   id: 'vale-o-clique',

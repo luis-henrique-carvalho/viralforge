@@ -3,7 +3,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '@/test-utils/render'
 import { BrandFormDialog } from './brand-form-dialog'
-import type { Brand } from '../data/batch.types'
+import type { Brand } from '../data/brand.types'
 
 describe('BrandFormDialog', () => {
   it('submits a new brand form', async () => {

@@ -3,8 +3,8 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Typography } from '@/components/ui/typography'
-import { VideoPreviewCard } from './video-preview-card'
-import type { ViralItem } from '../data/batch.types'
+import { VideoPreviewCard } from '@/features/viral-studio/components/video-preview-card'
+import type { ViralItem } from '@/features/viral-studio/data/batch.types'
 
 interface BrandVideoCardProps {
   video: ViralItem

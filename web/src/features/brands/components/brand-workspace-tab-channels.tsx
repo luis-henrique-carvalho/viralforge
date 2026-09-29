@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button'
 import { Typography } from '@/components/ui/typography'
 import { toast } from 'sonner'
 import { useBrandChannels } from '../hooks/use-brand-workspace'
-import { viralStudioApi } from '../services/viral-studio.api'
+import { brandApi } from '../services/brand.api'
 import { BrandChannelCard } from './brand-channel-card'
 import { BrandManageChannelsDialog } from './brand-manage-channels-dialog'
-import type { Brand, SocialChannel } from '../data/batch.types'
+import type { Brand, SocialChannel } from '../data/brand.types'
 
 interface BrandWorkspaceTabChannelsProps {
   brand: Brand
@@ -22,15 +22,16 @@ export function BrandWorkspaceTabChannels({ brand }: BrandWorkspaceTabChannelsPr
   const handleConnectNetwork = async () => {
     try {
       setIsConnecting(true)
-      const res = await viralStudioApi.getBrandConnectUrl(brand.id)
+      const res = await brandApi.getBrandConnectUrl(brand.id)
       if (res.url) {
         window.open(res.url, '_blank', 'noopener,noreferrer')
         toast.info('Abrindo página de conexão de canal social...')
       } else {
         toast.error('Nenhuma URL de conexão disponível para este provedor.')
       }
-    } catch (err: any) {
-      toast.error(`Falha ao obter URL de autenticação: ${err.message}`)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      toast.error(`Falha ao obter URL de autenticação: ${msg}`)
     } finally {
       setIsConnecting(false)
     }

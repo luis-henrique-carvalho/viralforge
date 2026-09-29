@@ -9,8 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { SocialAccount } from '../data/publishing.types'
-import type { SocialChannelBinding } from '../data/batch.types'
+import type { SocialAccount } from '@/features/viral-studio/data/publishing.types'
+import type { SocialChannelBinding } from '../data/brand.types'
 
 interface BrandSocialProfilesSectionProps {
   currentProfiles: Record<string, SocialChannelBinding>

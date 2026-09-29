@@ -2,7 +2,7 @@ import type { Control } from 'react-hook-form'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import type { BrandFormData } from '../data/brand.schema'
+import type { BrandFormData } from '../data/brand.types'
 
 interface BrandFormFieldsProps {
   control: Control<BrandFormData>

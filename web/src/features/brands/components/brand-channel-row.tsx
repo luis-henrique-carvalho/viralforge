@@ -2,7 +2,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Typography } from '@/components/ui/typography'
-import type { SocialChannel } from '../data/batch.types'
+import type { SocialChannel } from '../data/brand.types'
 
 const PLATFORM_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   tiktok: { bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/20' },

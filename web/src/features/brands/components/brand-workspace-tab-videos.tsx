@@ -12,11 +12,13 @@ import {
   useBrandVideos,
   usePublishBrandVideo,
 } from '../hooks/use-brand-workspace'
-import { viralStudioApi } from '../services/viral-studio.api'
-import { viralStudioKeys } from '../services/viral-studio.keys'
+import { brandKeys } from '../services/brand.keys'
+import { viralStudioApi } from '@/features/viral-studio/services/viral-studio.api'
+import { viralStudioKeys } from '@/features/viral-studio/services/viral-studio.keys'
 import { BrandVideoCard } from './brand-video-card'
 import { BrandQuickPublishDialog } from './brand-quick-publish-dialog'
-import type { Brand, ViralItem } from '../data/batch.types'
+import type { Brand } from '../data/brand.types'
+import type { ViralItem } from '@/features/viral-studio/data/batch.types'
 
 interface BrandWorkspaceTabVideosProps {
   brand: Brand
@@ -45,10 +47,12 @@ export function BrandWorkspaceTabVideos({ brand, onNavigateToTab }: BrandWorkspa
     try {
       await viralStudioApi.approveItem(video.id)
       toast.success('Vídeo aprovado para publicação!')
-      queryClient.invalidateQueries({ queryKey: viralStudioKeys.brand(brand.id) })
+      queryClient.invalidateQueries({ queryKey: brandKeys.detail(brand.id) })
+      queryClient.invalidateQueries({ queryKey: brandKeys.videos(brand.id) })
       queryClient.invalidateQueries({ queryKey: viralStudioKeys.batches() })
-    } catch (err: any) {
-      toast.error(`Falha ao aprovar vídeo: ${err.message}`)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      toast.error(`Falha ao aprovar vídeo: ${msg}`)
     }
   }
 

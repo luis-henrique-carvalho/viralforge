@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '@/test-utils/render'
 import { BrandWorkspaceTabVideos } from './brand-workspace-tab-videos'
-import type { Brand } from '../data/batch.types'
+import type { Brand } from '../data/brand.types'
 
 const mockBrand: Brand = {
   id: 'vale-o-clique',

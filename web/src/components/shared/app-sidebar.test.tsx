@@ -38,6 +38,7 @@ describe('AppSidebar Component', () => {
     expect(screen.getByText('Viral')).toBeInTheDocument()
     expect(screen.getByText('Forge')).toBeInTheDocument()
     expect(screen.getByText('Viral Studio')).toBeInTheDocument()
+    expect(screen.getByText('Marcas')).toBeInTheDocument()
     expect(screen.getByText('Descoberta')).toBeInTheDocument()
     expect(screen.getByText('Cortes 9:16')).toBeInTheDocument()
     expect(screen.getByText('Configurações')).toBeInTheDocument()

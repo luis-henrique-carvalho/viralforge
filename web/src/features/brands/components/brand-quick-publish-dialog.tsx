@@ -16,8 +16,9 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { toast } from 'sonner'
-import { usePreviewSlots } from '../hooks/use-publishing'
-import type { SocialChannel, ViralItem } from '../data/batch.types'
+import { usePreviewSlots } from '@/features/viral-studio/hooks/use-publishing'
+import type { SocialChannel } from '../data/brand.types'
+import type { ViralItem } from '@/features/viral-studio/data/batch.types'
 
 interface BrandQuickPublishDialogProps {
   video: ViralItem | null

@@ -56,7 +56,20 @@ SUPPORTED_VIRAL_HOSTS = frozenset(
 )
 SOURCE_FILENAME = "source.mp4"
 SOURCE_MANIFEST_FILENAME = "source_manifest.json"
-_FORMAT_LADDER = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+_FORMAT_LADDER = (
+    "bestvideo[vcodec^=avc1][ext=mp4]+bestaudio[ext=m4a]/"
+    "bestvideo[vcodec^=h264][ext=mp4]+bestaudio[ext=m4a]/"
+    "bestvideo[ext=mp4]+bestaudio[ext=m4a]/"
+    "bestvideo+bestaudio/"
+    "best[vcodec^=h264][acodec!=none][ext=mp4]/"
+    "best[vcodec^=avc1][acodec!=none][ext=mp4]/"
+    "best[vcodec^=h264][ext=mp4]/"
+    "best[vcodec^=avc1][ext=mp4]/"
+    "best[acodec!=none][ext=mp4]/"
+    "best[acodec!=none]/"
+    "best[ext=mp4]/"
+    "best"
+)
 _VALID_VIDEO_EXTENSIONS = frozenset({".mp4", ".mov", ".webm", ".mkv", ".m4v", ".avi", ".flv", ".ts"})
 _IGNORE_DOWNLOAD_EXTENSIONS = frozenset(
     {

@@ -12,8 +12,8 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Typography } from '@/components/ui/typography'
-import { useCreateBatch } from '../hooks/use-create-batch'
-import type { Brand } from '../data/batch.types'
+import { useCreateBatch } from '@/features/viral-studio/hooks/use-create-batch'
+import type { Brand } from '../data/brand.types'
 
 interface BrandManualBatchDialogProps {
   isOpen: boolean

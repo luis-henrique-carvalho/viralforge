@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Typography } from '@/components/ui/typography'
-import type { ScheduledPost } from '../data/batch.types'
+import type { ScheduledPost } from '../data/brand.types'
 
 interface BrandSchedulePostItemProps {
   post: ScheduledPost

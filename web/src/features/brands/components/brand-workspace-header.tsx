@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { BrandManualBatchDialog } from './brand-manual-batch-dialog'
-import type { Brand } from '../data/batch.types'
+import type { Brand } from '../data/brand.types'
 
 interface BrandWorkspaceHeaderProps {
   brand: Brand
@@ -53,7 +53,7 @@ export function BrandWorkspaceHeader({ brand, activeProvider }: BrandWorkspaceHe
             size="sm"
             className="gap-2 text-xs text-muted-foreground hover:text-foreground -ml-2"
           >
-            <Link to="/viral-studio/brands">
+            <Link to="/brands">
               <ArrowLeft className="size-4" />
               Voltar para Perfis de Marca
             </Link>

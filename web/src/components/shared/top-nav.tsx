@@ -24,6 +24,7 @@ import { apiClient } from '@/api/client'
 
 const ROUTE_TITLES: Record<string, string> = {
   '/viral-studio': 'Viral Content Studio',
+  '/brands': 'Perfis de Marca',
   '/discovery': 'Descoberta Multiplataforma',
   '/clips': 'Cortes 9:16 (Pipeline Tradicional)',
   '/settings': 'Configurações do Sistema',
