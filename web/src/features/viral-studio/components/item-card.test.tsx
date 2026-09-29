@@ -193,4 +193,45 @@ describe('ItemCard', () => {
       'https://tiktok.com/@brand/video/999',
     )
   })
+
+  it('renders cancel button for active processing item and triggers onCancelItem', () => {
+    const onCancelItem = vi.fn()
+    const activeItem: ViralItem = {
+      ...item,
+      status: 'ANALYZING',
+    }
+
+    render(
+      <ItemCard
+        item={activeItem}
+        onCancelItem={onCancelItem}
+      />,
+    )
+
+    const cancelBtn = screen.getByTitle('Cancelar processamento')
+    expect(cancelBtn).toBeInTheDocument()
+    fireEvent.click(cancelBtn)
+    expect(onCancelItem).toHaveBeenCalledWith('item-10')
+  })
+
+  it('renders retry button when status is CANCELLED and triggers onRetry', () => {
+    const onRetry = vi.fn()
+    const cancelledItem: ViralItem = {
+      ...item,
+      status: 'CANCELLED',
+      error_message: 'Cancelado pelo usuário',
+    }
+
+    render(
+      <ItemCard
+        item={cancelledItem}
+        onRetry={onRetry}
+      />,
+    )
+
+    const retryBtn = screen.getByText('Tentar Novamente')
+    expect(retryBtn).toBeInTheDocument()
+    fireEvent.click(retryBtn)
+    expect(onRetry).toHaveBeenCalledWith('item-10')
+  })
 })

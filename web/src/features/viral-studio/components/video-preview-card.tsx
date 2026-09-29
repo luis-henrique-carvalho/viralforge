@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { AlertCircle, Film, Loader2, Pause, Play, Sparkles } from 'lucide-react'
+import { AlertCircle, AlertTriangle, Film, Loader2, Pause, Play, Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Typography } from '@/components/ui/typography'
 import { getViralPosterUrl, getViralVideoUrl } from '../services/viral-media.utils'
@@ -17,6 +17,7 @@ export function VideoPreviewCard({ item, className = '', children }: VideoPrevie
 
   const isBusy = ['PENDING', 'DOWNLOADING', 'ANALYZING', 'RENDERING'].includes(item.status)
   const isFailed = item.status === 'FAILED'
+  const isCancelled = item.status === 'CANCELLED'
   const isReady = ['READY_FOR_REVIEW', 'APPROVED', 'SCHEDULED', 'PUBLISHED'].includes(item.status)
 
   const togglePlay = () => {
@@ -147,6 +148,27 @@ export function VideoPreviewCard({ item, className = '', children }: VideoPrevie
               className="line-clamp-3 mt-1 px-1"
             >
               {item.error_message || 'Erro desconhecido durante o pipeline de renderização.'}
+            </Typography>
+          </div>
+        </div>
+      ) : isCancelled ? (
+        /* Cancelled State Overlay */
+        <div className="flex flex-col items-center justify-center p-4 text-center gap-2 text-muted-foreground">
+          <div className="flex size-12 items-center justify-center rounded-full bg-zinc-800/80 border border-zinc-700/60 text-zinc-400">
+            <AlertTriangle className="size-6" />
+          </div>
+          <div>
+            <Typography
+              variant="small"
+              className="font-semibold text-foreground"
+            >
+              Processamento Cancelado
+            </Typography>
+            <Typography
+              variant="muted"
+              className="line-clamp-3 mt-1 px-1"
+            >
+              {item.error_message || 'Vídeo cancelado pelo usuário.'}
             </Typography>
           </div>
         </div>

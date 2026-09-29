@@ -111,6 +111,11 @@ export const viralStudioApi = {
     return response.data
   },
 
+  async cancelBatchProcessing(batchId: string): Promise<BatchResponse> {
+    const response = await apiClient.post<BatchResponse>(`/viral-studio/batches/${batchId}/cancel`)
+    return response.data
+  },
+
   // Items
   async fetchItem(id: string): Promise<ViralItem> {
     const response = await apiClient.get<ViralItem>(`/viral-studio/items/${id}`)
@@ -129,6 +134,11 @@ export const viralStudioApi = {
 
   async retryItem(itemId: string): Promise<ViralItem> {
     const response = await apiClient.post<ViralItem>(`/viral-studio/items/${itemId}/retry`)
+    return response.data
+  },
+
+  async cancelItemProcessing(itemId: string): Promise<ViralItem> {
+    const response = await apiClient.post<ViralItem>(`/viral-studio/items/${itemId}/cancel`)
     return response.data
   },
 

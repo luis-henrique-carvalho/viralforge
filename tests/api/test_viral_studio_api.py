@@ -939,4 +939,146 @@ def test_regenerate_copy_endpoint(api_client, monkeypatch):
     assert data["model"] == "lmstudio:google/gemma-4-12b-qat"
 
 
+def test_derive_batch_status_logic():
+    """Unit test for pure function _derive_batch_status under all status combinations."""
+    from clippyme.domain.viral_studio_store import _derive_batch_status
 
+    assert _derive_batch_status([]) == "PENDING"
+    assert _derive_batch_status([{}]) == "PENDING"
+
+    # Active items keep batch PENDING
+    assert _derive_batch_status([{"status": "PENDING"}]) == "PENDING"
+    assert _derive_batch_status([{"status": "DOWNLOADING"}]) == "PENDING"
+    assert _derive_batch_status([{"status": "ANALYZING"}]) == "PENDING"
+    assert _derive_batch_status([{"status": "RENDERING"}]) == "PENDING"
+    assert _derive_batch_status([{"status": "ANALYZING"}, {"status": "READY_FOR_REVIEW"}]) == "PENDING"
+    assert _derive_batch_status([{"status": "DOWNLOADING"}, {"status": "FAILED"}]) == "PENDING"
+
+    # Completed/Ready items promote to READY_FOR_REVIEW
+    assert _derive_batch_status([{"status": "READY_FOR_REVIEW"}]) == "READY_FOR_REVIEW"
+    assert _derive_batch_status([{"status": "APPROVED"}]) == "READY_FOR_REVIEW"
+    assert _derive_batch_status([{"status": "SCHEDULED"}]) == "READY_FOR_REVIEW"
+    assert _derive_batch_status([{"status": "PUBLISHED"}]) == "READY_FOR_REVIEW"
+    assert _derive_batch_status([{"status": "READY_FOR_REVIEW"}, {"status": "FAILED"}]) == "READY_FOR_REVIEW"
+    assert _derive_batch_status([{"status": "READY_FOR_REVIEW"}, {"status": "CANCELLED"}]) == "READY_FOR_REVIEW"
+    assert _derive_batch_status([{"status": "APPROVED"}, {"status": "CANCELLED"}]) == "READY_FOR_REVIEW"
+
+    # All cancelled -> CANCELLED
+    assert _derive_batch_status([{"status": "CANCELLED"}]) == "CANCELLED"
+    assert _derive_batch_status([{"status": "CANCELLED"}, {"status": "CANCELLED"}]) == "CANCELLED"
+
+    # All failed or mix of failed + cancelled without any ready
+    assert _derive_batch_status([{"status": "FAILED"}]) == "FAILED"
+    assert _derive_batch_status([{"status": "FAILED"}, {"status": "CANCELLED"}]) == "FAILED"
+
+
+def test_cancel_item_api(api_client):
+    """POST /api/viral-studio/items/{id}/cancel cancels an active item and records audit log."""
+    batch_resp = api_client.post(
+        "/api/viral-studio/batches",
+        json={
+            "brand_id": "vale-o-clique",
+            "items": [{"source_url": "https://www.tiktok.com/@test/video/1001", "product_code": "P-1001"}],
+        },
+    )
+    assert batch_resp.status_code == 201
+    item_id = batch_resp.json()["items"][0]["id"]
+
+    # Put item in ANALYZING state
+    store_module.update_item(item_id, {"status": "ANALYZING"})
+
+    # Cancel item with media paths
+    store_module.update_item(item_id, {"rendered_path": "/fake/rendered.mp4", "source_path": "/fake/source.mp4"})
+    cancel_resp = api_client.post(f"/api/viral-studio/items/{item_id}/cancel")
+    assert cancel_resp.status_code == 200
+    data = cancel_resp.json()
+    assert data["status"] == "CANCELLED"
+    assert data["job_id"] is None
+    assert data.get("rendered_path") is None
+    assert data.get("source_path") is None
+    assert any(log.get("stage") == "CANCELLED" and log.get("level") == "warning" for log in data.get("logs", []))
+
+    # Cancel again is idempotent
+    cancel_resp2 = api_client.post(f"/api/viral-studio/items/{item_id}/cancel")
+    assert cancel_resp2.status_code == 200
+    assert cancel_resp2.json()["status"] == "CANCELLED"
+
+
+def test_cancel_item_terminal_error(api_client):
+    """POST /api/viral-studio/items/{id}/cancel returns 400 for completed/approved items."""
+    batch_resp = api_client.post(
+        "/api/viral-studio/batches",
+        json={
+            "brand_id": "vale-o-clique",
+            "items": [{"source_url": "https://www.tiktok.com/@test/video/1002", "product_code": "P-1002"}],
+        },
+    )
+    item_id = batch_resp.json()["items"][0]["id"]
+    store_module.update_item(item_id, {"status": "APPROVED"})
+
+    resp = api_client.post(f"/api/viral-studio/items/{item_id}/cancel")
+    assert resp.status_code == 400
+    assert "Cannot cancel item" in resp.json()["detail"]
+
+    # Also READY_FOR_REVIEW cannot be cancelled
+    store_module.update_item(item_id, {"status": "READY_FOR_REVIEW"})
+    resp_ready = api_client.post(f"/api/viral-studio/items/{item_id}/cancel")
+    assert resp_ready.status_code == 400
+    assert "Cannot cancel item" in resp_ready.json()["detail"]
+
+
+def test_cancel_batch_api(api_client):
+    """POST /api/viral-studio/batches/{id}/cancel cancels active items and updates batch status."""
+    batch_resp = api_client.post(
+        "/api/viral-studio/batches",
+        json={
+            "brand_id": "vale-o-clique",
+            "items": [
+                {"source_url": "https://www.tiktok.com/@test/video/2001", "product_code": "P-2001"},
+                {"source_url": "https://www.tiktok.com/@test/video/2002", "product_code": "P-2002"},
+            ],
+        },
+    )
+    assert batch_resp.status_code == 201
+    batch_data = batch_resp.json()
+    batch_id = batch_data["id"]
+    item1_id = batch_data["items"][0]["id"]
+    item2_id = batch_data["items"][1]["id"]
+
+    # item1 is READY_FOR_REVIEW, item2 is DOWNLOADING
+    store_module.update_item(item1_id, {"status": "READY_FOR_REVIEW"})
+    store_module.update_item(item2_id, {"status": "DOWNLOADING"})
+
+    # Cancel batch
+    cancel_resp = api_client.post(f"/api/viral-studio/batches/{batch_id}/cancel")
+    assert cancel_resp.status_code == 200
+    res_batch = cancel_resp.json()
+    assert res_batch["status"] == "READY_FOR_REVIEW"
+
+    # Verify items
+    items_by_id = {i["id"]: i for i in res_batch["items"]}
+    assert items_by_id[item1_id]["status"] == "READY_FOR_REVIEW"
+    assert items_by_id[item2_id]["status"] == "CANCELLED"
+
+
+def test_retry_cancelled_item(api_client):
+    """A CANCELLED item can be retried via POST /items/{id}/retry, resetting to PENDING."""
+    batch_resp = api_client.post(
+        "/api/viral-studio/batches",
+        json={
+            "brand_id": "vale-o-clique",
+            "items": [{"source_url": "https://www.tiktok.com/@test/video/3001", "product_code": "P-3001"}],
+        },
+    )
+    item_id = batch_resp.json()["items"][0]["id"]
+
+    # Cancel the item
+    api_client.post(f"/api/viral-studio/items/{item_id}/cancel")
+    item = store_module.get_item(item_id)
+    assert item["status"] == "CANCELLED"
+
+    # Retry the cancelled item
+    retry_resp = api_client.post(f"/api/viral-studio/items/{item_id}/retry")
+    assert retry_resp.status_code == 200
+    retried_item = retry_resp.json()
+    assert retried_item["status"] == "PENDING"

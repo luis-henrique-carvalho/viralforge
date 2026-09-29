@@ -86,4 +86,38 @@ describe('ScheduledTimelineCard', () => {
       'https://tiktok.com/@curiosidades/video/12345',
     )
   })
+
+  it('handles caption toggle, thumbnail media dialog, and metrics refresh', () => {
+    const onRefreshMetricsClick = vi.fn()
+    const postWithVideo: ScheduledPost = {
+      ...basePost,
+      status: 'PUBLISHED',
+      raw_response: { rendered_path: '/videos/test.mp4' },
+      content:
+        'Uma legenda realmente muito longa que ultrapassa o limite padrão de exibição de caracteres para forçar o botão de ver mais aparecer no card da timeline.',
+    }
+
+    render(
+      <ScheduledTimelineCard
+        post={postWithVideo}
+        onCancelClick={vi.fn()}
+        onRefreshMetricsClick={onRefreshMetricsClick}
+      />,
+    )
+
+    // Expand caption
+    const seeMoreBtn = screen.getByRole('button', { name: /Ver mais/i })
+    fireEvent.click(seeMoreBtn)
+    expect(screen.getByRole('button', { name: /Ver menos/i })).toBeInTheDocument()
+
+    // Refresh metrics
+    const refreshMetricsBtn = screen.getByTitle('Atualizar métricas')
+    fireEvent.click(refreshMetricsBtn)
+    expect(onRefreshMetricsClick).toHaveBeenCalled()
+
+    // Open media preview
+    const thumbnailBtn = screen.getByTitle('Visualizar mídia')
+    fireEvent.click(thumbnailBtn)
+    expect(screen.getAllByText('Top 5 Curiosidades que Vão Explodir Sua Mente')).toHaveLength(2)
+  })
 })

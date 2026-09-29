@@ -716,6 +716,40 @@ export const viralStudioHandlers = [
     return HttpResponse.json(newBatch, { status: 201 })
   }),
 
+  http.post('/api/viral-studio/batches/:id/cancel', ({ params }) => {
+    const { id } = params
+    const batch = mockBatches.find((b) => b.id === id || b.batch_id === id)
+    if (!batch) {
+      return new HttpResponse(JSON.stringify({ detail: 'Batch not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    batch.items = batch.items.map((item) => {
+      if (['PENDING', 'DOWNLOADING', 'ANALYZING', 'RENDERING'].includes(item.status)) {
+        return {
+          ...item,
+          status: 'CANCELLED',
+          job_id: null,
+          updated_at: new Date().toISOString(),
+        }
+      }
+      return item
+    })
+    const statuses = batch.items.map((i) => i.status)
+    if (
+      statuses.some((s) => ['READY_FOR_REVIEW', 'APPROVED', 'SCHEDULED', 'PUBLISHED'].includes(s))
+    ) {
+      batch.status = 'READY_FOR_REVIEW'
+    } else if (statuses.every((s) => s === 'CANCELLED')) {
+      batch.status = 'CANCELLED'
+    } else {
+      batch.status = 'FAILED'
+    }
+    batch.updated_at = new Date().toISOString()
+    return HttpResponse.json(batch)
+  }),
+
   // Items
   http.get('/api/viral-studio/items/:id', ({ params }) => {
     const { id } = params
@@ -768,6 +802,22 @@ export const viralStudioHandlers = [
     }
     item.status = 'PENDING'
     item.error_message = null
+    item.updated_at = new Date().toISOString()
+    return HttpResponse.json(item)
+  }),
+
+  http.post('/api/viral-studio/items/:id/cancel', ({ params }) => {
+    const { id } = params
+    const item = mockItems.find((i) => i.id === id)
+    if (!item) {
+      return new HttpResponse(JSON.stringify({ detail: 'Item not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    item.status = 'CANCELLED'
+    item.job_id = null
+    item.error_message = 'Cancelado pelo usuário'
     item.updated_at = new Date().toISOString()
     return HttpResponse.json(item)
   }),

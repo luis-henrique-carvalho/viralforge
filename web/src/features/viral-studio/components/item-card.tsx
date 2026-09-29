@@ -20,6 +20,7 @@ export interface ItemCardProps {
   onRetry?: (itemId: string) => void
   onPublish?: (item: ViralItem) => void
   onCancelSchedule?: (itemId: string) => void
+  onCancelItem?: (itemId: string) => void
   isApproving?: boolean
   isRetrying?: boolean
   isCancelling?: boolean
@@ -37,6 +38,7 @@ export function ItemCard({
   onRetry,
   onPublish,
   onCancelSchedule,
+  onCancelItem,
   isApproving = false,
   isRetrying = false,
   isCancelling = false,
@@ -145,6 +147,7 @@ export function ItemCard({
               onRetry={onRetry}
               onPublish={onPublish}
               onCancelSchedule={onCancelSchedule}
+              onCancelItem={onCancelItem}
               isApproving={isApproving}
               isRetrying={isRetrying}
               isCancelling={isCancelling}

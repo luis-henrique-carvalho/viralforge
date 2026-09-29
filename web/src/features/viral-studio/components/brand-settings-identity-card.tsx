@@ -4,7 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -12,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Typography } from '@/components/ui/typography'
+import { BrandSettingsConversionFields } from './brand-settings-conversion-fields'
 import type { Brand, BrandUpdate, VisualTemplate } from '../data/batch.types'
 
 interface BrandSettingsIdentityCardProps {
@@ -192,59 +191,14 @@ export function BrandSettingsIdentityCard({
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <Label
-            htmlFor="brand-keywords"
-            className="text-xs"
-          >
-            Palavras-Chave de Descoberta (separadas por vírgula):
-          </Label>
-          <Input
-            id="brand-keywords"
-            value={keywordsText}
-            onChange={(e) => setKeywordsText(e.target.value)}
-            placeholder="achadinhos shopee, produtos úteis tiktok, unboxing utilidades"
-            className="text-xs h-9"
-          />
-          <Typography
-            variant="muted"
-            className="text-[11px]"
-          >
-            Essas palavras serão exibidas como chips de busca rápida no Discovery.
-          </Typography>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label
-            htmlFor="brand-cta"
-            className="text-xs"
-          >
-            CTA de Conversão Padrão:
-          </Label>
-          <Textarea
-            id="brand-cta"
-            value={defaultCta}
-            onChange={(e) => setDefaultCta(e.target.value)}
-            placeholder="Confira os achadinhos no link da bio! 🛍️"
-            className="text-xs min-h-[70px]"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label
-            htmlFor="brand-affiliate-url"
-            className="text-xs"
-          >
-            Link de Afiliado Padrão:
-          </Label>
-          <Input
-            id="brand-affiliate-url"
-            value={defaultAffiliateUrl}
-            onChange={(e) => setDefaultAffiliateUrl(e.target.value)}
-            placeholder="https://amzn.to/seulink"
-            className="text-xs h-9 font-mono"
-          />
-        </div>
+        <BrandSettingsConversionFields
+          keywordsText={keywordsText}
+          setKeywordsText={setKeywordsText}
+          defaultCta={defaultCta}
+          setDefaultCta={setDefaultCta}
+          defaultAffiliateUrl={defaultAffiliateUrl}
+          setDefaultAffiliateUrl={setDefaultAffiliateUrl}
+        />
 
         <div className="flex justify-end pt-2 border-t border-border/40">
           <Button

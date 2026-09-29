@@ -557,6 +557,13 @@ async def create_batch(
     return batch
 
 
+@router.post("/batches/{id}/cancel", response_model=BatchResponse)
+async def cancel_batch(id: str):
+    """Cancel all active processing items in a batch."""
+    from clippyme.api import app as app_module
+    return await viral_studio_orchestrator.cancel_viral_batch(id, jobs=app_module.jobs)
+
+
 @router.get("/items/{id}", response_model=ViralItem)
 async def get_item(id: str):
     """Retrieve details and processing status of a single viral item."""
@@ -617,6 +624,13 @@ async def retry_item(id: str):
         on_change=app_module.persist_jobs,
     )
     return await asyncio.to_thread(viral_studio_store.get_item_or_raise, id)
+
+
+@router.post("/items/{id}/cancel", response_model=ViralItem)
+async def cancel_item(id: str):
+    """Cancel an in-progress viral item processing and terminate its subprocess."""
+    from clippyme.api import app as app_module
+    return await viral_studio_orchestrator.cancel_viral_item(id, jobs=app_module.jobs)
 
 
 @router.get("/publishing/preview-slots", response_model=PreviewSlotsResponse)

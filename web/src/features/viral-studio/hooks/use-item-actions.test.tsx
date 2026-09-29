@@ -3,7 +3,14 @@ import { renderHook } from '@testing-library/react'
 import type { QueryClient } from '@tanstack/react-query'
 import { QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
-import { useApproveItem, useBulkItemActions, useRetryItem, useUpdateItem } from './use-item-actions'
+import {
+  useApproveItem,
+  useBulkItemActions,
+  useCancelBatch,
+  useCancelItem,
+  useRetryItem,
+  useUpdateItem,
+} from './use-item-actions'
 import { createTestQueryClient } from '@/test-utils/render'
 
 function createWrapper(queryClient: QueryClient) {
@@ -21,6 +28,27 @@ describe('useItemActions hooks', () => {
 
     const res = await result.current.mutateAsync('item-1')
     expect(res.status).toBe('APPROVED')
+  })
+
+  it('cancels an item', async () => {
+    const qc = createTestQueryClient()
+    const { result } = renderHook(() => useCancelItem('batch-101'), {
+      wrapper: createWrapper(qc),
+    })
+
+    const res = await result.current.mutateAsync('item-1')
+    expect(res.status).toBe('CANCELLED')
+  })
+
+  it('cancels a batch', async () => {
+    const qc = createTestQueryClient()
+    const { result } = renderHook(() => useCancelBatch('batch-101'), {
+      wrapper: createWrapper(qc),
+    })
+
+    const res = await result.current.mutateAsync()
+    expect(res.id).toBe('batch-101')
+    expect(res.status).toBeDefined()
   })
 
   it('retries an item', async () => {
@@ -46,7 +74,7 @@ describe('useItemActions hooks', () => {
     expect(res.selected_headline).toBe('Headline Atualizada Hook')
   })
 
-  it('performs bulk approve and retry', async () => {
+  it('performs bulk approve, retry, and cancel', async () => {
     const qc = createTestQueryClient()
     const { result } = renderHook(() => useBulkItemActions('batch-101'), {
       wrapper: createWrapper(qc),
@@ -54,5 +82,23 @@ describe('useItemActions hooks', () => {
 
     await result.current.bulkApprove(['item-1', 'item-2'])
     await result.current.bulkRetry(['item-3'])
+    await result.current.bulkCancel(['item-1', 'item-2'])
+  })
+
+  it('cancels item without batchId param and handles bulk failure branch', async () => {
+    const qc = createTestQueryClient()
+    const { result: cancelResult } = renderHook(() => useCancelItem(), {
+      wrapper: createWrapper(qc),
+    })
+    const res = await cancelResult.current.mutateAsync('item-1')
+    expect(res.status).toBe('CANCELLED')
+
+    const { result: bulkResult } = renderHook(() => useBulkItemActions('batch-101'), {
+      wrapper: createWrapper(qc),
+    })
+    // Passing non-existent IDs triggers error branch
+    await bulkResult.current.bulkApprove(['non-existent-id'])
+    await bulkResult.current.bulkRetry(['non-existent-id'])
+    await bulkResult.current.bulkCancel(['non-existent-id'])
   })
 })

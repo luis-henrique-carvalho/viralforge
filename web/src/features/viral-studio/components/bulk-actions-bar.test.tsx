@@ -68,4 +68,27 @@ describe('BulkActionsBar', () => {
     fireEvent.click(publishBtn)
     expect(onBulkPublish).toHaveBeenCalledTimes(1)
   })
+
+  it('renders cancel button and triggers callback when activeCount > 0', () => {
+    const onBulkCancel = vi.fn()
+
+    render(
+      <BulkActionsBar
+        selectedCount={3}
+        totalCount={5}
+        activeCount={2}
+        onSelectAll={vi.fn()}
+        onClearSelection={vi.fn()}
+        onBulkApprove={vi.fn()}
+        onBulkRetry={vi.fn()}
+        onBulkCancel={onBulkCancel}
+      />,
+    )
+
+    const cancelBtn = screen.getByText('Cancelar (2)')
+    expect(cancelBtn).toBeInTheDocument()
+
+    fireEvent.click(cancelBtn)
+    expect(onBulkCancel).toHaveBeenCalledTimes(1)
+  })
 })

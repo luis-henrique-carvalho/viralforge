@@ -932,14 +932,20 @@ def _derive_batch_status(items: List[Dict[str, Any]]) -> str:
     """Derive batch-level lifecycle status from constituent item statuses."""
     if not items:
         return "PENDING"
-    statuses = [item.get("status") for item in items if isinstance(item, dict)]
+    statuses = [item.get("status") for item in items if isinstance(item, dict) and item.get("status")]
     if not statuses:
         return "PENDING"
-    if all(s == "FAILED" for s in statuses):
-        return "FAILED"
+    # Se qualquer item ainda estiver rodando: lote está ativo
     if any(s in ("PENDING", "DOWNLOADING", "ANALYZING", "RENDERING") for s in statuses):
         return "PENDING"
-    return "READY_FOR_REVIEW"
+    # Se algum item ficou pronto para revisão / aprovado / publicado
+    if any(s in ("READY_FOR_REVIEW", "APPROVED", "SCHEDULED", "PUBLISHED") for s in statuses):
+        return "READY_FOR_REVIEW"
+    # Se todos os itens foram cancelados
+    if all(s == "CANCELLED" for s in statuses):
+        return "CANCELLED"
+    # Se todos falharam ou mistura de falha + cancelado sem nenhum concluído
+    return "FAILED"
 
 
 def _load_batches_locked() -> Dict[str, Dict[str, Any]]:
@@ -1534,6 +1540,69 @@ def cancel_item_schedule(item_id: str) -> Dict[str, Any]:
                     return dict(item)
 
         raise NotFoundError(f"Item not found: {item_id}")
+
+
+def cancel_item_store(item_id: str, reason: str = "Cancelado pelo usuário") -> Dict[str, Any]:
+    """Atomically cancel a viral item in batches.json, clear job_id, append audit log, and update batch status."""
+    if not item_id:
+        raise ValidationError("item_id is required")
+    with _STORE_LOCK:
+        batches = _load_batches_locked()
+        found_item = None
+        for batch in batches.values():
+            for idx, item in enumerate(batch.get("items", [])):
+                if item.get("id") == item_id or item.get("item_id") == item_id:
+                    current_status = item.get("status")
+                    if current_status == "CANCELLED":
+                        # Idempotent return
+                        res = dict(item)
+                        res["batch_id"] = batch.get("batch_id") or batch.get("id")
+                        if not res.get("brand_id") and batch.get("brand_id"):
+                            res["brand_id"] = batch.get("brand_id")
+                        return res
+                    if current_status in ("READY_FOR_REVIEW", "APPROVED", "SCHEDULED", "PUBLISHED"):
+                        raise ValidationError(
+                            f"Cannot cancel item {item_id} in completed status '{current_status}'"
+                        )
+                    if current_status not in ("PENDING", "DOWNLOADING", "ANALYZING", "RENDERING"):
+                        raise ValidationError(
+                            f"Cannot cancel item {item_id} in status '{current_status}'. Only active items can be cancelled."
+                        )
+                    item["status"] = "CANCELLED"
+                    item["job_id"] = None
+                    item["rendered_path"] = None
+                    item["source_path"] = None
+                    item["error_message"] = reason
+
+                    logs = list(item.get("logs") or [])
+                    logs.append(
+                        {
+                            "stage": "CANCELLED",
+                            "level": "warning",
+                            "message": reason,
+                            "timestamp": _utcnow_iso(),
+                        }
+                    )
+                    item["logs"] = logs
+                    item["updated_at"] = _utcnow_iso()
+
+                    batch["items"][idx] = item
+                    batch["status"] = _derive_batch_status(batch.get("items", []))
+                    batch["updated_at"] = _utcnow_iso()
+
+                    found_item = dict(item)
+                    found_item["batch_id"] = batch.get("batch_id") or batch.get("id")
+                    if not found_item.get("brand_id") and batch.get("brand_id"):
+                        found_item["brand_id"] = batch.get("brand_id")
+                    break
+            if found_item:
+                break
+
+        if not found_item:
+            raise NotFoundError(f"Item not found: {item_id}")
+
+        _atomic_write_json(get_batches_path(), batches)
+        return found_item
 
 
 def seed_defaults(force: bool = False) -> None:

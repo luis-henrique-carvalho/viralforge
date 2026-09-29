@@ -88,6 +88,8 @@ def _sync_viral_studio_failure(job_data: dict, error_msg: str) -> None:
     """Sync unexpected subprocess failures directly into viral studio store state and logs."""
     if not isinstance(job_data, dict) or job_data.get("job_type") != "viral_studio":
         return
+    if job_data.get("status") == "cancelled":
+        return
     cmd = job_data.get("cmd", [])
     item_id = None
     if isinstance(cmd, list) and "--item-id" in cmd:
@@ -99,7 +101,7 @@ def _sync_viral_studio_failure(job_data: dict, error_msg: str) -> None:
             from clippyme.domain import viral_studio_orchestrator, viral_studio_store
 
             item = viral_studio_store.get_item(item_id)
-            if item and item.get("status") not in ("READY_FOR_REVIEW", "APPROVED", "PUBLISHED"):
+            if item and item.get("status") not in ("READY_FOR_REVIEW", "APPROVED", "PUBLISHED", "CANCELLED"):
                 viral_studio_store.update_item(item_id, {"status": "FAILED", "error_message": error_msg})
                 viral_studio_orchestrator.append_item_log(item_id, "ERROR", error_msg, level="error")
         except Exception:
@@ -317,6 +319,9 @@ def make_run_job(*, jobs: dict, output_root: str, on_change=None):
                     await asyncio.sleep(delay)
                     continue
 
+                if jobs[job_id].get("status") == "cancelled":
+                    break
+
                 jobs[job_id]["status"] = "failed"
                 reason = (
                     "non-retryable input/preflight error"
@@ -339,7 +344,7 @@ def make_run_job(*, jobs: dict, output_root: str, on_change=None):
             raise
         except Exception as exc:
             job = jobs.get(job_id)
-            if job is not None:
+            if job is not None and job.get("status") != "cancelled":
                 job["status"] = "failed"
                 err_msg = f"Execution error: {exc}"
                 job["logs"].append(err_msg)

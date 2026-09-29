@@ -59,6 +59,17 @@ describe('viralStudioApi Service', () => {
     expect(data.status).toBe('PENDING')
   })
 
+  it('cancels a viral item processing', async () => {
+    const data = await viralStudioApi.cancelItemProcessing('item-1')
+    expect(data.status).toBe('CANCELLED')
+  })
+
+  it('cancels a batch processing', async () => {
+    const data = await viralStudioApi.cancelBatchProcessing('batch-101')
+    expect(data.id).toBe('batch-101')
+    expect(data.status).toBeDefined()
+  })
+
   it('fetches brands list', async () => {
     const data = await viralStudioApi.fetchBrands()
     expect(data.brands.length).toBeGreaterThan(0)

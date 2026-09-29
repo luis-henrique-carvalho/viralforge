@@ -33,6 +33,7 @@ from clippyme.api.viral_studio_schemas import (
 )
 from clippyme.domain import (
     cookie_resolver,
+    job_control,
     viral_studio_context,
     viral_studio_copy,
     viral_studio_download,
@@ -1045,6 +1046,98 @@ async def cancel_item_schedule(item_id: str, publisher: Optional[Any] = None) ->
 
     return viral_studio_store.cancel_item_schedule(item_id)
 
+
+async def cancel_viral_item(
+    item_id: str,
+    *,
+    jobs: Optional[dict] = None,
+    reason: str = "Cancelado pelo usuário",
+) -> Dict[str, Any]:
+    """Deep module: Validate state, terminate running process tree, cleanup partial files, and persist CANCELLED status."""
+    item = viral_studio_store.get_item_or_raise(item_id)
+    current_status = item.get("status")
+
+    if current_status == "CANCELLED":
+        return item
+
+    if current_status not in ("PENDING", "DOWNLOADING", "ANALYZING", "RENDERING"):
+        raise ValidationError(
+            f"Cannot cancel item {item_id} in status '{current_status}'. Only active items can be cancelled."
+        )
+
+    # 1. Process signalling / termination
+    job_id = item.get("job_id")
+    if jobs and job_id and job_id in jobs:
+        job = jobs[job_id]
+        job_status = job.get("status")
+        if job_status == "queued":
+            job["status"] = "cancelled"
+            job.setdefault("logs", []).append("Job cancelled by user.")
+        elif job_status in ("processing", "paused"):
+            job["status"] = "cancelled"
+            job.setdefault("logs", []).append("Job cancelled by user.")
+            proc = job.get("process")
+            if proc is not None and proc.poll() is None:
+                try:
+                    await asyncio.to_thread(job_control.terminate_tree, proc.pid, 5.0)
+                    await asyncio.to_thread(lambda: proc.wait(timeout=5))
+                except Exception as exc:
+                    logger.warning("Error terminating process tree for job %s: %s", job_id, exc)
+                    try:
+                        proc.kill()
+                        await asyncio.to_thread(lambda: proc.wait(timeout=5))
+                    except Exception:
+                        pass
+            elif job.get("pid"):
+                try:
+                    await asyncio.to_thread(job_control.terminate_tree, int(job["pid"]), 5.0)
+                except Exception as exc:
+                    logger.warning("Error terminating process tree by pid for job %s: %s", job_id, exc)
+
+    # 2. Cleanup incomplete partial video files
+    batch_id = item.get("batch_id") or "default"
+    paths_to_clean = set()
+    if item.get("source_path"):
+        paths_to_clean.add(item["source_path"])
+    if item.get("rendered_path"):
+        paths_to_clean.add(item["rendered_path"])
+    paths_to_clean.add(_resolve_source_path(batch_id, item_id))
+    paths_to_clean.add(_resolve_render_path(batch_id, item_id))
+
+    for p in paths_to_clean:
+        if p and os.path.isfile(p):
+            try:
+                os.remove(p)
+            except OSError as err:
+                logger.warning("Failed to remove partial video file %s: %s", p, err)
+
+    # 3. Mutate store atomically
+    return viral_studio_store.cancel_item_store(item_id, reason=reason)
+
+
+async def cancel_viral_batch(batch_id: str, *, jobs: Optional[dict] = None) -> Dict[str, Any]:
+    """Cancel all active processing items in a batch concurrently."""
+    batch = viral_studio_store.get_batch_or_raise(batch_id)
+    items = batch.get("items", [])
+    active_items = [
+        item for item in items
+        if item.get("status") in ("PENDING", "DOWNLOADING", "ANALYZING", "RENDERING")
+    ]
+    if active_items:
+        tasks = [
+            cancel_viral_item(item.get("id") or item.get("item_id"), jobs=jobs)
+            for item in active_items
+        ]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for idx, res in enumerate(results):
+            if isinstance(res, Exception):
+                logger.error(
+                    "Failed cancelling item %s in batch %s: %s",
+                    active_items[idx].get("id") or active_items[idx].get("item_id"),
+                    batch_id,
+                    res,
+                )
+    return viral_studio_store.get_batch_or_raise(batch_id)
 
 
 async def regenerate_item_copy(

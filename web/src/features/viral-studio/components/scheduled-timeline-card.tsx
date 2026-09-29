@@ -118,7 +118,7 @@ function renderStatusBadge(status: string) {
 function renderMetricsBar(
   metrics: Record<string, unknown>,
   onRefresh?: () => void,
-  isRefreshing?: boolean
+  isRefreshing?: boolean,
 ) {
   const views = typeof metrics.views === 'number' ? metrics.views : 0
   const likes = typeof metrics.likes === 'number' ? metrics.likes : 0
@@ -164,6 +164,81 @@ function renderMetricsBar(
   )
 }
 
+function resolveProviderUrl(
+  rawProviderUrl: string | null | undefined,
+  postId: string,
+  postizPublicBase: string | undefined,
+): string | undefined {
+  if (!rawProviderUrl) return undefined
+  let providerUrl = rawProviderUrl
+  if (postizPublicBase) {
+    providerUrl = providerUrl?.replace(/^http:\/\/(?:postiz:5000|localhost:4007)/, postizPublicBase)
+    if (
+      providerUrl &&
+      (providerUrl.endsWith('/posts') ||
+        providerUrl.includes('postiz:5000') ||
+        providerUrl.includes('localhost:4007'))
+    ) {
+      providerUrl = postId
+        ? `${postizPublicBase}/p/${postId}?share=true`
+        : `${postizPublicBase}/launches`
+    }
+  } else if (
+    providerUrl &&
+    (providerUrl.endsWith('/posts') || providerUrl.includes('postiz:5000'))
+  ) {
+    const fallbackBase =
+      providerUrl.startsWith('http') && !providerUrl.includes('postiz:5000')
+        ? providerUrl.replace(/\/posts$/, '')
+        : 'http://localhost:4007'
+    providerUrl = postId ? `${fallbackBase}/p/${postId}?share=true` : `${fallbackBase}/launches`
+  }
+  return providerUrl
+}
+
+function renderMediaPreviewDialog(
+  previewOpen: boolean,
+  setPreviewOpen: (open: boolean) => void,
+  post: ScheduledPost,
+  videoSrc?: string,
+) {
+  if (!previewOpen) return null
+
+  return (
+    <Dialog
+      open={previewOpen}
+      onOpenChange={setPreviewOpen}
+    >
+      <DialogContent className="max-w-md p-4">
+        <DialogHeader>
+          <DialogTitle className="text-sm">{post.title || 'Mídia da Publicação'}</DialogTitle>
+        </DialogHeader>
+        <div className="mt-2 flex items-center justify-center rounded-lg overflow-hidden bg-black aspect-9/16 max-h-[70vh]">
+          {videoSrc && videoSrc.endsWith('.mp4') ? (
+            <video
+              src={videoSrc}
+              controls
+              autoPlay
+              className="w-full h-full object-contain"
+              poster={post.thumbnail_url || undefined}
+            />
+          ) : post.thumbnail_url ? (
+            <img
+              src={post.thumbnail_url}
+              alt="Media preview"
+              className="w-full h-full object-contain"
+            />
+          ) : (
+            <div className="p-8 text-center text-muted-foreground text-xs">
+              Nenhuma mídia disponível
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function ScheduledTimelineCard({
   post,
   onCancelClick,
@@ -184,27 +259,11 @@ export function ScheduledTimelineCard({
   const relTime = formatRelativeTime(scheduledTime)
   const externalUrl = post.external_url || post.post_url
   const postizPublicBase = env.VITE_POSTIZ_PUBLIC_URL?.replace(/\/$/, '')
-  const rawProviderUrl = post.provider_url || post.provider_post_url
-  let providerUrl = rawProviderUrl
-
-  if (postizPublicBase) {
-    providerUrl = providerUrl?.replace(
-      /^http:\/\/(?:postiz:5000|localhost:4007)/,
-      postizPublicBase
-    )
-    if (providerUrl && (providerUrl.endsWith('/posts') || providerUrl.includes('postiz:5000') || providerUrl.includes('localhost:4007'))) {
-      providerUrl = postId
-        ? `${postizPublicBase}/p/${postId}?share=true`
-        : `${postizPublicBase}/launches`
-    }
-  } else if (providerUrl && (providerUrl.endsWith('/posts') || providerUrl.includes('postiz:5000'))) {
-    const fallbackBase = providerUrl.startsWith('http') && !providerUrl.includes('postiz:5000')
-      ? providerUrl.replace(/\/posts$/, '')
-      : 'http://localhost:4007'
-    providerUrl = postId
-      ? `${fallbackBase}/p/${postId}?share=true`
-      : `${fallbackBase}/launches`
-  }
+  const providerUrl = resolveProviderUrl(
+    post.provider_url || post.provider_post_url,
+    postId,
+    postizPublicBase,
+  )
   const metrics = (post.metrics || {}) as Record<string, unknown>
   const videoSrc = (post.raw_response as Record<string, unknown> | undefined)?.rendered_path
     ? String((post.raw_response as Record<string, unknown>).rendered_path)
@@ -307,7 +366,7 @@ export function ScheduledTimelineCard({
             renderMetricsBar(
               metrics,
               onRefreshMetricsClick ? () => onRefreshMetricsClick(post) : undefined,
-              isRefreshingMetrics
+              isRefreshingMetrics,
             )}
           <div className="flex flex-wrap items-center gap-2">
             {isScheduled && onPublishNowClick && (
@@ -369,39 +428,7 @@ export function ScheduledTimelineCard({
         </div>
       </div>
 
-      {previewOpen && (
-        <Dialog
-          open={previewOpen}
-          onOpenChange={setPreviewOpen}
-        >
-          <DialogContent className="max-w-md p-4">
-            <DialogHeader>
-              <DialogTitle className="text-sm">{post.title || 'Mídia da Publicação'}</DialogTitle>
-            </DialogHeader>
-            <div className="mt-2 flex items-center justify-center rounded-lg overflow-hidden bg-black aspect-9/16 max-h-[70vh]">
-              {videoSrc && videoSrc.endsWith('.mp4') ? (
-                <video
-                  src={videoSrc}
-                  controls
-                  autoPlay
-                  className="w-full h-full object-contain"
-                  poster={post.thumbnail_url || undefined}
-                />
-              ) : post.thumbnail_url ? (
-                <img
-                  src={post.thumbnail_url}
-                  alt="Media preview"
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <div className="p-8 text-center text-muted-foreground text-xs">
-                  Nenhuma mídia disponível
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+      {renderMediaPreviewDialog(previewOpen, setPreviewOpen, post, videoSrc)}
     </Card>
   )
 }

@@ -1,6 +1,17 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowLeft, CheckSquare, Cpu, Layers, LayoutTemplate, Sparkles, Tag } from 'lucide-react'
+import { ArrowLeft, CheckSquare, Cpu, Layers, LayoutTemplate, Sparkles, Tag, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Typography } from '@/components/ui/typography'
@@ -12,6 +23,8 @@ interface BatchResultsHeaderProps {
   isSelectionMode: boolean
   onToggleSelectionMode: () => void
   selectedCount: number
+  onCancelBatch?: () => void
+  isCancellingBatch?: boolean
 }
 
 export function BatchResultsHeader({
@@ -19,6 +32,8 @@ export function BatchResultsHeader({
   isSelectionMode,
   onToggleSelectionMode,
   selectedCount,
+  onCancelBatch,
+  isCancellingBatch = false,
 }: BatchResultsHeaderProps) {
   const items = batch.items || []
   const total = items.length || batch.total_items || 0
@@ -26,10 +41,22 @@ export function BatchResultsHeader({
     ['READY_FOR_REVIEW', 'APPROVED', 'SCHEDULED', 'PUBLISHED'].includes(i.status),
   ).length
   const failedCount = items.filter((i) => i.status === 'FAILED').length
-  const completedOrFailed = readyCount + failedCount
+  const cancelledCount = items.filter((i) => i.status === 'CANCELLED').length
+  const processingCount = items.filter((i) =>
+    ['PENDING', 'DOWNLOADING', 'ANALYZING', 'RENDERING'].includes(i.status),
+  ).length
+  const completedOrFailed = readyCount + failedCount + cancelledCount
   const progressPercent = total > 0 ? Math.round((completedOrFailed / total) * 100) : 0
+  const isAllCancelled = total > 0 && cancelledCount === total
   const isAllFailed = total > 0 && failedCount === total
-  const isCompleted = total > 0 && progressPercent === 100 && !isAllFailed
+  const isCompleted = total > 0 && readyCount > 0 && progressPercent === 100
+  const badgeStatus = isAllCancelled
+    ? 'CANCELLED'
+    : isAllFailed || (readyCount === 0 && progressPercent === 100)
+      ? 'FAILED'
+      : isCompleted
+        ? 'COMPLETED'
+        : batch.status
 
   const rawId = batch.batch_id || batch.id
 
@@ -60,9 +87,7 @@ export function BatchResultsHeader({
                 Lote #{rawId.length > 12 ? `${rawId.slice(0, 8)}...` : rawId}
               </Typography>
             </div>
-            <BatchStatusBadge
-              status={isAllFailed ? 'FAILED' : isCompleted ? 'COMPLETED' : batch.status}
-            />
+            <BatchStatusBadge status={badgeStatus} />
           </div>
 
           <div className="flex flex-wrap items-center gap-2 pt-0.5 pl-0 sm:pl-10 text-xs text-muted-foreground">
@@ -96,8 +121,42 @@ export function BatchResultsHeader({
           </div>
         </div>
 
-        {/* Selection mode toggle */}
+        {/* Actions: Cancel Batch & Selection mode toggle */}
         <div className="flex items-center gap-2 self-end sm:self-center">
+          {processingCount > 0 && onCancelBatch && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5"
+                  disabled={isCancellingBatch}
+                >
+                  <X className="size-3.5" />
+                  <span>Cancelar Lote</span>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Cancelar processamento do lote?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação interromperá o processamento de todos os vídeos pendentes deste lote.
+                    Os vídeos já prontos ou aprovados serão preservados.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Voltar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={onCancelBatch}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Confirmar Cancelamento
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+
           <Button
             variant={isSelectionMode ? 'default' : 'outline'}
             size="sm"
@@ -117,7 +176,7 @@ export function BatchResultsHeader({
       {/* Progress Bar & Counter */}
       <div className="space-y-1.5 pt-2 border-t border-border/40">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5">
+          <span className="flex items-center gap-1.5 flex-wrap">
             <Sparkles className="size-3 text-primary" />
             Progresso Geral:{' '}
             <strong className="text-foreground">
@@ -126,6 +185,11 @@ export function BatchResultsHeader({
             vídeos prontos
             {failedCount > 0 && (
               <span className="text-destructive font-medium">({failedCount} falhas)</span>
+            )}
+            {cancelledCount > 0 && (
+              <span className="text-muted-foreground font-medium">
+                ({cancelledCount} cancelados)
+              </span>
             )}
           </span>
           <span className="font-mono font-medium text-foreground">{progressPercent}%</span>

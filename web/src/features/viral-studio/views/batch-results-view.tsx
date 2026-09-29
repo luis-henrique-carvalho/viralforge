@@ -2,7 +2,13 @@
 import { useState, useMemo } from 'react'
 import { useBatchDetail } from '../hooks/use-batch-detail'
 import { useBrands } from '../hooks/use-brands'
-import { useApproveItem, useBulkItemActions, useRetryItem } from '../hooks/use-item-actions'
+import {
+  useApproveItem,
+  useBulkItemActions,
+  useCancelBatch,
+  useCancelItem,
+  useRetryItem,
+} from '../hooks/use-item-actions'
 import { useCancelSchedule } from '../hooks/use-publishing'
 import { BatchResultsHeader } from '../components/batch-results-header'
 import { BatchFilterToolbar } from '../components/batch-filter-toolbar'
@@ -19,6 +25,19 @@ interface BatchResultsViewProps {
   batchId: string
 }
 
+function matchesSearch(item: ViralItem, searchQuery: string): boolean {
+  if (!searchQuery.trim()) return true
+  const q = searchQuery.toLowerCase().trim()
+  return Boolean(
+    item.product_code?.toLowerCase().includes(q) ||
+    (item.selected_headline || item.manual_headline || '').toLowerCase().includes(q) ||
+    item.ai_copy?.selected_headline?.toLowerCase().includes(q) ||
+    item.caption?.toLowerCase().includes(q) ||
+    item.source_url.toLowerCase().includes(q) ||
+    item.id.toLowerCase().includes(q),
+  )
+}
+
 export function BatchResultsView({ batchId }: BatchResultsViewProps) {
   const { data: batch, isLoading, error } = useBatchDetail(batchId)
   const { data: brandsData } = useBrands()
@@ -26,8 +45,15 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
 
   const approveMutation = useApproveItem(batchId)
   const retryMutation = useRetryItem(batchId)
+  const cancelItemMutation = useCancelItem(batchId)
+  const cancelBatchMutation = useCancelBatch(batchId)
   const cancelScheduleMutation = useCancelSchedule(batchId)
-  const { bulkApprove, bulkRetry, isProcessing: isBulkProcessing } = useBulkItemActions(batchId)
+  const {
+    bulkApprove,
+    bulkRetry,
+    bulkCancel,
+    isProcessing: isBulkProcessing,
+  } = useBulkItemActions(batchId)
 
   const [activeTab, setActiveTab] = useState<
     'all' | 'ready' | 'processing' | 'failed' | 'scheduled'
@@ -53,10 +79,7 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
-      if (selectedBrandId !== 'all' && item.brand_id !== selectedBrandId) {
-        return false
-      }
-
+      if (selectedBrandId !== 'all' && item.brand_id !== selectedBrandId) return false
       if (
         activeTab === 'ready' &&
         !['READY_FOR_REVIEW', 'APPROVED', 'SCHEDULED', 'PUBLISHED'].includes(item.status)
@@ -71,18 +94,7 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
         return false
       if (activeTab === 'failed' && !['FAILED', 'CANCELLED'].includes(item.status)) return false
 
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim()
-        return Boolean(
-          item.product_code?.toLowerCase().includes(q) ||
-          (item.selected_headline || item.manual_headline || '').toLowerCase().includes(q) ||
-          item.ai_copy?.selected_headline?.toLowerCase().includes(q) ||
-          item.caption?.toLowerCase().includes(q) ||
-          item.source_url.toLowerCase().includes(q) ||
-          item.id.toLowerCase().includes(q),
-        )
-      }
-      return true
+      return matchesSearch(item, searchQuery)
     })
   }, [items, selectedBrandId, activeTab, searchQuery])
 
@@ -102,6 +114,16 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
 
   const approvedSelectedItems = useMemo(
     () => items.filter((i) => selectedIds.has(i.id) && i.status === 'APPROVED'),
+    [items, selectedIds],
+  )
+
+  const activeSelectedItems = useMemo(
+    () =>
+      items.filter(
+        (i) =>
+          selectedIds.has(i.id) &&
+          ['PENDING', 'DOWNLOADING', 'ANALYZING', 'RENDERING'].includes(i.status),
+      ),
     [items, selectedIds],
   )
 
@@ -138,6 +160,8 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
         isSelectionMode={isSelectionMode}
         onToggleSelectionMode={() => setIsSelectionMode((prev) => !prev)}
         selectedCount={selectedIds.size}
+        onCancelBatch={() => cancelBatchMutation.mutate()}
+        isCancellingBatch={cancelBatchMutation.isPending}
       />
 
       <BatchFilterToolbar
@@ -170,9 +194,10 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
               onRetry={(id) => retryMutation.mutate(id)}
               onPublish={handlePublishSingle}
               onCancelSchedule={(id) => cancelScheduleMutation.mutate(id)}
+              onCancelItem={(id) => cancelItemMutation.mutate(id)}
               isApproving={approveMutation.isPending}
               isRetrying={retryMutation.isPending}
-              isCancelling={cancelScheduleMutation.isPending}
+              isCancelling={cancelScheduleMutation.isPending || cancelItemMutation.isPending}
             />
           ))}
         </div>
@@ -194,10 +219,16 @@ export function BatchResultsView({ batchId }: BatchResultsViewProps) {
         selectedCount={selectedIds.size}
         totalCount={filteredItems.length}
         approvedCount={approvedSelectedItems.length}
+        activeCount={activeSelectedItems.length}
         onSelectAll={() => setSelectedIds(new Set(filteredItems.map((i) => i.id)))}
         onClearSelection={() => setSelectedIds(new Set())}
         onBulkApprove={() => bulkApprove(Array.from(selectedIds))}
         onBulkRetry={() => bulkRetry(Array.from(selectedIds))}
+        onBulkCancel={
+          activeSelectedItems.length > 0
+            ? () => bulkCancel(activeSelectedItems.map((i) => i.id))
+            : undefined
+        }
         onBulkPublish={approvedSelectedItems.length > 0 ? handleBulkPublish : undefined}
         isProcessing={isBulkProcessing}
       />

@@ -8,6 +8,7 @@ export interface ItemCardActionSlotProps {
   onRetry?: (itemId: string) => void
   onPublish?: (item: ViralItem) => void
   onCancelSchedule?: (itemId: string) => void
+  onCancelItem?: (itemId: string) => void
   isApproving?: boolean
   isRetrying?: boolean
   isCancelling?: boolean
@@ -19,12 +20,15 @@ export function ItemCardActionSlot({
   onRetry,
   onPublish,
   onCancelSchedule,
+  onCancelItem,
   isApproving = false,
   isRetrying = false,
   isCancelling = false,
 }: ItemCardActionSlotProps) {
   const isReady = item.status === 'READY_FOR_REVIEW'
   const isFailed = item.status === 'FAILED'
+  const isCancelled = item.status === 'CANCELLED'
+  const isBusy = ['PENDING', 'DOWNLOADING', 'ANALYZING', 'RENDERING'].includes(item.status)
 
   if (isReady) {
     return (
@@ -122,7 +126,7 @@ export function ItemCardActionSlot({
     )
   }
 
-  if (isFailed) {
+  if (isFailed || isCancelled) {
     return (
       <Button
         variant="outline"
@@ -135,6 +139,27 @@ export function ItemCardActionSlot({
       >
         <RefreshCw className={`size-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
         <span className="sr-only">Tentar Novamente</span>
+      </Button>
+    )
+  }
+
+  if (isBusy && onCancelItem) {
+    return (
+      <Button
+        variant="outline"
+        size="icon-xs"
+        className="size-8 rounded-lg p-0 flex items-center justify-center bg-destructive/10 hover:bg-destructive/20 border-destructive/30 text-destructive transition-all"
+        onClick={() => onCancelItem(item.id)}
+        disabled={isCancelling}
+        title="Cancelar processamento"
+        aria-label="Cancelar processamento"
+      >
+        {isCancelling ? (
+          <RefreshCw className="size-3.5 animate-spin" />
+        ) : (
+          <X className="size-3.5" />
+        )}
+        <span className="sr-only">Cancelar processamento</span>
       </Button>
     )
   }

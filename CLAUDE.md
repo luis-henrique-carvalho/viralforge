@@ -393,5 +393,7 @@ injection).
 - `docs/gestao-de-marcas-workspace.md` — Especificação do Catálogo Global de Marcas (/viral-studio/brands) e Workspace Dedicado (/viral-studio/brands/$brandId) com 4 abas e integração Postiz/Discovery.
 - `docs/descoberta-assincrona-e-mineracao.md` — Especificação técnica completa da Descoberta Assíncrona, DiscoveryWorker, cancelamento e histórico persistente.
 - `docs/adr/0004-asynchronous-discovery-mining-and-search-persistence.md` — Arquitetura de Descoberta Assíncrona com DiscoveryWorker, persistência em disco e cancelamento em voo.
+- `docs/cancelamento-processamento-viral-studio.md` — Arquitetura de cancelamento de processamento de lotes e vídeos individuais (Deep Module, psutil process-tree termination, atomic state e 1-click retry).
+- `docs/adr/0005-cancelamento-de-processamento-lotes-e-videos.md` — Decisão arquitetural de cancelamento seguro de processamento no Viral Content Studio com Codebase Design.
 - `docs/architecture-history.md` — summary of major refactors (what moved
   where and why); the pre-rewrite CLAUDE.md is in git history.

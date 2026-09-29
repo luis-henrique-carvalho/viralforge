@@ -1,15 +1,18 @@
 import { CheckCircle2, RefreshCw, Send, X } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Typography } from '@/components/ui/typography'
 
 interface BulkActionsBarProps {
   selectedCount: number
   totalCount: number
   approvedCount?: number
+  activeCount?: number
   onSelectAll: () => void
   onClearSelection: () => void
   onBulkApprove: () => void
   onBulkRetry: () => void
+  onBulkCancel?: () => void
   onBulkPublish?: () => void
   isProcessing?: boolean
 }
@@ -18,10 +21,12 @@ export function BulkActionsBar({
   selectedCount,
   totalCount,
   approvedCount = 0,
+  activeCount = 0,
   onSelectAll,
   onClearSelection,
   onBulkApprove,
   onBulkRetry,
+  onBulkCancel,
   onBulkPublish,
   isProcessing = false,
 }: BulkActionsBarProps) {
@@ -31,9 +36,12 @@ export function BulkActionsBar({
     <div className="fixed bottom-6 inset-x-0 mx-auto max-w-2xl px-4 z-40 animate-in fade-in slide-in-from-bottom-5 duration-200">
       <Card className="flex items-center justify-between gap-4 p-4 shadow-xl border-primary/40 bg-background/95 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-foreground">
+          <Typography
+            variant="small"
+            className="font-semibold text-foreground"
+          >
             {selectedCount} {selectedCount === 1 ? 'vídeo selecionado' : 'vídeos selecionados'}
-          </span>
+          </Typography>
           {selectedCount < totalCount ? (
             <Button
               variant="ghost"
@@ -88,6 +96,19 @@ export function BulkActionsBar({
             <RefreshCw className={`size-3.5 ${isProcessing ? 'animate-spin' : ''}`} />
             <span>Reprocessar</span>
           </Button>
+
+          {onBulkCancel && activeCount > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
+              onClick={onBulkCancel}
+              disabled={isProcessing}
+            >
+              <X className="size-3.5" />
+              <span>Cancelar ({activeCount})</span>
+            </Button>
+          )}
 
           <Button
             variant="ghost"
