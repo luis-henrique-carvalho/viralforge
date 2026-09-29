@@ -100,7 +100,7 @@ export function DispatchJobCard({ job, onRetry, isRetrying }: DispatchJobCardPro
             <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
               {job.brand_id ? (
                 <Link
-                  to="/viral-studio/brands/$brandId"
+                  to="/brands/$brandId"
                   params={{ brandId: job.brand_id }}
                   className="font-medium text-foreground hover:text-primary hover:underline transition-colors flex items-center gap-1"
                 >
@@ -160,7 +160,7 @@ export function DispatchJobCard({ job, onRetry, isRetrying }: DispatchJobCardPro
               className="gap-1.5 text-xs h-8"
             >
               <Link
-                to="/viral-studio/brands/$brandId"
+                to="/brands/$brandId"
                 params={{ brandId: job.brand_id }}
               >
                 <Bookmark className="size-3.5 text-primary shrink-0" />

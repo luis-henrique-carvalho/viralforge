@@ -455,17 +455,17 @@ def test_resolve_or_download_avatar_from_publishing_profiles_and_render(tmp_path
 
 
 def test_upload_brand_avatar_api(clean_store_env, tmp_path):
-    """POST /api/viral-studio/brands/{id}/avatar uploads and attaches avatar file."""
+    """POST /api/brands/{id}/avatar uploads and attaches avatar file."""
     client = TestClient(app)
     # Create brand
-    create_res = client.post("/api/viral-studio/brands", json={"name": "Conta Teste", "handle": "@contateste"})
+    create_res = client.post("/api/brands", json={"name": "Conta Teste", "handle": "@contateste"})
     assert create_res.status_code == 201
     b_id = create_res.json()["id"]
 
     # Upload avatar file
     fake_png = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4"
     upload_res = client.post(
-        f"/api/viral-studio/brands/{b_id}/avatar",
+        f"/api/brands/{b_id}/avatar",
         files={"file": ("avatar.png", fake_png, "image/png")},
     )
     assert upload_res.status_code == 200

@@ -319,7 +319,6 @@ app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 # app.py lets this module stay focused on the job lifecycle.
 app.include_router(config_router)
 app.include_router(brand_router, prefix="/api/brands")
-app.include_router(brand_router, prefix="/api/viral-studio/brands")
 app.include_router(viral_studio_router, prefix="/api/viral-studio")
 app.include_router(discovery_router)
 

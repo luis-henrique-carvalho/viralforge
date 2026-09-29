@@ -458,48 +458,8 @@ export const brandHandlers = [
   http.post('/api/brands/:id/scheduled/:postId/publish-now', ({ params }) =>
     handlePublishScheduledNow(params.id as string, params.postId as string),
   ),
-  http.get('/api/publishing/workspaces', ({ request }) => handleGetPublishingWorkspaces(request)),
-
-  // Backward-compatibility /api/viral-studio/brands
-  http.get('/api/viral-studio/brands', () => handleGetBrands()),
-  http.get('/api/viral-studio/brands/:id', ({ params }) => handleGetBrand(params.id as string)),
-  http.post('/api/viral-studio/brands', ({ request }) => handleCreateBrand(request)),
-  http.patch('/api/viral-studio/brands/:id', ({ params, request }) =>
-    handlePatchBrand(params.id as string, request),
-  ),
-  http.get('/api/viral-studio/brands/:id/workspace', ({ params }) =>
-    handleGetBrandWorkspace(params.id as string),
-  ),
-  http.get('/api/viral-studio/brands/:id/channels', ({ params }) =>
-    handleGetBrandChannels(params.id as string),
-  ),
-  http.get('/api/viral-studio/brands/:id/channels/available', () => handleGetAvailableChannels()),
-  http.post('/api/viral-studio/brands/:id/channels/bind', ({ params, request }) =>
-    handleBindChannels(params.id as string, request),
-  ),
-  http.post('/api/viral-studio/brands/:id/channels/connect-url', ({ params }) =>
-    handleConnectUrl(params.id as string),
-  ),
-  http.get('/api/viral-studio/brands/:id/videos', ({ params, request }) =>
-    handleGetBrandVideos(params.id as string, request),
-  ),
-  http.post('/api/viral-studio/brands/:id/auto-schedule', ({ request }) =>
-    handleAutoSchedule(request),
-  ),
-  http.post('/api/viral-studio/brands/:id/publish', ({ request }) => handlePublish(request)),
-  http.post('/api/viral-studio/brands/:id/schedule-slots', ({ params, request }) =>
-    handleScheduleSlots(params.id as string, request),
-  ),
-  http.get('/api/viral-studio/brands/:id/scheduled', ({ params }) =>
-    handleGetScheduled(params.id as string),
-  ),
-  http.delete('/api/viral-studio/brands/:id/scheduled/:postId', ({ params }) =>
-    handleDeleteScheduled(params.postId as string),
-  ),
-  http.post('/api/viral-studio/brands/:id/scheduled/:postId/publish-now', ({ params }) =>
-    handlePublishScheduledNow(params.id as string, params.postId as string),
-  ),
-  http.get('/api/viral-studio/publishing/workspaces', ({ request }) =>
+  http.get('/api/brands/publishing/workspaces', ({ request }) =>
     handleGetPublishingWorkspaces(request),
   ),
+  http.get('/api/publishing/workspaces', ({ request }) => handleGetPublishingWorkspaces(request)),
 ]

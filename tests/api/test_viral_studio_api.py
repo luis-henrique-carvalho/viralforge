@@ -28,7 +28,7 @@ def api_client(tmp_path, monkeypatch):
 def test_cors_patch_preflight(api_client):
     """Verify CORS preflight succeeds for PATCH requests."""
     resp = api_client.options(
-        "/api/viral-studio/brands/vale-o-clique",
+        "/api/brands/vale-o-clique",
         headers={
             "Origin": "http://localhost:5176",
             "Access-Control-Request-Method": "PATCH",
@@ -41,8 +41,8 @@ def test_cors_patch_preflight(api_client):
 
 
 def test_list_brands_default_seed(api_client):
-    """GET /api/viral-studio/brands returns seeded default brand."""
-    resp = api_client.get("/api/viral-studio/brands")
+    """GET /api/brands returns seeded default brand."""
+    resp = api_client.get("/api/brands")
     assert resp.status_code == 200
     data = resp.json()
     assert "brands" in data
@@ -60,7 +60,7 @@ def test_create_and_get_brand(api_client):
         "default_cta": "Veja os achadinhos!",
         "template_id": "classic-affiliate",
     }
-    create_resp = api_client.post("/api/viral-studio/brands", json=payload)
+    create_resp = api_client.post("/api/brands", json=payload)
     assert create_resp.status_code == 201
     created = create_resp.json()
     assert created["id"] == "florzinha-ofertas"
@@ -68,7 +68,7 @@ def test_create_and_get_brand(api_client):
     assert created["handle"] == "@florzinha"
 
     # Fetch by ID
-    get_resp = api_client.get("/api/viral-studio/brands/florzinha-ofertas")
+    get_resp = api_client.get("/api/brands/florzinha-ofertas")
     assert get_resp.status_code == 200
     assert get_resp.json()["id"] == "florzinha-ofertas"
 
@@ -81,10 +81,10 @@ def test_create_duplicate_brand_returns_409(api_client):
         "handle": "@brand1",
         "template_id": "classic-affiliate",
     }
-    r1 = api_client.post("/api/viral-studio/brands", json=payload)
+    r1 = api_client.post("/api/brands", json=payload)
     assert r1.status_code == 201
 
-    r2 = api_client.post("/api/viral-studio/brands", json=payload)
+    r2 = api_client.post("/api/brands", json=payload)
     assert r2.status_code == 409
     assert "already exists" in r2.json()["detail"].lower()
 
@@ -92,7 +92,7 @@ def test_create_duplicate_brand_returns_409(api_client):
 def test_patch_brand(api_client):
     """PATCH /brands/{id} updates only specified fields."""
     api_client.post(
-        "/api/viral-studio/brands",
+        "/api/brands",
         json={
             "id": "patch-brand",
             "name": "Before Name",
@@ -102,7 +102,7 @@ def test_patch_brand(api_client):
     )
 
     patch_resp = api_client.patch(
-        "/api/viral-studio/brands/patch-brand",
+        "/api/brands/patch-brand",
         json={"name": "After Name", "handle": "@after"},
     )
     assert patch_resp.status_code == 200
@@ -114,7 +114,7 @@ def test_patch_brand(api_client):
 def test_patch_nonexistent_brand_returns_404(api_client):
     """PATCH on a non-existent brand returns 404 Not Found."""
     resp = api_client.patch(
-        "/api/viral-studio/brands/nonexistent-brand-id",
+        "/api/brands/nonexistent-brand-id",
         json={"name": "Does Not Matter"},
     )
     assert resp.status_code == 404
@@ -123,7 +123,7 @@ def test_patch_nonexistent_brand_returns_404(api_client):
 
 def test_get_nonexistent_brand_returns_404(api_client):
     """GET on a non-existent brand returns 404 Not Found."""
-    resp = api_client.get("/api/viral-studio/brands/missing-brand-12345")
+    resp = api_client.get("/api/brands/missing-brand-12345")
     assert resp.status_code == 404
 
 
@@ -160,7 +160,7 @@ def test_create_brand_path_traversal_rejected(api_client):
         "handle": "@traversal",
         "avatar_path": "../../../etc/passwd",
     }
-    resp = api_client.post("/api/viral-studio/brands", json=payload)
+    resp = api_client.post("/api/brands", json=payload)
     assert resp.status_code in (400, 422)
 
 
@@ -172,7 +172,7 @@ def test_create_brand_ssrf_rejected(api_client):
         "handle": "@ssrfbrand",
         "default_affiliate_url": "http://127.0.0.1:8000/steal",
     }
-    resp = api_client.post("/api/viral-studio/brands", json=payload)
+    resp = api_client.post("/api/brands", json=payload)
     assert resp.status_code in (400, 422)
 
 
@@ -269,7 +269,7 @@ def test_create_brand_auto_slugify_id(api_client):
         "name": "Achadinhos da Luíza & Cia",
         "handle": "@luiza",
     }
-    resp = api_client.post("/api/viral-studio/brands", json=payload)
+    resp = api_client.post("/api/brands", json=payload)
     assert resp.status_code == 201
     data = resp.json()
     assert data["id"] == "achadinhos-da-luiza-cia"
@@ -277,7 +277,7 @@ def test_create_brand_auto_slugify_id(api_client):
     assert data["handle"] == "@luiza"
 
     # Verify retrieval
-    get_resp = api_client.get("/api/viral-studio/brands/achadinhos-da-luiza-cia")
+    get_resp = api_client.get("/api/brands/achadinhos-da-luiza-cia")
     assert get_resp.status_code == 200
     assert get_resp.json()["id"] == "achadinhos-da-luiza-cia"
 
@@ -315,18 +315,18 @@ def test_create_brand_absolute_path_rejected(api_client):
             "handle": "@exploit",
             "avatar_path": bad,
         }
-        resp = api_client.post("/api/viral-studio/brands", json=payload)
+        resp = api_client.post("/api/brands", json=payload)
         assert resp.status_code in (400, 422), f"Expected 400/422 for path {bad}, got {resp.status_code}"
 
 
 def test_patch_brand_absolute_path_rejected(api_client):
     """PATCH with absolute avatar path returns 422."""
     api_client.post(
-        "/api/viral-studio/brands",
+        "/api/brands",
         json={"id": "patch-path-brand", "name": "Patch Path", "handle": "@patchpath"},
     )
     resp = api_client.patch(
-        "/api/viral-studio/brands/patch-path-brand",
+        "/api/brands/patch-path-brand",
         json={"avatar_path": "/etc/shadow"},
     )
     assert resp.status_code in (400, 422)
@@ -336,7 +336,7 @@ def test_create_brand_disallowed_prefix_rejected(api_client):
     """Disallowed relative prefixes and hidden files return 422."""
     for bad in ["var/log/syslog", ".env", "uploads/.git/config"]:
         resp = api_client.post(
-            "/api/viral-studio/brands",
+            "/api/brands",
             json={"name": "Bad Prefix", "handle": "@badprefix", "avatar_path": bad},
         )
         assert resp.status_code in (400, 422)
@@ -351,7 +351,7 @@ def test_create_brand_safe_asset_paths_accepted(api_client):
     ]
     for path, brand_id in safe_samples:
         resp = api_client.post(
-            "/api/viral-studio/brands",
+            "/api/brands",
             json={"id": brand_id, "name": f"Safe {brand_id}", "handle": f"@{brand_id}", "avatar_path": path},
         )
         assert resp.status_code == 201, f"Failed for path {path}: {resp.text}"
@@ -362,7 +362,7 @@ def test_create_batch_returns_201_with_pending_items(api_client):
     """POST /api/viral-studio/batches with 3 items returns 201 and items in PENDING state."""
     # Ensure brand exists
     api_client.post(
-        "/api/viral-studio/brands",
+        "/api/brands",
         json={
             "id": "batch-brand-201",
             "name": "Batch Brand 201",
@@ -420,7 +420,7 @@ def test_create_batch_returns_201_with_pending_items(api_client):
 def test_get_batch_by_id(api_client):
     """GET /api/viral-studio/batches/{id} returns batch metadata and per-item status."""
     api_client.post(
-        "/api/viral-studio/brands",
+        "/api/brands",
         json={"id": "get-batch-brand", "name": "Get Batch Brand", "handle": "@getbatch"},
     )
     create_resp = api_client.post(
@@ -451,7 +451,7 @@ def test_get_batch_by_id(api_client):
 def test_get_item_by_id(api_client):
     """GET /api/viral-studio/items/{id} returns individual item metadata."""
     api_client.post(
-        "/api/viral-studio/brands",
+        "/api/brands",
         json={"id": "item-query-brand", "name": "Item Query Brand", "handle": "@itemquery"},
     )
     create_resp = api_client.post(
@@ -478,7 +478,7 @@ def test_get_item_by_id(api_client):
 def test_create_batch_empty_items_rejected(api_client):
     """POST /api/viral-studio/batches with empty items list returns 422."""
     api_client.post(
-        "/api/viral-studio/brands",
+        "/api/brands",
         json={"id": "empty-items-brand", "name": "Empty Items Brand", "handle": "@emptyitems"},
     )
     resp = api_client.post(
@@ -491,7 +491,7 @@ def test_create_batch_empty_items_rejected(api_client):
 def test_create_batch_invalid_url_rejected(api_client):
     """POST /api/viral-studio/batches with non-allowlisted domain returns 422."""
     api_client.post(
-        "/api/viral-studio/brands",
+        "/api/brands",
         json={"id": "bad-url-brand", "name": "Bad URL Brand", "handle": "@badurl"},
     )
     resp = api_client.post(
@@ -507,7 +507,7 @@ def test_create_batch_invalid_url_rejected(api_client):
 def test_create_batch_ssrf_url_rejected(api_client):
     """POST /api/viral-studio/batches with private IP source URL returns 422."""
     api_client.post(
-        "/api/viral-studio/brands",
+        "/api/brands",
         json={"id": "ssrf-batch-brand", "name": "SSRF Batch Brand", "handle": "@ssrfbatch"},
     )
     for bad_ssrf in ["http://127.0.0.1:8000/exploit", "http://169.254.169.254/meta"]:
@@ -524,7 +524,7 @@ def test_create_batch_ssrf_url_rejected(api_client):
 def test_create_batch_ssrf_product_url_rejected(api_client):
     """POST /api/viral-studio/batches with private IP product_url returns 422."""
     api_client.post(
-        "/api/viral-studio/brands",
+        "/api/brands",
         json={"id": "ssrf-prod-brand", "name": "SSRF Prod Brand", "handle": "@ssrfprod"},
     )
     resp = api_client.post(
@@ -570,7 +570,7 @@ def test_get_nonexistent_item_returns_404(api_client):
 def test_list_batches(api_client):
     """GET /api/viral-studio/batches returns all created batches."""
     api_client.post(
-        "/api/viral-studio/brands",
+        "/api/brands",
         json={"id": "list-batches-brand", "name": "List Batches", "handle": "@listbatches"},
     )
     api_client.post(
@@ -603,7 +603,7 @@ def test_create_batch_whitespace_brand_id_rejected(api_client):
 def test_create_batch_nonexistent_template_returns_404(api_client):
     """POST /api/viral-studio/batches with missing template_id returns 404."""
     api_client.post(
-        "/api/viral-studio/brands",
+        "/api/brands",
         json={"id": "valid-b-id", "name": "Valid Brand", "handle": "@validb"},
     )
     resp = api_client.post(
@@ -621,7 +621,7 @@ def test_create_batch_nonexistent_template_returns_404(api_client):
 def test_patch_item(api_client):
     """PATCH /api/viral-studio/items/{id} updates commercial fields."""
     api_client.post(
-        "/api/viral-studio/brands",
+        "/api/brands",
         json={"id": "patch-item-brand", "name": "Patch Item Brand", "handle": "@patchitem"},
     )
     b = api_client.post(
@@ -652,7 +652,7 @@ def test_patch_item(api_client):
 def test_create_batch_and_patch_item_with_model(api_client):
     """POST /api/viral-studio/batches with model propagates to items and allows PATCH model."""
     api_client.post(
-        "/api/viral-studio/brands",
+        "/api/brands",
         json={"id": "model-test-brand", "name": "Model Brand", "handle": "@modelbrand"},
     )
     b_resp = api_client.post(
@@ -693,7 +693,7 @@ def test_patch_nonexistent_item_returns_404(api_client):
 
 
 def test_patch_item_cannot_change_lifecycle_status(api_client):
-    api_client.post("/api/viral-studio/brands", json={"id": "state-guard", "name": "State Guard", "handle": "@state"})
+    api_client.post("/api/brands", json={"id": "state-guard", "name": "State Guard", "handle": "@state"})
     batch = api_client.post("/api/viral-studio/batches", json={
         "brand_id": "state-guard", "items": [{"source_url": "https://www.instagram.com/reel/C_STATE/"}],
     }).json()
@@ -706,7 +706,7 @@ def test_patch_item_cannot_change_lifecycle_status(api_client):
 def test_render_item_endpoint(api_client, monkeypatch, tmp_path):
     """POST /api/viral-studio/items/{id}/render queues a durable re-render."""
     api_client.post(
-        "/api/viral-studio/brands",
+        "/api/brands",
         json={"id": "render-api-brand", "name": "Render API Brand", "handle": "@renderapi"},
     )
     b = api_client.post(
@@ -735,7 +735,7 @@ def test_render_item_endpoint(api_client, monkeypatch, tmp_path):
 def test_approve_item_endpoint(api_client, monkeypatch, tmp_path):
     """POST /api/viral-studio/items/{id}/approve transitions item to APPROVED."""
     api_client.post(
-        "/api/viral-studio/brands",
+        "/api/brands",
         json={"id": "approve-api-brand", "name": "Approve API Brand", "handle": "@approveapi"},
     )
     b = api_client.post(
@@ -763,7 +763,7 @@ def test_approve_item_endpoint(api_client, monkeypatch, tmp_path):
 def test_approve_unrendered_item_returns_400(api_client):
     """POST /api/viral-studio/items/{id}/approve on unrendered item returns 400."""
     api_client.post(
-        "/api/viral-studio/brands",
+        "/api/brands",
         json={"id": "unrendered-api-brand", "name": "Unrendered Brand", "handle": "@unrenderedapi"},
     )
     b = api_client.post(
@@ -782,7 +782,7 @@ def test_approve_unrendered_item_returns_400(api_client):
 def test_retry_item_endpoint(api_client):
     """POST /api/viral-studio/items/{id}/retry resets status to PENDING."""
     api_client.post(
-        "/api/viral-studio/brands",
+        "/api/brands",
         json={"id": "retry-api-brand", "name": "Retry API Brand", "handle": "@retryapi"},
     )
     b = api_client.post(
@@ -807,7 +807,7 @@ def test_retry_item_endpoint(api_client):
 def test_publish_items_endpoint(api_client, monkeypatch, tmp_path):
     """POST /api/viral-studio/publish publishes approved items."""
     api_client.post(
-        "/api/viral-studio/brands",
+        "/api/brands",
         json={"id": "pub-api-brand", "name": "Pub API Brand", "handle": "@pubapi"},
     )
     b = api_client.post(
@@ -854,7 +854,7 @@ def test_publish_items_endpoint(api_client, monkeypatch, tmp_path):
 def test_get_batch_and_item_includes_context_and_logs(api_client):
     """GET /batches/{id} and GET /items/{id} serialize logs, source_metadata, and ai_context_summary."""
     brand = api_client.post(
-        "/api/viral-studio/brands",
+        "/api/brands",
         json={"id": "logs-brand", "name": "Logs Brand", "handle": "@logsbrand"},
     ).json()
 
@@ -900,7 +900,7 @@ def test_regenerate_copy_endpoint(api_client, monkeypatch):
     from clippyme.api.viral_studio_schemas import AICopyData
 
     brand = api_client.post(
-        "/api/viral-studio/brands",
+        "/api/brands",
         json={"id": "regen-brand", "name": "Regen Brand", "handle": "@regenbrand"},
     ).json()
 

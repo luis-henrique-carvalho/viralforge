@@ -1,15 +1,15 @@
 """Tests for Brand Workspace API endpoints and Domain Service (Phase 2).
 
 Verifies:
-- GET /api/viral-studio/brands/{id}/workspace aggregation
-- GET /api/viral-studio/brands/{id}/channels
-- POST /api/viral-studio/brands/{id}/channels/connect-url
-- GET /api/viral-studio/brands/{id}/videos & filtering
-- POST /api/viral-studio/brands/{id}/auto-schedule (with multi-brand isolation check)
-- POST /api/viral-studio/brands/{id}/publish
-- POST /api/viral-studio/brands/{id}/schedule-slots
-- GET /api/viral-studio/brands/{id}/scheduled
-- DELETE /api/viral-studio/brands/{id}/scheduled/{post_id} (atomic status reversion to APPROVED)
+- GET /api/brands/{id}/workspace aggregation
+- GET /api/brands/{id}/channels
+- POST /api/brands/{id}/channels/connect-url
+- GET /api/brands/{id}/videos & filtering
+- POST /api/brands/{id}/auto-schedule (with multi-brand isolation check)
+- POST /api/brands/{id}/publish
+- POST /api/brands/{id}/schedule-slots
+- GET /api/brands/{id}/scheduled
+- DELETE /api/brands/{id}/scheduled/{post_id} (atomic status reversion to APPROVED)
 """
 from __future__ import annotations
 
@@ -234,7 +234,7 @@ def temp_studio_store(monkeypatch, tmp_path):
 
 def test_get_brand_workspace_summary(temp_studio_store, mock_publisher_env):
     client = TestClient(app)
-    response = client.get("/api/viral-studio/brands/brand_test/workspace")
+    response = client.get("/api/brands/brand_test/workspace")
     assert response.status_code == 200
     data = response.json()
 
@@ -261,7 +261,7 @@ def test_get_brand_workspace_summary_resolves_active_publishing_profile(temp_stu
     with open(store_dir / "brands.json", "w") as f:
         json.dump(brands, f)
 
-    response = client.get("/api/viral-studio/brands/brand_test/workspace")
+    response = client.get("/api/brands/brand_test/workspace")
     assert response.status_code == 200
     data = response.json()
     assert data["provider"] == "postiz"
@@ -269,7 +269,7 @@ def test_get_brand_workspace_summary_resolves_active_publishing_profile(temp_stu
 
 def test_list_brand_channels(temp_studio_store, mock_publisher_env):
     client = TestClient(app)
-    response = client.get("/api/viral-studio/brands/brand_test/channels")
+    response = client.get("/api/brands/brand_test/channels")
     assert response.status_code == 200
     channels = response.json()
     assert len(channels) == 2
@@ -279,7 +279,7 @@ def test_list_brand_channels(temp_studio_store, mock_publisher_env):
 
 def test_get_brand_channel_connect_url(temp_studio_store, mock_publisher_env):
     client = TestClient(app)
-    response = client.post("/api/viral-studio/brands/brand_test/channels/connect-url")
+    response = client.post("/api/brands/brand_test/channels/connect-url")
     assert response.status_code == 200
     data = response.json()
     assert "url" in data
@@ -289,13 +289,13 @@ def test_get_brand_channel_connect_url(temp_studio_store, mock_publisher_env):
 def test_get_brand_videos(temp_studio_store, mock_publisher_env):
     client = TestClient(app)
     # All videos
-    response = client.get("/api/viral-studio/brands/brand_test/videos")
+    response = client.get("/api/brands/brand_test/videos")
     assert response.status_code == 200
     videos = response.json()
     assert len(videos) == 2
 
     # Filtered by APPROVED status
-    response_approved = client.get("/api/viral-studio/brands/brand_test/videos?status=APPROVED")
+    response_approved = client.get("/api/brands/brand_test/videos?status=APPROVED")
     assert response_approved.status_code == 200
     approved_videos = response_approved.json()
     assert len(approved_videos) == 1
@@ -308,7 +308,7 @@ def test_auto_schedule_brand_video_success(temp_studio_store, mock_publisher_env
         "item_id": "item_1",
         "channel_ids": ["acc_tiktok_1"],
     }
-    response = client.post("/api/viral-studio/brands/brand_test/auto-schedule?sync=true", json=payload)
+    response = client.post("/api/brands/brand_test/auto-schedule?sync=true", json=payload)
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
@@ -331,7 +331,7 @@ def test_auto_schedule_multi_brand_isolation_violation(temp_studio_store, mock_p
         "item_id": "item_other",
         "channel_ids": ["acc_tiktok_1"],
     }
-    response = client.post("/api/viral-studio/brands/brand_test/auto-schedule", json=payload)
+    response = client.post("/api/brands/brand_test/auto-schedule", json=payload)
     assert response.status_code == 400
     assert "Brand isolation mismatch" in response.text
 
@@ -343,7 +343,7 @@ def test_auto_schedule_unapproved_item_fails(temp_studio_store, mock_publisher_e
         "item_id": "item_2",
         "channel_ids": ["acc_tiktok_1"],
     }
-    response = client.post("/api/viral-studio/brands/brand_test/auto-schedule", json=payload)
+    response = client.post("/api/brands/brand_test/auto-schedule", json=payload)
     assert response.status_code == 400
     assert "Only ready items can be auto-scheduled" in response.text
 
@@ -355,7 +355,7 @@ def test_publish_brand_video_direct(temp_studio_store, mock_publisher_env):
         "channel_ids": ["acc_tiktok_1"],
         "publish_now": True,
     }
-    response = client.post("/api/viral-studio/brands/brand_test/publish?sync=true", json=payload)
+    response = client.post("/api/brands/brand_test/publish?sync=true", json=payload)
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
@@ -374,7 +374,7 @@ def test_update_brand_schedule_slots(temp_studio_store, mock_publisher_env):
         "timezone": "America/New_York",
         "frequency": 3,
     }
-    response = client.post("/api/viral-studio/brands/brand_test/schedule-slots", json=payload)
+    response = client.post("/api/brands/brand_test/schedule-slots", json=payload)
     assert response.status_code == 200
     brand = response.json()
     assert brand["posting_schedule"]["slots"] == ["09:00", "14:00", "20:00"]
@@ -384,7 +384,7 @@ def test_update_brand_schedule_slots(temp_studio_store, mock_publisher_env):
 
 def test_list_brand_scheduled_timeline(temp_studio_store, mock_publisher_env):
     client = TestClient(app)
-    response = client.get("/api/viral-studio/brands/brand_test/scheduled")
+    response = client.get("/api/brands/brand_test/scheduled")
     assert response.status_code == 200
     timeline = response.json()
     assert timeline["brand_id"] == "brand_test"
@@ -402,7 +402,7 @@ def test_cancel_brand_scheduled_post_reverts_status_to_approved(temp_studio_stor
 
     # First auto-schedule item_1 to create a post and set status to SCHEDULED
     schedule_res = client.post(
-        "/api/viral-studio/brands/brand_test/auto-schedule?sync=true",
+        "/api/brands/brand_test/auto-schedule?sync=true",
         json={"item_id": "item_1", "channel_ids": ["acc_tiktok_1"]},
     )
     assert schedule_res.status_code == 200
@@ -414,7 +414,7 @@ def test_cancel_brand_scheduled_post_reverts_status_to_approved(temp_studio_stor
     assert item["status"] == "SCHEDULED"
 
     # Now cancel the scheduled post
-    cancel_res = client.delete(f"/api/viral-studio/brands/brand_test/scheduled/{post_id}")
+    cancel_res = client.delete(f"/api/brands/brand_test/scheduled/{post_id}")
     assert cancel_res.status_code == 200
     assert cancel_res.json()["success"] is True
 
@@ -426,7 +426,7 @@ def test_cancel_brand_scheduled_post_reverts_status_to_approved(temp_studio_stor
 
     # Invariant: Cancelled posts must not be returned in fallback timeline list
     with patch.object(mock_publisher_env, "list_scheduled", AsyncMock(return_value=[])):
-        timeline_res = client.get("/api/viral-studio/brands/brand_test/scheduled")
+        timeline_res = client.get("/api/brands/brand_test/scheduled")
         assert timeline_res.status_code == 200
         active_posts = timeline_res.json()["posts"]
         assert not any(p["id"] == post_id for p in active_posts)
@@ -441,24 +441,24 @@ def test_brand_channels_isolation_and_binding(temp_studio_store, mock_publisher_
         "handle": "@isolated",
         "niche": "Security",
     }
-    create_res = client.post("/api/viral-studio/brands", json=brand_unbound)
+    create_res = client.post("/api/brands", json=brand_unbound)
     assert create_res.status_code == 201
     new_brand_id = create_res.json()["id"]
 
     # 2. Get active channels for unbound brand -> should return empty list (isolated!)
-    chans_res = client.get(f"/api/viral-studio/brands/{new_brand_id}/channels")
+    chans_res = client.get(f"/api/brands/{new_brand_id}/channels")
     assert chans_res.status_code == 200
     assert chans_res.json() == []
 
     # 3. Get available channels from publisher -> should return all accounts
-    avail_res = client.get(f"/api/viral-studio/brands/{new_brand_id}/channels/available")
+    avail_res = client.get(f"/api/brands/{new_brand_id}/channels/available")
     assert avail_res.status_code == 200
     avail_chans = avail_res.json()
     assert len(avail_chans) == 2
 
     # 4. Bind only 1 channel to this brand
     bind_res = client.post(
-        f"/api/viral-studio/brands/{new_brand_id}/channels/bind",
+        f"/api/brands/{new_brand_id}/channels/bind",
         json={"channel_ids": ["acc_tiktok_1"]},
     )
     assert bind_res.status_code == 200
@@ -469,7 +469,7 @@ def test_brand_channels_isolation_and_binding(temp_studio_store, mock_publisher_
     assert active_profile.get("channel_ids") == ["acc_tiktok_1"]
 
     # 5. Get active channels now -> should return only acc_tiktok_1
-    chans_after_bind = client.get(f"/api/viral-studio/brands/{new_brand_id}/channels")
+    chans_after_bind = client.get(f"/api/brands/{new_brand_id}/channels")
     assert chans_after_bind.status_code == 200
     bound_chans = chans_after_bind.json()
     assert len(bound_chans) == 1
@@ -487,7 +487,7 @@ def test_auto_schedule_and_publish_return_channels_count(temp_studio_store, mock
     client = TestClient(app)
     # 1. Auto schedule async
     res_sched = client.post(
-        "/api/viral-studio/brands/brand_test/auto-schedule",
+        "/api/brands/brand_test/auto-schedule",
         json={"item_id": "item_1", "channel_ids": ["acc_tiktok_1", "acc_instagram_1"]},
     )
     assert res_sched.status_code == 202
@@ -497,7 +497,7 @@ def test_auto_schedule_and_publish_return_channels_count(temp_studio_store, mock
 
     # 2. Publish async
     res_pub = client.post(
-        "/api/viral-studio/brands/brand_test/publish",
+        "/api/brands/brand_test/publish",
         json={"item_id": "item_1", "channel_ids": ["acc_tiktok_1"], "publish_now": True},
     )
     assert res_pub.status_code == 202
@@ -510,14 +510,14 @@ def test_publish_brand_scheduled_now(temp_studio_store, mock_publisher_env):
     client = TestClient(app)
     # First auto-schedule
     schedule_res = client.post(
-        "/api/viral-studio/brands/brand_test/auto-schedule?sync=true",
+        "/api/brands/brand_test/auto-schedule?sync=true",
         json={"item_id": "item_1", "channel_ids": ["acc_tiktok_1"]},
     )
     assert schedule_res.status_code == 200
     post_id = schedule_res.json()["receipts"][0]["post_id"]
 
     # Now trigger publish-now
-    pub_now_res = client.post(f"/api/viral-studio/brands/brand_test/scheduled/{post_id}/publish-now")
+    pub_now_res = client.post(f"/api/brands/brand_test/scheduled/{post_id}/publish-now")
     assert pub_now_res.status_code == 202
     data = pub_now_res.json()
     assert data["success"] is True
@@ -538,7 +538,7 @@ def test_list_brand_scheduled_timeline_includes_active_queue_jobs(temp_studio_st
     _save_queue_sync({"job_active_123": active_job.to_dict()})
 
     client = TestClient(app)
-    res = client.get("/api/viral-studio/brands/brand_test/scheduled")
+    res = client.get("/api/brands/brand_test/scheduled")
     assert res.status_code == 200
     posts = res.json()["posts"]
     assert any(p["id"] == "job_active_123" and p["status"] == "UPLOADING" for p in posts)
@@ -562,11 +562,11 @@ def test_cancel_queued_dispatch_job_removes_from_timeline(temp_studio_store, moc
 
     client = TestClient(app)
     # Check it is in timeline
-    res_before = client.get("/api/viral-studio/brands/brand_test/scheduled")
+    res_before = client.get("/api/brands/brand_test/scheduled")
     assert any(p["id"] == "job_queued_cancel_test" for p in res_before.json()["posts"])
 
     # Cancel the queued job
-    del_res = client.delete("/api/viral-studio/brands/brand_test/scheduled/job_queued_cancel_test")
+    del_res = client.delete("/api/brands/brand_test/scheduled/job_queued_cancel_test")
     assert del_res.status_code == 200
     assert del_res.json()["success"] is True
 
@@ -574,12 +574,12 @@ def test_cancel_queued_dispatch_job_removes_from_timeline(temp_studio_store, moc
     q = _load_queue_sync()
     assert q["job_queued_cancel_test"]["status"] == "CANCELLED"
 
-    res_after = client.get("/api/viral-studio/brands/brand_test/scheduled")
+    res_after = client.get("/api/brands/brand_test/scheduled")
     assert not any(p["id"] == "job_queued_cancel_test" for p in res_after.json()["posts"])
 
 
 def test_get_brand_videos_reflects_in_flight_dispatch_queue_status(temp_studio_store, mock_publisher_env):
-    """GET /api/viral-studio/brands/{id}/videos must reflect in-flight QUEUED/UPLOADING jobs as SCHEDULED."""
+    """GET /api/brands/{id}/videos must reflect in-flight QUEUED/UPLOADING jobs as SCHEDULED."""
     from clippyme.domain.publish_dispatch_service import _save_queue_sync, DispatchJob
     # Pre-add active dispatch queue job
     job = DispatchJob(
@@ -594,7 +594,7 @@ def test_get_brand_videos_reflects_in_flight_dispatch_queue_status(temp_studio_s
     _save_queue_sync({"job_inflight_videos_tab": job.to_dict()})
 
     client = TestClient(app)
-    res = client.get("/api/viral-studio/brands/brand_test/videos")
+    res = client.get("/api/brands/brand_test/videos")
     assert res.status_code == 200
     items = res.json()
     item1 = next(i for i in items if i["id"] == "item_1")

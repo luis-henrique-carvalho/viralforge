@@ -351,15 +351,15 @@ All routes are JSON in / JSON out. Job IDs are strict UUID4. Config endpoints re
 | `POST` | `/api/config/zernio` | Save/update Zernio credentials. |
 | `GET` | `/api/zernio/accounts` | Discover accounts via Zernio. |
 | `POST` | `/api/publish/{job_id}/{clip_index}` | Upload + schedule a clip on TikTok/IG/YouTube. |
-| `GET`/`POST` | `/api/viral-studio/brands` | List / create commercial brands. |
-| `GET`/`PATCH`/`DELETE` | `/api/viral-studio/brands/{brand_id}` | Get / update / delete brand profile & editorial settings. |
-| `GET` | `/api/viral-studio/brands/{brand_id}/workspace` | Sovereign workspace overview (metrics, engine, accounts, queue). |
-| `GET`/`PUT` | `/api/viral-studio/brands/{brand_id}/channels` | List connected channels / bind channels with 1:1 exclusive transfer. |
-| `POST` | `/api/viral-studio/brands/{brand_id}/auto-schedule` | Auto-schedule approved creative in the next available slot. |
-| `POST` | `/api/viral-studio/brands/{brand_id}/schedule` | Schedule creative on specific channels and datetime. |
-| `GET`/`POST` | `/api/viral-studio/brands/{brand_id}/schedule-slots` | Get / sync daily posting slots with publisher engine. |
-| `GET` | `/api/viral-studio/brands/{brand_id}/scheduled` | List scheduled timeline and queue from provider. |
-| `DELETE` | `/api/viral-studio/brands/{brand_id}/scheduled/{post_id}` | Cancel scheduled post and revert local item to `approved`. |
+| `GET`/`POST` | `/api/brands` | List / create commercial brands. |
+| `GET`/`PATCH`/`DELETE` | `/api/brands/{brand_id}` | Get / update / delete brand profile & editorial settings. |
+| `GET` | `/api/brands/{brand_id}/workspace` | Sovereign workspace overview (metrics, engine, accounts, queue). |
+| `GET`/`PUT` | `/api/brands/{brand_id}/channels` | List connected channels / bind channels with 1:1 exclusive transfer. |
+| `POST` | `/api/brands/{brand_id}/auto-schedule` | Auto-schedule approved creative in the next available slot. |
+| `POST` | `/api/brands/{brand_id}/publish` | Schedule or publish creative immediately on bound channels. |
+| `GET`/`POST` | `/api/brands/{brand_id}/schedule-slots` | Get / sync daily posting slots with publisher engine. |
+| `GET` | `/api/brands/{brand_id}/scheduled` | List scheduled timeline and queue from provider. |
+| `DELETE` | `/api/brands/{brand_id}/scheduled/{post_id}` | Cancel scheduled post and revert local item to `approved`. |
 | `POST` | `/api/live-monitor/start` | Start a channel monitor (kick/twitch/youtube, live/vod mode). |
 | `POST` | `/api/live-monitor/stop` | Stop one monitor (`{monitor_id}`) or all. |
 | `POST` | `/api/live-monitor/{id}/config` | Update a running monitor's settings (allow-listed fields; apply to future clips). |

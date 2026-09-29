@@ -61,25 +61,6 @@ describe('BrandWorkspaceTabSchedule', () => {
         capturedDeletedPostId = params.postId as string
         return HttpResponse.json({ success: true, post_id: params.postId })
       }),
-      http.get('/api/viral-studio/brands/:id/scheduled', () => {
-        return HttpResponse.json({
-          brand_id: 'vale-o-clique',
-          posts: [
-            {
-              id: 'post_real_999',
-              title: 'A mesa de desenho que toda criança ama! 😍',
-              status: 'scheduled',
-              scheduled_for: '2026-10-15T14:30:00Z',
-              channels: ['tiktok'],
-            },
-          ],
-          total: 1,
-        })
-      }),
-      http.delete('/api/viral-studio/brands/:id/scheduled/:postId', ({ params }) => {
-        capturedDeletedPostId = params.postId as string
-        return HttpResponse.json({ success: true, post_id: params.postId })
-      }),
     )
 
     renderWithProviders(<BrandWorkspaceTabSchedule brand={mockBrand} />)

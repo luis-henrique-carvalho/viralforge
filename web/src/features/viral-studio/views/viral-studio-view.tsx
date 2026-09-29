@@ -53,7 +53,7 @@ export function ViralStudioView() {
             variant="outline"
             className="gap-2"
           >
-            <Link to="/viral-studio/brands">
+            <Link to="/brands">
               <Bookmark className="h-4 w-4" />
               Gerenciar Marcas
             </Link>

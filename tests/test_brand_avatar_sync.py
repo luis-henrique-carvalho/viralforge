@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from PIL import Image
 import io
 
-from clippyme.domain import brand_workspace_service, viral_studio_store, viral_studio_renderer
+from clippyme.domain import brand_store, brand_workspace_service, viral_studio_store, viral_studio_renderer
 from clippyme.domain.social_publisher_port import SocialChannel, SocialPublisherPort
 
 
@@ -17,6 +17,7 @@ def clean_store(tmp_path, monkeypatch):
     batches_path = str(tmp_path / "batches.json")
     templates_path = str(tmp_path / "templates.json")
 
+    monkeypatch.setattr(brand_store, "BRANDS_FILE", brands_path)
     monkeypatch.setattr(viral_studio_store, "BRANDS_FILE", brands_path)
     monkeypatch.setattr(viral_studio_store, "BATCHES_FILE", batches_path)
     monkeypatch.setattr(viral_studio_store, "TEMPLATES_FILE", templates_path)

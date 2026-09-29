@@ -186,9 +186,9 @@ class TestTier1FeatureCoverage:
 
     def test_tier1_list_brands_initially(self, client):
         """F1: List Brands returns 200 and initial brand list."""
-        if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/viral-studio/brands", "GET"):
-            pytest.skip("Endpoint GET /api/viral-studio/brands not yet implemented (M1)")
-        r = client.get("/api/viral-studio/brands")
+        if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/brands", "GET"):
+            pytest.skip("Endpoint GET /api/brands not yet implemented (M1)")
+        r = client.get("/api/brands")
         assert r.status_code == 200, r.text
         data = r.json()
         assert "brands" in data
@@ -196,8 +196,8 @@ class TestTier1FeatureCoverage:
 
     def test_tier1_create_and_get_brand(self, client):
         """F2, F4: Create Brand persists brand and retrieves it without data loss."""
-        if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/viral-studio/brands", "POST"):
-            pytest.skip("Endpoint POST /api/viral-studio/brands not yet implemented (M1)")
+        if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/brands", "POST"):
+            pytest.skip("Endpoint POST /api/brands not yet implemented (M1)")
 
         payload = {
             "id": "vale-o-clique",
@@ -210,7 +210,7 @@ class TestTier1FeatureCoverage:
             "template_id": "classic-affiliate",
             "publishing_profiles": {"instagram": "ig_voc_01", "tiktok": "tt_voc_01"}
         }
-        res = client.post("/api/viral-studio/brands", json=payload)
+        res = client.post("/api/brands", json=payload)
         assert res.status_code == 201, res.text
         created = res.json()
         assert created["id"] == "vale-o-clique"
@@ -220,8 +220,8 @@ class TestTier1FeatureCoverage:
         assert created["default_affiliate_url"] == "https://linktr.ee/valeoclique"
         assert "created_at" in created
 
-        # Verify brand appears in GET /api/viral-studio/brands
-        get_res = client.get("/api/viral-studio/brands")
+        # Verify brand appears in GET /api/brands
+        get_res = client.get("/api/brands")
         assert get_res.status_code == 200
         brands = get_res.json()["brands"]
         ids = [b["id"] for b in brands]
@@ -229,11 +229,11 @@ class TestTier1FeatureCoverage:
 
     def test_tier1_update_brand_patch(self, client):
         """F3: Update Brand partially modifies fields."""
-        if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/viral-studio/brands/{id}", "PATCH"):
-            pytest.skip("Endpoint PATCH /api/viral-studio/brands/{id} not yet implemented (M1)")
+        if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/brands/{id}", "PATCH"):
+            pytest.skip("Endpoint PATCH /api/brands/{id} not yet implemented (M1)")
 
         # Ensure brand exists
-        client.post("/api/viral-studio/brands", json={
+        client.post("/api/brands", json={
             "id": "ofertas-top",
             "name": "Ofertas Top",
             "handle": "@ofertastop",
@@ -245,7 +245,7 @@ class TestTier1FeatureCoverage:
             "default_cta": "Comente 'QUERO' que envio no direct!",
             "handle": "@ofertastop_oficial"
         }
-        r = client.patch("/api/viral-studio/brands/ofertas-top", json=patch_payload)
+        r = client.patch("/api/brands/ofertas-top", json=patch_payload)
         assert r.status_code == 200, r.text
         updated = r.json()
         assert updated["default_cta"] == "Comente 'QUERO' que envio no direct!"
@@ -274,7 +274,7 @@ class TestTier1FeatureCoverage:
         if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/viral-studio/batches", "POST"):
             pytest.skip("Endpoint POST /api/viral-studio/batches not yet implemented (M2/M5)")
 
-        client.post("/api/viral-studio/brands", json={
+        client.post("/api/brands", json={
             "id": "brand-batch-test",
             "name": "Brand Batch Test",
             "handle": "@batchtest",
@@ -314,7 +314,7 @@ class TestTier1FeatureCoverage:
         if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/viral-studio/batches", "POST"):
             pytest.skip("Batch endpoints not yet implemented (M2/M5)")
 
-        client.post("/api/viral-studio/brands", json={
+        client.post("/api/brands", json={
             "id": "query-brand",
             "name": "Query Brand",
             "handle": "@querybrand",
@@ -348,7 +348,7 @@ class TestTier1FeatureCoverage:
         if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/viral-studio/items/{id}", "PATCH"):
             pytest.skip("Endpoint PATCH /api/viral-studio/items/{id} not yet implemented (M3/M5)")
 
-        client.post("/api/viral-studio/brands", json={
+        client.post("/api/brands", json={
             "id": "edit-brand",
             "name": "Edit Brand",
             "handle": "@editbrand",
@@ -375,7 +375,7 @@ class TestTier1FeatureCoverage:
         if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/viral-studio/items/{id}/render", "POST"):
             pytest.skip("Endpoint POST /api/viral-studio/items/{id}/render not yet implemented (M4/M5)")
 
-        client.post("/api/viral-studio/brands", json={
+        client.post("/api/brands", json={
             "id": "render-brand",
             "name": "Render Brand",
             "handle": "@renderbrand",
@@ -402,7 +402,7 @@ class TestTier1FeatureCoverage:
         if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/viral-studio/items/{id}/approve", "POST"):
             pytest.skip("Endpoint POST /api/viral-studio/items/{id}/approve not yet implemented (M5)")
 
-        client.post("/api/viral-studio/brands", json={
+        client.post("/api/brands", json={
             "id": "approve-brand",
             "name": "Approve Brand",
             "handle": "@approvebrand",
@@ -425,7 +425,7 @@ class TestTier1FeatureCoverage:
         if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/viral-studio/publish", "POST"):
             pytest.skip("Endpoint POST /api/viral-studio/publish not yet implemented (M5)")
 
-        client.post("/api/viral-studio/brands", json={
+        client.post("/api/brands", json={
             "id": "pub-brand",
             "name": "Pub Brand",
             "handle": "@pubbrand",
@@ -463,7 +463,7 @@ class TestTier2BoundaryAndCorner:
         if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/viral-studio/batches", "POST"):
             pytest.skip("Endpoint POST /api/viral-studio/batches not yet implemented (M2/M5)")
 
-        client.post("/api/viral-studio/brands", json={
+        client.post("/api/brands", json={
             "id": "empty-brand",
             "name": "Empty Brand",
             "handle": "@empty",
@@ -480,7 +480,7 @@ class TestTier2BoundaryAndCorner:
         if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/viral-studio/batches", "POST"):
             pytest.skip("Endpoint POST /api/viral-studio/batches not yet implemented (M2/M5)")
 
-        client.post("/api/viral-studio/brands", json={
+        client.post("/api/brands", json={
             "id": "url-test-brand",
             "name": "URL Brand",
             "handle": "@urlbrand",
@@ -505,7 +505,7 @@ class TestTier2BoundaryAndCorner:
         if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/viral-studio/batches", "POST"):
             pytest.skip("Endpoint POST /api/viral-studio/batches not yet implemented (M2/M5)")
 
-        client.post("/api/viral-studio/brands", json={
+        client.post("/api/brands", json={
             "id": "ssrf-brand",
             "name": "SSRF Brand",
             "handle": "@ssrf",
@@ -528,12 +528,12 @@ class TestTier2BoundaryAndCorner:
 
     def test_tier2_extreme_text_lengths_and_emojis(self, client):
         """Verify handling of extreme string lengths, Portuguese accents, and emojis."""
-        if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/viral-studio/brands", "POST"):
-            pytest.skip("Endpoint POST /api/viral-studio/brands not yet implemented (M1)")
+        if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/brands", "POST"):
+            pytest.skip("Endpoint POST /api/brands not yet implemented (M1)")
 
         # Brand name over max_length (e.g. 200 chars when limit is 128)
         overlong_name = "A" * 200
-        r_over = client.post("/api/viral-studio/brands", json={
+        r_over = client.post("/api/brands", json={
             "id": "overlong-name-brand",
             "name": overlong_name,
             "handle": "@overlong",
@@ -543,7 +543,7 @@ class TestTier2BoundaryAndCorner:
 
         # Portuguese accents and emojis preserved without corruption
         headline_with_emojis = "Organizador incrível! 😱 Diga adeus à bagunça ✨"
-        r_accents = client.post("/api/viral-studio/brands", json={
+        r_accents = client.post("/api/brands", json={
             "id": "emojis-brand",
             "name": f"Achadinhos: {headline_with_emojis}",
             "handle": "@achadinhos_pt",
@@ -562,12 +562,12 @@ class TestTier2BoundaryAndCorner:
 
         missing_id = "00000000-0000-0000-0000-000000000000"
 
-        if _endpoint_exists("/api/viral-studio/brands/{id}", "GET"):
-            r = client.get(f"/api/viral-studio/brands/{missing_id}")
+        if _endpoint_exists("/api/brands/{id}", "GET"):
+            r = client.get(f"/api/brands/{missing_id}")
             assert r.status_code == 404
 
-        if _endpoint_exists("/api/viral-studio/brands/{id}", "PATCH"):
-            r = client.patch(f"/api/viral-studio/brands/{missing_id}", json={"name": "New"})
+        if _endpoint_exists("/api/brands/{id}", "PATCH"):
+            r = client.patch(f"/api/brands/{missing_id}", json={"name": "New"})
             assert r.status_code == 404
 
         if _endpoint_exists("/api/viral-studio/batches/{id}", "GET"):
@@ -588,8 +588,8 @@ class TestTier2BoundaryAndCorner:
 
     def test_tier2_duplicate_brand_id_rejected(self, client):
         """Creating a brand with an already existing ID returns 409 Conflict."""
-        if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/viral-studio/brands", "POST"):
-            pytest.skip("Endpoint POST /api/viral-studio/brands not yet implemented (M1)")
+        if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/brands", "POST"):
+            pytest.skip("Endpoint POST /api/brands not yet implemented (M1)")
 
         brand_data = {
             "id": "duplicate-test-brand",
@@ -597,11 +597,11 @@ class TestTier2BoundaryAndCorner:
             "handle": "@duplicate",
             "template_id": "classic-affiliate"
         }
-        r1 = client.post("/api/viral-studio/brands", json=brand_data)
+        r1 = client.post("/api/brands", json=brand_data)
         assert r1.status_code == 201
 
         # Second creation with identical ID must conflict
-        r2 = client.post("/api/viral-studio/brands", json=brand_data)
+        r2 = client.post("/api/brands", json=brand_data)
         assert r2.status_code == 409, "Duplicate brand ID must return 409 Conflict"
 
     def test_tier2_invalid_status_transitions_rejected(self, client):
@@ -609,7 +609,7 @@ class TestTier2BoundaryAndCorner:
         if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/viral-studio/items/{id}/approve", "POST"):
             pytest.skip("Endpoint POST /api/viral-studio/items/{id}/approve not yet implemented (M5)")
 
-        client.post("/api/viral-studio/brands", json={
+        client.post("/api/brands", json={
             "id": "unrendered-brand",
             "name": "Unrendered Brand",
             "handle": "@unrendered",
@@ -646,7 +646,7 @@ class TestTier3CrossFeatureCombinations:
         if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/viral-studio/batches", "POST"):
             pytest.skip("Batch endpoints not yet implemented (M2/M5)")
 
-        client.post("/api/viral-studio/brands", json={
+        client.post("/api/brands", json={
             "id": "isolation-brand",
             "name": "Isolation Brand",
             "handle": "@isolation",
@@ -689,7 +689,7 @@ class TestTier3CrossFeatureCombinations:
         if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/viral-studio/items/{id}/render", "POST"):
             pytest.skip("Render endpoint not yet implemented (M4/M5)")
 
-        client.post("/api/viral-studio/brands", json={
+        client.post("/api/brands", json={
             "id": "fast-render-brand",
             "name": "Fast Render Brand",
             "handle": "@fastrender",
@@ -741,7 +741,7 @@ class TestTier4RealWorldScenarios:
         9. Dispatch publication to Instagram and TikTok accounts.
         10. Verify final state and publication audit logs.
         """
-        if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/viral-studio/brands", "POST"):
+        if not VIRAL_STUDIO_AVAILABLE or not _endpoint_exists("/api/brands", "POST"):
             pytest.skip("Viral Studio routes not yet implemented (M1-M5)")
 
         # 1. Register brand "Vale o Clique?"
@@ -759,7 +759,7 @@ class TestTier4RealWorldScenarios:
                 "tiktok": "account_tt_voc"
             }
         }
-        res_brand = client.post("/api/viral-studio/brands", json=brand_payload)
+        res_brand = client.post("/api/brands", json=brand_payload)
         assert res_brand.status_code in (201, 200)
 
         if not _endpoint_exists("/api/viral-studio/batches", "POST"):
