@@ -3,6 +3,7 @@ import { Link2, Plus, RefreshCw, Share2 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Typography } from '@/components/ui/typography'
+import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 import { useBrandChannels } from '../hooks/use-brand-workspace'
 import { brandApi } from '../services/brand.api'
@@ -105,10 +106,10 @@ export function BrandWorkspaceTabChannels({ brand }: BrandWorkspaceTabChannelsPr
               className="p-5 space-y-3"
             >
               <div className="flex gap-3 items-center">
-                <div className="size-10 rounded-full bg-muted animate-pulse" />
+                <Skeleton className="size-10 rounded-full" />
                 <div className="space-y-1.5 flex-1">
-                  <div className="h-4 w-1/2 bg-muted animate-pulse rounded" />
-                  <div className="h-3 w-1/3 bg-muted animate-pulse rounded" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-3 w-1/3" />
                 </div>
               </div>
             </Card>

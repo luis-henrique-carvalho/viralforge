@@ -69,10 +69,33 @@ _NATIVE_TAGS_RE = re.compile(
 # 3. Loading placeholders manuais com animate-pulse (devem usar <Skeleton>)
 # ──────────────────────────────────────────────────────────────────────────────
 
-_CUSTOM_SKELETON_RE = re.compile(
-    r"""<\s*div\b[^>]*className\s*=\s*[{"'][^"'{}]*\banimate-pulse\b[^"'{}]*\bbg-(?:muted|card|gray|zinc|slate)""",
-    re.VERBOSE,
+_LIVE_DOT_RE = re.compile(
+    r"""(?:\bsize-(?:1|1\.5|2|2\.5)\b|\bw-(?:1|1\.5|2)\b\s+\bh-(?:1|1\.5|2)\b).*?\b(?:bg-(?:emerald|green|red|rose|amber|yellow|blue|violet))\b"""
 )
+
+def _get_enclosing_tag(lines: list[str], line_idx: int) -> tuple[str | None, int]:
+    """
+    Encontra a tag JSX de abertura à qual a linha pertence, olhando até 15 linhas acima.
+    Retorna (nome_da_tag, indice_da_linha_da_tag).
+    """
+    for i in range(line_idx - 1, max(-1, line_idx - 16), -1):
+        line = lines[i]
+        matches = list(re.finditer(r"<\s*([A-Za-z0-9_.-]+)\b(?!\s*\/)", line))
+        if matches:
+            return matches[-1].group(1), i + 1
+    return None, line_idx
+
+def _has_shadcn_ignore(lines: list[str], line_idx: int, tag_line_idx: int) -> bool:
+    """Verifica se há bypass // shadcn-ignore na linha, na linha da tag ou nas linhas anteriores."""
+    if "shadcn-ignore" in lines[line_idx - 1]:
+        return True
+    if line_idx > 1 and "shadcn-ignore" in lines[line_idx - 2]:
+        return True
+    if "shadcn-ignore" in lines[tag_line_idx - 1]:
+        return True
+    if tag_line_idx > 1 and "shadcn-ignore" in lines[tag_line_idx - 2]:
+        return True
+    return False
 
 # Cores que indicam estado semântico em elementos inline simples (que deveriam ser Badge)
 _STATUS_COLOR_RE = re.compile(
@@ -224,17 +247,26 @@ def scan_file(file_path: Path, web_src: Path) -> list[dict]:
                 continue  # não acumula mais violações na mesma linha
 
         # ── Camada 2: Anti-patterns de Composição e Estilo ────────────────────
-        # 1. Custom Skeletons (animate-pulse em divs bg-muted/card)
-        if _CUSTOM_SKELETON_RE.search(line):
-            violations.append({
-                "layer": 2,
-                "severity": "error",
-                "file": rel,
-                "line": line_idx,
-                "content": line.strip(),
-                "message": "PROIBIDO USO DE SKELETON MANUAL (<div animate-pulse>). Use <Skeleton> de '@/components/ui/skeleton'.",
-            })
-            continue
+        # 1. Custom Skeletons (animate-pulse em elementos HTML nativos/containers)
+        if "animate-pulse" in line:
+            tag, tag_line = _get_enclosing_tag(lines, line_idx)
+            if not _has_shadcn_ignore(lines, line_idx, tag_line):
+                # Se for tag HTML nativa (letra inicial minúscula: div, span, p, section, li, td, etc.)
+                if tag and tag[0].islower():
+                    # Exclui indicadores 'live dot' (ex: bolinhas de status pulsando)
+                    if not _LIVE_DOT_RE.search(line):
+                        violations.append({
+                            "layer": 2,
+                            "severity": "error",
+                            "file": rel,
+                            "line": line_idx,
+                            "content": line.strip(),
+                            "message": (
+                                f"PROIBIDO USO DE SKELETON MANUAL (<{tag} animate-pulse>). "
+                                "Use <Skeleton> de '@/components/ui/skeleton'."
+                            ),
+                        })
+                        continue
 
         # 2. Status com cores hardcoded que deveriam ser <Badge>
         if _STATUS_COLOR_RE.search(line):

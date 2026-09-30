@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Typography } from '@/components/ui/typography'
+import { Skeleton } from '@/components/ui/skeleton'
 import { TemplateCard } from '../components/template-card'
 import {
   useCreateTemplate,
@@ -146,10 +147,9 @@ export function TemplatesGalleryView() {
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {['sk-1', 'sk-2', 'sk-3', 'sk-4'].map((skId) => (
-            // shadcn-ignore: layout
-            <div
+            <Skeleton
               key={skId}
-              className="h-72 rounded-xl border border-border bg-card/40 animate-pulse"
+              className="h-72 rounded-xl"
             />
           ))}
         </div>
