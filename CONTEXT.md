@@ -106,6 +106,22 @@ _Avoid_: AutoAlign, StickyGuide, CenterLock
 A discrete AI generation requirement specified within a VisualTemplate (such as canvas headline, post caption, quiz poll, footer card text, or future image prompt) defining its output target, instruction prompt, and schema type.
 _Avoid_: PromptField, AIWidget, OutputRule, GeneratorItem
 
+**DynamicCanvasOverlay**:
+The visual composition on the 1080x1920 canvas where visual layers (Headline, Badge, ExtraImage/FooterCard) receive content resolved dynamically from a ViralItem's AI copy generation tasks, falling back to VisualTemplate static configurations when unassigned.
+_Avoid_: SmartBanner, DynamicGraphic, AutoLayout, AIOverlay
+
+**SystemPromptTemplate**:
+The master prompt guidelines defined at the VisualTemplate aggregate that dictate the AI copywriter's core instructions and style, interpolated with item and context variables prior to execution.
+_Avoid_: MasterPrompt, GlobalPrompt, BasePrompt, TemplateSystemPrompt
+
+**NormalizedCaption**:
+The commercial post copy structured with hook, body, call-to-action, and a standardized tail of at most 5 lowercase hashtags without duplication.
+_Avoid_: PostCopy, SocialCaptionWithTags, FormattedCaption
+
+**SocialPostTitle**:
+The CTR-optimized short title (<60 chars) specifically targeted for social feeds (YouTube Shorts / TikTok / Reels) distinct from the on-video canvas headline.
+_Avoid_: FeedTitle, PostHeading, ShortTitle, VideoTitle
+
 **CopyEngine**:
 The domain subsystem responsible for multimodal prompt assembly, dynamic GenerationTask schema resolution, placeholder interpolation, provider routing (cloud or local), and structured copy extraction.
 _Avoid_: PromptGenerator, TextBuilder, LLMWrapper
