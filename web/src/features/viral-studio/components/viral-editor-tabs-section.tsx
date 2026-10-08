@@ -1,8 +1,9 @@
 import type { UseFormReturn } from 'react-hook-form'
-import { Activity, AlertTriangle, AlignLeft, Sparkles, Tag } from 'lucide-react'
+import { Activity, AlertTriangle, AlignLeft, ListChecks, Sparkles, Tag } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ViralEditorHeadlinesTab } from './viral-editor-headlines-tab'
 import { ViralEditorCaptionTab } from './viral-editor-caption-tab'
+import { ViralEditorAiTasksTab } from './viral-editor-ai-tasks-tab'
 import { ViralEditorDetailsTab } from './viral-editor-details-tab'
 import { ViralEditorObservabilityTab } from './viral-editor-observability-tab'
 import type { ItemEditorFormData } from '../data/item-editor.schema'
@@ -46,7 +47,7 @@ export function ViralEditorTabsSection({
         onValueChange={onActiveTabChange}
         className="w-full space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-4 bg-muted/60 p-1">
+        <TabsList className="grid w-full grid-cols-5 bg-muted/60 p-1">
           <TabsTrigger
             value="headlines"
             className="gap-1.5 text-xs truncate"
@@ -60,6 +61,13 @@ export function ViralEditorTabsSection({
           >
             <AlignLeft className="size-3.5" />
             <span className="hidden sm:inline">Legenda</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="tasks"
+            className="gap-1.5 text-xs truncate"
+          >
+            <ListChecks className="size-3.5 text-indigo-500" />
+            <span className="hidden sm:inline">Tarefas IA</span>
           </TabsTrigger>
           <TabsTrigger
             value="details"
@@ -102,6 +110,16 @@ export function ViralEditorTabsSection({
           <ViralEditorCaptionTab
             form={form}
             brand={brand}
+          />
+        </TabsContent>
+
+        <TabsContent
+          value="tasks"
+          className="focus:outline-none"
+        >
+          <ViralEditorAiTasksTab
+            item={item}
+            form={form}
           />
         </TabsContent>
 

@@ -1082,3 +1082,55 @@ def test_retry_cancelled_item(api_client):
     assert retry_resp.status_code == 200
     retried_item = retry_resp.json()
     assert retried_item["status"] == "PENDING"
+
+
+def test_patch_and_render_item_with_dynamic_badge_footer_social_title(api_client, tmp_path):
+    """PATCH /api/viral-studio/items/{id} and POST /render support badge_text, footer_text, social_title."""
+    batch_resp = api_client.post(
+        "/api/viral-studio/batches",
+        json={
+            "brand_id": "vale-o-clique",
+            "items": [{"source_url": "https://www.tiktok.com/@test/video/4001", "product_code": "P-4001"}],
+        },
+    )
+    item_id = batch_resp.json()["items"][0]["id"]
+
+    # Patch with badge_text, footer_text, and social_title
+    patch_resp = api_client.patch(
+        f"/api/viral-studio/items/{item_id}",
+        json={
+            "badge_text": "SUPER OFERTA 🔥",
+            "footer_text": "Você usaria esse item no seu dia a dia?",
+            "social_title": "Achadinho Secreto da Shopee",
+        },
+    )
+    assert patch_resp.status_code == 200, patch_resp.text
+    patched = patch_resp.json()
+    assert patched["badge_text"] == "SUPER OFERTA 🔥"
+    assert patched["footer_text"] == "Você usaria esse item no seu dia a dia?"
+    assert patched["social_title"] == "Achadinho Secreto da Shopee"
+
+    # GET item to verify persistence
+    get_resp = api_client.get(f"/api/viral-studio/items/{item_id}")
+    assert get_resp.status_code == 200
+    item_data = get_resp.json()
+    assert item_data["badge_text"] == "SUPER OFERTA 🔥"
+    assert item_data["footer_text"] == "Você usaria esse item no seu dia a dia?"
+    assert item_data["social_title"] == "Achadinho Secreto da Shopee"
+
+    # Re-render with badge_text and footer_text
+    source = tmp_path / "source4001.mp4"
+    source.write_bytes(b"dummy")
+    store_module.update_item(item_id, {"source_path": str(source), "job_id": None, "status": "READY_FOR_REVIEW"})
+
+    render_resp = api_client.post(
+        f"/api/viral-studio/items/{item_id}/render",
+        json={
+            "headline": "Nova Headline!",
+            "badge_text": "PROMOÇÃO RELÂMPAGO ⚡",
+            "footer_text": "Qual sua cor favorita?",
+        },
+    )
+    assert render_resp.status_code == 202, render_resp.text
+    render_data = render_resp.json()
+    assert render_data["status"] == "RENDERING"

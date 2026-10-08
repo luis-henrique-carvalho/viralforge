@@ -1,4 +1,4 @@
-import { CheckCircle2, Cpu, RefreshCw, Sparkles, Terminal } from 'lucide-react'
+import { CheckCircle2, Cpu, ListChecks, RefreshCw, Sparkles, Terminal } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { BatchStatusBadge } from './batch-status-badge'
 import { ItemDetailCopyTab } from './item-detail-copy-tab'
+import { ItemDetailAiTasksTab } from './item-detail-ai-tasks-tab'
 import { ItemDetailTelemetryTab } from './item-detail-telemetry-tab'
 import { ItemDetailLogsTab } from './item-detail-logs-tab'
 import type { ViralItem } from '../data/batch.types'
@@ -78,6 +79,13 @@ export function ItemDetailSheet({
                 Copy & Ganchos
               </TabsTrigger>
               <TabsTrigger
+                value="tasks"
+                className="gap-1.5 data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-2 text-xs"
+              >
+                <ListChecks className="size-3.5" />
+                Tarefas IA
+              </TabsTrigger>
+              <TabsTrigger
                 value="telemetry"
                 className="gap-1.5 data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none px-2 text-xs"
               >
@@ -100,6 +108,7 @@ export function ItemDetailSheet({
                 item={item}
                 aiCopy={aiCopy}
               />
+              <ItemDetailAiTasksTab item={item} />
               <ItemDetailTelemetryTab item={item} />
               <ItemDetailLogsTab item={item} />
             </div>

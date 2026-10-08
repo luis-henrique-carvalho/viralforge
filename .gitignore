@@ -53,10 +53,9 @@ output/
 web/.env
 web/.env.*
 !web/.env.example
-data/
+/data/
 config.json
 cookies.txt
-data/cookies.txt
 
 # Generated metadata
 *_metadata.json

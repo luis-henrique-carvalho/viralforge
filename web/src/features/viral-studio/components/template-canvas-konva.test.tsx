@@ -6,6 +6,7 @@ import { KonvaHeadlineGroup } from './konva-headline-group'
 import { KonvaVideoGroup } from './konva-video-group'
 import { KonvaExtraFooterGroup } from './konva-extra-footer-group'
 import { KonvaSafeZonesGroup } from './konva-safe-zones-group'
+import { KonvaWatermarkGroup } from './konva-watermark-group'
 import { TemplateCanvasKonva } from './template-canvas-konva'
 import type { VisualTemplate } from '../data/template.types'
 
@@ -272,5 +273,51 @@ describe('Konva Canvas & Groups', () => {
       />,
     )
     expect(container).toBeDefined()
+  })
+
+  it('renders KonvaWatermarkGroup with dynamic brandHandle and fallback', () => {
+    const { container: customCont } = render(
+      <KonvaWatermarkGroup
+        template={mockTemplate}
+        brandHandle="@canaltech"
+      />,
+    )
+    const textNodes = customCont.querySelectorAll('[data-testid="text"]')
+    const customText = Array.from(textNodes).find((n) => n.getAttribute('text') === '@canaltech')
+    expect(customText).toBeDefined()
+
+    const { container: fallbackCont } = render(<KonvaWatermarkGroup template={mockTemplate} />)
+    const fallbackNodes = fallbackCont.querySelectorAll('[data-testid="text"]')
+    const fallbackText = Array.from(fallbackNodes).find(
+      (n) => n.getAttribute('text') === '@valeoclique',
+    )
+    expect(fallbackText).toBeDefined()
+
+    const { container: withoutAtCont } = render(
+      <KonvaWatermarkGroup
+        template={mockTemplate}
+        brandHandle="viralkey"
+      />,
+    )
+    const withoutAtNodes = withoutAtCont.querySelectorAll('[data-testid="text"]')
+    const withoutAtText = Array.from(withoutAtNodes).find(
+      (n) => n.getAttribute('text') === '@viralkey',
+    )
+    expect(withoutAtText).toBeDefined()
+  })
+
+  it('passes brandHandle from TemplateCanvasKonva to KonvaWatermarkGroup', () => {
+    const { container } = render(
+      <TemplateCanvasKonva
+        template={mockTemplate}
+        scale={0.35}
+        showSafeZones={false}
+        onChange={vi.fn()}
+        brandHandle="@novamarca"
+      />,
+    )
+    const textNodes = container.querySelectorAll('[data-testid="text"]')
+    const watermarkText = Array.from(textNodes).find((n) => n.getAttribute('text') === '@novamarca')
+    expect(watermarkText).toBeDefined()
   })
 })

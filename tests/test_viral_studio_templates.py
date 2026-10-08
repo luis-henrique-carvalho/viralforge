@@ -335,7 +335,7 @@ def test_build_render_ffmpeg_cmd_cover_mode_crop():
         background_color="#0D1117",
     )
     filter_arg = next(cmd[i + 1] for i, arg in enumerate(cmd) if arg == "-filter_complex")
-    assert "scale=992:1762,crop=992:1000" in filter_arg
+    assert "scale=992:1762:flags=lanczos,setsar=1,crop=992:1000,unsharp=3:3:0.5:3:3:0.0" in filter_arg
     assert "pad=1080:1920:44:550" in filter_arg
 
 

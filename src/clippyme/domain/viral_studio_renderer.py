@@ -351,11 +351,14 @@ def calculate_video_placement(
     video_scale: Optional[int] = None,
     video_x: Optional[int] = None,
     video_width: Optional[int] = None,
+    target_aspect: Optional[str] = None,
+    video_aspect: Optional[str] = None,
 ) -> Dict[str, int]:
     """Calculate contain-fit coordinates and dimensions for source video on canvas. Pure function.
 
     Preserves source aspect ratio without distortion.
     Guarantees even coordinates (x, y, width, height) for YUV420p / libx264 alignment.
+    Supports 9:16 full-screen framing (1080x1920 at x=0, y=0).
     """
     canvas_w = max(360, int(canvas_width))
     if canvas_w % 2 != 0:
@@ -366,6 +369,49 @@ def calculate_video_placement(
 
     src_w = max(2, int(source_width))
     src_h = max(2, int(source_height))
+
+    aspect = (target_aspect or video_aspect or "").strip().lower()
+    is_fullscreen_9_16 = (
+        aspect in ("9:16", "fullscreen", "full")
+        or (
+            video_x == 0
+            and video_y == 0
+            and video_width is not None
+            and video_width >= canvas_w
+            and video_height is not None
+            and video_height >= canvas_h
+        )
+    )
+
+    if is_fullscreen_9_16:
+        effective_fit = "cover" if (video_fit == "cover" or aspect in ("9:16", "fullscreen", "full")) else video_fit
+        scale = max(canvas_w / src_w, canvas_h / src_h)
+        target_w = max(2, int(src_w * scale))
+        target_h = max(2, int(src_h * scale))
+        if target_w % 2 != 0:
+            target_w -= 1
+        if target_h % 2 != 0:
+            target_h -= 1
+
+        return {
+            "x": 0,
+            "y": 0,
+            "width": canvas_w,
+            "height": canvas_h,
+            "scale_width": target_w,
+            "scale_height": target_h,
+            "crop_width": canvas_w,
+            "crop_height": canvas_h,
+            "fit": effective_fit,
+            "box_x": 0,
+            "box_y": 0,
+            "box_width": canvas_w,
+            "box_height": canvas_h,
+            "available_width": canvas_w,
+            "available_height": canvas_h,
+            "top_margin": 0,
+            "bottom_margin": 0,
+        }
 
     if video_y is not None:
         if video_width is not None and video_width > 0:
@@ -617,6 +663,9 @@ def generate_header_overlay(
     headline: str,
     output_image_path: str,
     video_placement: Optional[Dict[str, int]] = None,
+    badge_text: Optional[str] = None,
+    footer_text: Optional[str] = None,
+    watermark_enabled: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """Render transparent PNG overlay containing brand header, badge, headline, and footer card.
 
@@ -754,15 +803,20 @@ def generate_header_overlay(
     # Top Badge / Niche Tag
     badge_enabled = bool(_extract_field(template, "badge_enabled", True))
     custom_badge_text = str(_extract_field(template, "custom_badge_text") or "").strip()
+    effective_badge = (
+        badge_text.strip()
+        if (badge_text and badge_text.strip())
+        else custom_badge_text
+    )
     badge_y_conf = _extract_field(template, "badge_y")
     badge_y = max(0, int(badge_y_conf)) if badge_y_conf is not None else 45
     badge_bg_color = _hex_to_rgba(str(_extract_field(template, "custom_badge_bg_color", "#E11D48")))
     badge_text_color = _hex_to_rgba(str(_extract_field(template, "custom_badge_text_color", "#FFFFFF")))
 
-    if badge_enabled and custom_badge_text:
+    if badge_enabled and effective_badge:
         badge_font = _resolve_font(DEFAULT_HEADLINE_FONT, 24)
-        bw_text = _measure_text_width(custom_badge_text, font=badge_font, draw=draw)
-        t_bbox = draw.textbbox((0, 0), custom_badge_text, font=badge_font)
+        bw_text = _measure_text_width(effective_badge, font=badge_font, draw=draw)
+        t_bbox = draw.textbbox((0, 0), effective_badge, font=badge_font)
         bw = bw_text + 36
         bh = max(34, (t_bbox[3] - t_bbox[1]) + 16)
         bx = (canvas_w - bw) // 2
@@ -776,7 +830,7 @@ def generate_header_overlay(
         _draw_text_with_emojis(
             img,
             (badge_text_x, badge_text_y),
-            custom_badge_text,
+            effective_badge,
             font=badge_font,
             fill=badge_text_color,
         )
@@ -911,6 +965,11 @@ def generate_header_overlay(
                     logger.warning("Could not render extra image asset: %s", exc)
         else:
             custom_title = _extract_field(template, "extra_image_title")
+            effective_footer = (
+                footer_text.strip()
+                if (footer_text and footer_text.strip())
+                else (str(custom_title).strip() if custom_title else "")
+            )
             custom_sub = _extract_field(template, "extra_image_subtitle")
             bg_col_hex = str(_extract_field(template, "extra_image_bg_color", "#18181B"))
             text_col_hex = str(_extract_field(template, "extra_image_text_color", "#FFFFFF"))
@@ -931,8 +990,8 @@ def generate_header_overlay(
             title_font = _resolve_font(DEFAULT_HEADLINE_FONT, 24)
             body_font = _resolve_font(DEFAULT_HANDLE_FONT, 18)
 
-            if custom_title and str(custom_title).strip():
-                c_title = str(custom_title).strip()
+            if effective_footer:
+                c_title = effective_footer
             elif extra_type == "comment":
                 c_title = "💬 DEIXE SEU COMENTÁRIO"
             elif extra_type == "follow":
@@ -975,6 +1034,101 @@ def generate_header_overlay(
                 fill=card_sub_col,
             )
 
+    # Hybrid Watermark: draw styled @handle pill if enabled and no logo file on disk
+    if watermark_enabled is None:
+        effective_wmark = bool(_extract_field(template, "watermark_enabled", False))
+    else:
+        effective_wmark = bool(watermark_enabled)
+
+    raw_logo_path = _extract_field(brand, "logo_path") or _extract_field(brand, "logo_url")
+    resolved_logo = _resolve_asset_path(raw_logo_path)
+    has_logo_file = bool(resolved_logo and os.path.isfile(resolved_logo))
+
+    watermark_rendered = False
+    watermark_type = None
+    watermark_handle = None
+    watermark_box = None
+    pos = str(_extract_field(template, "watermark_position", "bottom-right") or "bottom-right").lower()
+
+    if effective_wmark and not has_logo_file:
+        raw_handle = _extract_field(brand, "handle")
+        brand_name = _extract_field(brand, "name")
+        if raw_handle and str(raw_handle).strip():
+            clean_h = str(raw_handle).strip().lstrip("@")
+            watermark_handle = f"@{clean_h}" if clean_h else "@valeoclique"
+        elif brand_name and str(brand_name).strip():
+            clean_n = str(brand_name).strip().lstrip("@")
+            watermark_handle = f"@{clean_n}" if clean_n else "@valeoclique"
+        else:
+            watermark_handle = "@valeoclique"
+
+        raw_opacity = _extract_field(template, "watermark_opacity", 0.7)
+        try:
+            opacity = float(raw_opacity if raw_opacity is not None else 0.7)
+        except (ValueError, TypeError):
+            opacity = 0.7
+        opacity = max(0.0, min(1.0, opacity))
+
+        pill_font = _resolve_font(DEFAULT_BRAND_FONT, 20)
+        tw = _measure_text_width(watermark_handle, font=pill_font, draw=draw)
+        t_bbox = draw.textbbox((0, 0), watermark_handle, font=pill_font)
+        th = t_bbox[3] - t_bbox[1]
+
+        box_w = max(240, tw + 40)
+        box_h = 44
+        margin = 40
+
+        if pos == "top-left":
+            px = margin
+            py = margin
+        elif pos == "top-right":
+            px = canvas_w - box_w - margin
+            py = margin
+        elif pos == "bottom-left":
+            px = margin
+            py = canvas_h - box_h - margin
+        elif pos == "center-top":
+            px = (canvas_w - box_w) // 2
+            py = margin
+        elif pos == "center-bottom":
+            px = (canvas_w - box_w) // 2
+            py = canvas_h - box_h - margin
+        elif pos == "center":
+            px = (canvas_w - box_w) // 2
+            py = (canvas_h - box_h) // 2
+        else:  # bottom-right and fallback
+            px = canvas_w - box_w - margin
+            py = canvas_h - box_h - margin
+
+        pill_img = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))
+        pill_draw = ImageDraw.Draw(pill_img)
+
+        # Semi-transparent dark background (#0D1117) and subtle border
+        bg_alpha = int(255 * opacity * 0.70)
+        border_alpha = int(255 * opacity * 0.35)
+        text_alpha = int(255 * opacity)
+
+        pill_bg = (13, 17, 23, max(1, min(255, bg_alpha)))
+        pill_border = (255, 255, 255, max(1, min(255, border_alpha)))
+        pill_text_color = (255, 255, 255, max(1, min(255, text_alpha)))
+
+        pill_draw.rounded_rectangle(
+            [0, 0, box_w - 1, box_h - 1],
+            radius=8,
+            fill=pill_bg,
+            outline=pill_border,
+            width=1,
+        )
+
+        tx = (box_w - tw) // 2
+        ty = (box_h - th) // 2 - t_bbox[1]
+        _draw_text_with_emojis(pill_img, (tx, ty), watermark_handle, font=pill_font, fill=pill_text_color)
+
+        img.paste(pill_img, (px, py), pill_img)
+        watermark_rendered = True
+        watermark_type = "pill"
+        watermark_box = {"x": px, "y": py, "width": box_w, "height": box_h}
+
     # Ensure output directory exists and save PNG
     os.makedirs(os.path.dirname(os.path.abspath(output_image_path)) or ".", exist_ok=True)
     img.save(output_image_path, "PNG")
@@ -987,6 +1141,11 @@ def generate_header_overlay(
         "top_used_height": top_used,
         "headline_lines": headline_lines,
         "final_font_size": final_font_size,
+        "watermark_rendered": watermark_rendered,
+        "watermark_type": watermark_type,
+        "watermark_handle": watermark_handle,
+        "watermark_position": pos if watermark_rendered else None,
+        "watermark_box": watermark_box,
     }
 
 
@@ -1062,14 +1221,18 @@ def build_render_ffmpeg_cmd(
     has_audio: bool = True,
     watermark_params: Optional[Dict[str, Any]] = None,
     copy_audio: bool = True,
+    crf: int = 17,
+    profile: Optional[str] = "high",
+    level: Optional[str] = "4.2",
 ) -> List[str]:
     """Build the complete FFmpeg command array. Pure function for unit testing.
 
     Filter graph:
-    1. Scales (and optionally crops for cover fit) source video to box dimensions.
-    2. Overlays optional watermark logo onto the video footage (Sobre o vídeo).
-    3. Pads to canvas_width x canvas_height with background_color, positioning video at (pos_x, pos_y).
-    4. Overlays transparent header, headline, and border PNG at (0, 0).
+    1. Scales (with Lanczos & setsar=1, and optional cover crop) source video to box dimensions.
+    2. Applies subtle unsharp mask (3:3:0.5:3:3:0.0) to revitalize compressed sources.
+    3. Overlays optional watermark logo onto the video footage (Sobre o vídeo).
+    4. Pads to canvas_width x canvas_height with background_color, positioning video at (pos_x, pos_y).
+    5. Overlays transparent header, headline, and border PNG at (0, 0).
     """
     vw = video_placement["width"]
     vh = video_placement["height"]
@@ -1086,9 +1249,9 @@ def build_render_ffmpeg_cmd(
 
     extra_inputs: List[str] = []
     if fit_mode == "cover" and (sw != vw or sh != vh):
-        video_scale_filter = f"scale={sw}:{sh},crop={vw}:{vh}"
+        video_scale_filter = f"scale={sw}:{sh}:flags=lanczos,setsar=1,crop={vw}:{vh},unsharp=3:3:0.5:3:3:0.0"
     else:
-        video_scale_filter = f"scale={vw}:{vh}"
+        video_scale_filter = f"scale={vw}:{vh}:flags=lanczos,setsar=1,unsharp=3:3:0.5:3:3:0.0"
 
     # Build filter graph
     if watermark_params and watermark_params.get("path"):
@@ -1130,7 +1293,7 @@ def build_render_ffmpeg_cmd(
         *extra_inputs,
         "-filter_complex", filter_complex,
         *audio_args,
-        *x264_video_args(),
+        *x264_video_args(crf=crf, profile=profile, level=level),
         output_path,
     ]
     return cmd
@@ -1143,6 +1306,8 @@ def render_viral_video(
     headline: str,
     output_path: str,
     watermark: bool = True,
+    badge_text: Optional[str] = None,
+    footer_text: Optional[str] = None,
 ) -> str:
     """Render a 1080x1920 vertical MP4 video with brand header and dynamic headline.
 
@@ -1185,21 +1350,13 @@ def render_viral_video(
             video_scale=_extract_field(template, "video_scale"),
             video_x=_extract_field(template, "video_x"),
             video_width=_extract_field(template, "video_width"),
+            video_aspect=_extract_field(template, "video_aspect"),
         )
 
-        layout_meta = generate_header_overlay(
-            brand=brand,
-            template=template,
-            headline=headline,
-            output_image_path=tmp_overlay_path,
-            video_placement=video_placement,
-        )
-
-        # 4. Resolve watermark parameters
-        watermark_params = None
         watermark_enabled = watermark and bool(_extract_field(template, "watermark_enabled", True))
         raw_logo_path = _extract_field(brand, "logo_path") or _extract_field(brand, "logo_url")
         logo_path = _resolve_asset_path(raw_logo_path)
+        watermark_params = None
         if watermark_enabled and logo_path and os.path.isfile(logo_path):
             watermark_params = {
                 "path": logo_path,
@@ -1208,6 +1365,17 @@ def render_viral_video(
                 "scale": 0.18,
                 "margin": 0.04,
             }
+
+        layout_meta = generate_header_overlay(
+            brand=brand,
+            template=template,
+            headline=headline,
+            output_image_path=tmp_overlay_path,
+            video_placement=video_placement,
+            badge_text=badge_text,
+            footer_text=footer_text,
+            watermark_enabled=watermark_enabled,
+        )
 
         # 5. Build FFmpeg command (first try with -c:a copy)
         cmd = build_render_ffmpeg_cmd(

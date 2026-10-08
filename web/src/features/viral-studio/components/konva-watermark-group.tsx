@@ -7,10 +7,18 @@ const CANVAS_HEIGHT = 1920
 
 interface KonvaWatermarkGroupProps {
   template: VisualTemplate
+  brandHandle?: string
 }
 
-export function KonvaWatermarkGroup({ template }: KonvaWatermarkGroupProps) {
+export function KonvaWatermarkGroup({ template, brandHandle }: KonvaWatermarkGroupProps) {
   if (!template.watermark_enabled) return null
+
+  const rawHandle = brandHandle?.trim()
+  const displayHandle = rawHandle
+    ? rawHandle.startsWith('@')
+      ? rawHandle
+      : `@${rawHandle}`
+    : '@valeoclique'
 
   const pos = template.watermark_position || 'bottom-right'
   const margin = 40
@@ -51,7 +59,7 @@ export function KonvaWatermarkGroup({ template }: KonvaWatermarkGroupProps) {
         cornerRadius={8}
       />
       <Text
-        text="@valeoclique"
+        text={displayHandle}
         x={0}
         y={12}
         width={boxWidth}

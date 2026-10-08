@@ -1,16 +1,15 @@
 // shadcn-ignore: layout
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Copy, Layout, Save, Sparkles } from 'lucide-react'
+import { Layout, Sparkles } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Typography } from '@/components/ui/typography'
 import { TemplateCanvasViewport } from '../components/template-canvas-viewport'
 import { TemplatePersonaTab } from '../components/template-persona-tab'
+import { TemplateStudioHeader } from '../components/template-studio-header'
 import { TemplateVisualTab } from '../components/template-visual-tab'
+import { useBrands } from '../hooks/use-brands'
 import {
   useDuplicateTemplate,
   useReplaceTemplate,
@@ -26,6 +25,8 @@ interface TemplateStudioViewProps {
 export function TemplateStudioView({ templateId }: TemplateStudioViewProps) {
   const navigate = useNavigate()
   const { data: serverTemplate, isLoading } = useTemplate(templateId)
+  const { data: brandsData } = useBrands()
+  const brandHandle = brandsData?.brands?.[0]?.handle
 
   const [activeTab, setActiveTab] = useState<'visual' | 'persona'>('visual')
   const [template, setTemplate] = useState<VisualTemplate | null>(null)
@@ -91,75 +92,16 @@ export function TemplateStudioView({ templateId }: TemplateStudioViewProps) {
   return (
     <div className="flex h-[calc(100vh-120px)] flex-col gap-4">
       {/* Top Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate({ to: '/viral-studio/templates' })}
-            className="h-8 gap-1.5 text-xs"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Galeria
-          </Button>
-
-          <div className="h-4 w-px bg-border" />
-
-          <div className="flex items-center gap-2">
-            <Input
-              value={template.name}
-              onChange={(e) => handleChange('name', e.target.value)}
-              className="h-8 text-sm font-bold max-w-[280px] bg-background"
-            />
-            {template.is_system ? (
-              <Badge
-                variant="secondary"
-                className="text-[10px] bg-primary/10 text-primary border-primary/20"
-              >
-                FÁBRICA
-              </Badge>
-            ) : (
-              <Badge
-                variant="outline"
-                className="text-[10px]"
-              >
-                CUSTOM
-              </Badge>
-            )}
-            {isDirty && (
-              <Badge
-                variant="secondary"
-                className="text-[10px] bg-amber-500/10 text-amber-500 border-amber-500/20"
-              >
-                Alterações não salvas
-              </Badge>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDuplicate}
-            disabled={duplicateMutation.isPending}
-            className="h-8 gap-1.5 text-xs"
-          >
-            <Copy className="h-3.5 w-3.5" />
-            Duplicar
-          </Button>
-
-          <Button
-            size="sm"
-            onClick={handleSave}
-            disabled={replaceMutation.isPending || !isDirty}
-            className="h-8 gap-1.5 text-xs font-semibold shadow-sm"
-          >
-            <Save className="h-3.5 w-3.5" />
-            {replaceMutation.isPending ? 'Salvando...' : 'Salvar Alterações'}
-          </Button>
-        </div>
-      </div>
+      <TemplateStudioHeader
+        template={template}
+        isDirty={isDirty}
+        isSaving={replaceMutation.isPending}
+        isDuplicating={duplicateMutation.isPending}
+        onBack={() => navigate({ to: '/viral-studio/templates' })}
+        onNameChange={(name) => handleChange('name', name)}
+        onDuplicate={handleDuplicate}
+        onSave={handleSave}
+      />
 
       {/* Dual-Pane Workstation */}
       <div className="grid flex-1 grid-cols-1 lg:grid-cols-12 gap-6 overflow-hidden">
@@ -219,6 +161,7 @@ export function TemplateStudioView({ templateId }: TemplateStudioViewProps) {
           <TemplateCanvasViewport
             template={template}
             onChange={handleChange}
+            brandHandle={brandHandle}
           />
         </div>
       </div>

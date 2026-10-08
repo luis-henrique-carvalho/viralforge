@@ -320,6 +320,7 @@ async def render_item(id: str, payload: ItemRenderRequest):
         id, jobs=app_module.jobs, job_queue=app_module.job_queue,
         on_change=app_module.persist_jobs, rerender=True, headline=payload.headline,
         template_id=payload.template_id, watermark=payload.watermark,
+        badge_text=payload.badge_text, footer_text=payload.footer_text,
     )
     return await asyncio.to_thread(viral_studio_store.get_item_or_raise, id)
 

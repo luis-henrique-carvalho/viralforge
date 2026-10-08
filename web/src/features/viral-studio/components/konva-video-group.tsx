@@ -46,7 +46,8 @@ export function KonvaVideoGroup({
         const canvasX = pos.x / scale
         const canvasY = pos.y / scale
         const clampedX = Math.max(0, Math.min(CANVAS_WIDTH - videoWidth, canvasX))
-        const clampedY = Math.max(40, Math.min(CANVAS_HEIGHT - videoHeight - 50, canvasY))
+        const maxY = Math.max(0, CANVAS_HEIGHT - videoHeight)
+        const clampedY = Math.max(0, Math.min(maxY, canvasY))
         return {
           x: clampedX * scale,
           y: clampedY * scale,
@@ -56,7 +57,8 @@ export function KonvaVideoGroup({
       onDragEnd={(e) => {
         const rawY = e?.target && typeof e.target.y === 'function' ? e.target.y() : videoY
         const rawX = e?.target && typeof e.target.x === 'function' ? e.target.x() : videoX
-        const newY = Math.max(40, Math.min(CANVAS_HEIGHT - videoHeight - 50, Math.round(rawY)))
+        const maxY = Math.max(0, CANVAS_HEIGHT - videoHeight)
+        const newY = Math.max(0, Math.min(maxY, Math.round(rawY)))
         const newX = Math.max(0, Math.min(CANVAS_WIDTH - videoWidth, Math.round(rawX)))
         onDragEnd(newY, newX)
       }}
@@ -123,7 +125,7 @@ export function KonvaVideoGroup({
         draggable
         dragBoundFunc={(pos) => {
           const canvasY = pos.y / scale
-          const clampedY = Math.max(videoY + 300, Math.min(videoY + 1600, canvasY))
+          const clampedY = Math.max(videoY + 300, Math.min(videoY + 1920, canvasY))
           return {
             x: (videoX + videoWidth / 2 - HANDLE_SIZE * 2) * scale,
             y: clampedY * scale,
@@ -140,7 +142,7 @@ export function KonvaVideoGroup({
               ? e.target.y()
               : videoHeight - HANDLE_SIZE / 2
           const relativeY = targetY + HANDLE_SIZE / 2
-          const clampedHeight = Math.max(300, Math.min(1600, Math.round(relativeY)))
+          const clampedHeight = Math.max(300, Math.min(1920, Math.round(relativeY)))
           onResizeHeight?.(clampedHeight)
         }}
       >

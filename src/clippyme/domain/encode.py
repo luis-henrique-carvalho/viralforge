@@ -71,11 +71,19 @@ def x264_preset() -> str:
     return raw if raw in _VALID_PRESETS else _DEFAULT_PRESET
 
 
-def x264_video_args(crf=None, preset=None, pix_fmt="yuv420p", faststart=True):
+def x264_video_args(
+    crf=None,
+    preset=None,
+    pix_fmt="yuv420p",
+    faststart=True,
+    profile=None,
+    level=None,
+):
     """Return the shared ``-c:v libx264 …`` argument list for one encode pass.
 
     ``crf`` / ``preset`` override the env/default when given (e.g. a deliberately
     higher-quality master pass, or a faster preset for a cheap intermediate).
+    ``profile`` / ``level`` configure H.264 profile and level (e.g. 'high' and '4.2').
     ``pix_fmt`` defaults to ``yuv420p`` for universal player/mobile decode
     (pass ``None`` to omit). ``faststart`` writes the moov atom up front so the
     mp4 is progressively playable and uploads cleanly to social. Audio flags
@@ -87,6 +95,10 @@ def x264_video_args(crf=None, preset=None, pix_fmt="yuv420p", faststart=True):
         "-preset", preset or x264_preset(),
         "-crf", str(crf if crf is not None else x264_crf()),
     ]
+    if profile:
+        args += ["-profile:v", str(profile)]
+    if level:
+        args += ["-level:v", str(level)]
     if pix_fmt:
         args += ["-pix_fmt", pix_fmt]
     if faststart:

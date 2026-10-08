@@ -57,6 +57,13 @@ def test_video_args_overrides_and_toggles():
     assert "-pix_fmt" not in x264_video_args(pix_fmt=None)
 
 
+def test_video_args_supports_profile_and_level():
+    args = x264_video_args(crf=17, profile="high", level="4.2")
+    assert "-crf" in args and args[args.index("-crf") + 1] == "17"
+    assert "-profile:v" in args and args[args.index("-profile:v") + 1] == "high"
+    assert "-level:v" in args and args[args.index("-level:v") + 1] == "4.2"
+
+
 def test_video_args_is_a_fresh_list_each_call():
     a = x264_video_args()
     a.append("MUTATED")

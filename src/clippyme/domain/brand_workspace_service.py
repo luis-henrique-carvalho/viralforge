@@ -463,7 +463,13 @@ async def auto_schedule_brand_video(
         now_tz = datetime.now(UTC)
         slot_iso = (now_tz + timedelta(days=1)).replace(hour=18, minute=0, second=0, microsecond=0).isoformat()
 
-    title = item.get("selected_headline") or item.get("headline") or brand.get("name")
+    title = (
+        (item.get("ai_copy") or {}).get("social_title")
+        or item.get("social_title")
+        or item.get("selected_headline")
+        or item.get("headline")
+        or brand.get("name")
+    )
     caption = item.get("caption") or brand.get("default_cta") or ""
 
     receipts: list[PublicationReceipt] = []
@@ -518,7 +524,13 @@ async def publish_brand_video(
     provider_name = get_brand_active_provider(brand)
     port = get_social_publisher(provider=provider_name)
     timezone_str = brand.get("posting_schedule", {}).get("timezone", "America/Sao_Paulo")
-    title = item.get("selected_headline") or item.get("headline") or brand.get("name")
+    title = (
+        (item.get("ai_copy") or {}).get("social_title")
+        or item.get("social_title")
+        or item.get("selected_headline")
+        or item.get("headline")
+        or brand.get("name")
+    )
     caption = item.get("caption") or brand.get("default_cta") or ""
 
     receipts: list[PublicationReceipt] = []
@@ -688,7 +700,9 @@ def _enrich_post_metadata(
 
     if matched_item and batch_id and item_id:
         video_title = (
-            matched_item.get("selected_headline")
+            (matched_item.get("ai_copy") or {}).get("social_title")
+            or matched_item.get("social_title")
+            or matched_item.get("selected_headline")
             or matched_item.get("headline")
             or matched_item.get("title")
         )
@@ -794,7 +808,13 @@ async def list_brand_scheduled_posts(
                 "post_id": p_id,
                 "brand_id": brand_id,
                 "item_id": item_id,
-                "title": item.get("selected_headline") or item.get("headline") or "Publicação",
+                "title": (
+                    (item.get("ai_copy") or {}).get("social_title")
+                    or item.get("social_title")
+                    or item.get("selected_headline")
+                    or item.get("headline")
+                    or "Publicação"
+                ),
                 "content": item.get("caption") or "",
                 "status": "published" if item_status == "PUBLISHED" else "scheduled",
                 "scheduled_for": sched,
@@ -859,7 +879,14 @@ async def list_brand_scheduled_posts(
                 "post_id": p_id,
                 "brand_id": brand_id,
                 "item_id": i_id,
-                "title": item.get("selected_headline") or item.get("headline") or item.get("title") or "Publicação",
+                "title": (
+                    (item.get("ai_copy") or {}).get("social_title")
+                    or item.get("social_title")
+                    or item.get("selected_headline")
+                    or item.get("headline")
+                    or item.get("title")
+                    or "Publicação"
+                ),
                 "content": item.get("caption") or "",
                 "status": "published" if i_status == "PUBLISHED" else "scheduled",
                 "scheduled_for": sched,

@@ -15,6 +15,7 @@ import argparse
 import asyncio
 import contextlib
 import hashlib
+import inspect
 import json
 import logging
 import os
@@ -114,10 +115,38 @@ def _resolve_render_path(batch_id: str, item_id: str) -> str:
     return os.path.join(_get_output_dir(), "viral_studio", batch_id, item_id, "rendered.mp4")
 
 
+def _safe_render_viral_video(
+    source_path: str,
+    brand: Any,
+    template: Any,
+    headline: str,
+    output_path: str,
+    watermark: bool = True,
+    badge_text: str | None = None,
+    footer_text: str | None = None,
+) -> str:
+    sig = inspect.signature(viral_studio_renderer.render_viral_video)
+    has_var_kw = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+    kwargs: dict[str, Any] = {
+        "source_path": source_path,
+        "brand": brand,
+        "template": template,
+        "headline": headline,
+        "output_path": output_path,
+        "watermark": watermark,
+    }
+    if "badge_text" in sig.parameters or has_var_kw:
+        kwargs["badge_text"] = badge_text
+    if "footer_text" in sig.parameters or has_var_kw:
+        kwargs["footer_text"] = footer_text
+    return viral_studio_renderer.render_viral_video(**kwargs)
+
+
 async def enqueue_item(
     item_id: str, *, jobs: dict, job_queue: asyncio.Queue, on_change=None,
     rerender: bool = False, headline: Optional[str] = None,
     template_id: Optional[str] = None, watermark: Optional[bool] = None,
+    badge_text: Optional[str] = None, footer_text: Optional[str] = None,
 ) -> str:
     """Submit one Viral Studio item through the application's durable queue."""
     item = viral_studio_store.get_item_or_raise(item_id)
@@ -149,6 +178,10 @@ async def enqueue_item(
             cmd.extend(["--template-id", template_id])
         if watermark is not None:
             cmd.extend(["--watermark", str(bool(watermark)).lower()])
+        if badge_text is not None:
+            cmd.extend(["--badge-text", badge_text])
+        if footer_text is not None:
+            cmd.extend(["--footer-text", footer_text])
     await submit_job(
         jobs=jobs,
         job_queue=job_queue,
@@ -163,6 +196,10 @@ async def enqueue_item(
     update = {"job_id": job_id, "error_message": None}
     if rerender:
         update["status"] = "RENDERING"
+        if badge_text is not None:
+            update["badge_text"] = badge_text
+        if footer_text is not None:
+            update["footer_text"] = footer_text
     viral_studio_store.update_item(item_id, update)
     return job_id
 
@@ -423,17 +460,30 @@ async def process_viral_item(item_id: str) -> Dict[str, Any]:
                 item_obj.ai_telemetry if hasattr(item_obj, "ai_telemetry") else None
             )
 
-            viral_studio_store.update_item(
-                item_id,
-                {
-                    "selected_headline": selected_headline,
-                    "caption": caption,
-                    "ai_copy": copy_data.model_dump() if hasattr(copy_data, "model_dump") else copy_data,
-                    "ai_context_summary": context_summary,
-                    "ai_telemetry": ai_telemetry,
-                    "keyframe_urls": keyframe_urls or refreshed_item.get("keyframe_urls", []),
-                },
+            custom_outputs = getattr(copy_data, "custom_outputs", {}) if hasattr(copy_data, "custom_outputs") else (copy_data.get("custom_outputs") if isinstance(copy_data, dict) else {}) or {}
+            badge_text = item.get("badge_text") or custom_outputs.get("badge_text")
+            footer_text = item.get("footer_text") or custom_outputs.get("footer_text")
+            social_title = (
+                item.get("social_title")
+                or (getattr(copy_data, "social_title", None) if hasattr(copy_data, "social_title") else copy_data.get("social_title"))
+                or custom_outputs.get("social_title")
             )
+
+            item_update_dict = {
+                "selected_headline": selected_headline,
+                "caption": caption,
+                "ai_copy": copy_data.model_dump() if hasattr(copy_data, "model_dump") else copy_data,
+                "ai_context_summary": context_summary,
+                "ai_telemetry": ai_telemetry,
+                "keyframe_urls": keyframe_urls or refreshed_item.get("keyframe_urls", []),
+            }
+            if badge_text:
+                item_update_dict["badge_text"] = badge_text
+            if footer_text:
+                item_update_dict["footer_text"] = footer_text
+            if social_title:
+                item_update_dict["social_title"] = social_title
+            viral_studio_store.update_item(item_id, item_update_dict)
 
             log_details: Dict[str, Any] = {
                 "selected_headline": selected_headline,
@@ -474,13 +524,15 @@ async def process_viral_item(item_id: str) -> Dict[str, Any]:
 
             t_render_start = time.perf_counter()
             rendered_path = await asyncio.to_thread(
-                viral_studio_renderer.render_viral_video,
+                _safe_render_viral_video,
                 source_path=source_path,
                 brand=brand_obj,
                 template=template_obj,
                 headline=selected_headline,
                 output_path=target_render_path,
                 watermark=template_obj.watermark_enabled,
+                badge_text=badge_text,
+                footer_text=footer_text,
             )
             render_duration_ms = max(1, int((time.perf_counter() - t_render_start) * 1000))
             render_size_kb = round(os.path.getsize(rendered_path) / 1024, 1) if os.path.isfile(rendered_path) else 0
@@ -561,10 +613,15 @@ async def rerender_item(
     headline: Optional[str] = None,
     template_id: Optional[str] = None,
     watermark: Optional[bool] = None,
+    badge_text: Optional[str] = None,
+    footer_text: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Render an item and leave a durable failure state on any error."""
     try:
-        return await _rerender_item(item_id, headline, template_id, watermark)
+        return await _rerender_item(
+            item_id, headline, template_id, watermark,
+            badge_text=badge_text, footer_text=footer_text,
+        )
     except Exception as exc:
         # Keep the original domain error for the HTTP response, but never
         # strand a user-facing item in RENDERING after a failed subprocess.
@@ -581,6 +638,8 @@ async def _rerender_item(
     headline: Optional[str] = None,
     template_id: Optional[str] = None,
     watermark: Optional[bool] = None,
+    badge_text: Optional[str] = None,
+    footer_text: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Fast re-render of an existing item with new headline or template without re-downloading or re-calling AI."""
     item = viral_studio_store.get_item_or_raise(item_id)
@@ -610,32 +669,45 @@ async def _rerender_item(
     render_headline = headline or item.get("selected_headline") or item.get("manual_headline") or "Achadinho"
     render_watermark = watermark if watermark is not None else template_obj.watermark_enabled
 
+    custom_outputs = (item.get("ai_copy") or {}).get("custom_outputs", {})
+    eff_badge = badge_text if badge_text is not None else item.get("badge_text") or custom_outputs.get("badge_text")
+    eff_footer = footer_text if footer_text is not None else item.get("footer_text") or custom_outputs.get("footer_text")
+
     append_item_log(
         item_id,
         "RERENDER",
         f"Iniciando re-renderização com headline: '{render_headline}'",
-        details={"template_id": tpl_id, "watermark": render_watermark},
-    )
-
-    viral_studio_store.update_item(
-        item_id,
-        {
-            "status": "RENDERING",
-            "selected_headline": render_headline,
+        details={
             "template_id": tpl_id,
+            "watermark": render_watermark,
+            "badge_text": eff_badge,
+            "footer_text": eff_footer,
         },
     )
+
+    update_payload = {
+        "status": "RENDERING",
+        "selected_headline": render_headline,
+        "template_id": tpl_id,
+    }
+    if eff_badge is not None:
+        update_payload["badge_text"] = eff_badge
+    if eff_footer is not None:
+        update_payload["footer_text"] = eff_footer
+    viral_studio_store.update_item(item_id, update_payload)
 
     target_render_path = _resolve_render_path(batch_id, item_id)
     t_rerender_start = time.perf_counter()
     rendered_path = await asyncio.to_thread(
-        viral_studio_renderer.render_viral_video,
+        _safe_render_viral_video,
         source_path=source_path,
         brand=brand_obj,
         template=template_obj,
         headline=render_headline,
         output_path=target_render_path,
         watermark=render_watermark,
+        badge_text=eff_badge,
+        footer_text=eff_footer,
     )
     rerender_duration_ms = max(1, int((time.perf_counter() - t_rerender_start) * 1000))
     render_size_kb = round(os.path.getsize(rendered_path) / 1024, 1) if os.path.isfile(rendered_path) else 0
@@ -1250,6 +1322,15 @@ async def regenerate_item_copy(
         item_obj.ai_telemetry if hasattr(item_obj, "ai_telemetry") else None
     )
 
+    custom_outputs = getattr(copy_data, "custom_outputs", {}) if hasattr(copy_data, "custom_outputs") else (copy_data.get("custom_outputs") if isinstance(copy_data, dict) else {}) or {}
+    badge_text = custom_outputs.get("badge_text") or item.get("badge_text")
+    footer_text = custom_outputs.get("footer_text") or item.get("footer_text")
+    social_title = (
+        (getattr(copy_data, "social_title", None) if hasattr(copy_data, "social_title") else copy_data.get("social_title"))
+        or custom_outputs.get("social_title")
+        or item.get("social_title")
+    )
+
     item_update.update({
         "selected_headline": selected_headline,
         "manual_headline": None,
@@ -1257,6 +1338,12 @@ async def regenerate_item_copy(
         "ai_copy": copy_data.model_dump() if hasattr(copy_data, "model_dump") else copy_data,
         "ai_telemetry": ai_telemetry,
     })
+    if badge_text:
+        item_update["badge_text"] = badge_text
+    if footer_text:
+        item_update["footer_text"] = footer_text
+    if social_title:
+        item_update["social_title"] = social_title
 
 
     updated_item = viral_studio_store.update_item(item_id, item_update)
@@ -1291,11 +1378,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--headline")
     parser.add_argument("--template-id")
     parser.add_argument("--watermark", choices=("true", "false"))
+    parser.add_argument("--badge-text")
+    parser.add_argument("--footer-text")
     args = parser.parse_args(argv)
     item = asyncio.run(
         rerender_item(
             args.item_id, args.headline, args.template_id,
             None if args.watermark is None else args.watermark == "true",
+            badge_text=args.badge_text,
+            footer_text=args.footer_text,
         ) if args.rerender else process_viral_item(args.item_id)
     )
     return 1 if item.get("status") == "FAILED" else 0

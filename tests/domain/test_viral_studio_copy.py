@@ -1292,6 +1292,106 @@ def test_build_affiliate_copy_prompt_default_url_fallback():
     assert "https://brand.com/shop" in prompt_with_none
 
 
+def test_system_prompt_template_injected_with_variables():
+    template = {
+        "id": "tech-curiosity",
+        "system_prompt_template": "Aja como um narrador de ficção científica. Transcrição: {transcript}. CTA: {cta}.",
+        "generation_tasks": [],
+    }
+    video_context = {"transcript": "Robôs inteligentes no futuro"}
+    prompt = viral_studio_copy.build_viral_copy_prompt(
+        template=template,
+        video_context=video_context,
+    )
+    assert "--- DIRETRIZES MESTRAS DO TEMPLATE (SYSTEM PROMPT) ---" in prompt
+    assert "Aja como um narrador de ficção científica." in prompt
+    assert "Robôs inteligentes no futuro" in prompt
+
+
+def test_headlines_stripped_of_hashtags_and_numbering():
+    raw_json = json.dumps({
+        "headlines": [
+            "1. #SuperAchado O melhor produto para a sua casa! #viral #fyp",
+            "- • 2) Inovação que vai mudar seu dia a dia #teste -",
+            "3 - Inacreditável o que esse produto faz!",
+            "4. Gadget essencial para viagens #viagem",
+            "5. Economize tempo com esse truque!",
+        ],
+        "selected_headline": "1. #SuperAchado O melhor produto para a sua casa! #viral #fyp",
+        "caption": "Texto da legenda",
+        "hashtags": ["#achadinho"],
+    })
+    copy_data = viral_studio_copy.parse_viral_copy_response(raw_json)
+    for h in copy_data.headlines:
+        assert "#" not in h
+        assert not h.startswith(("1.", "2.", "3.", "4.", "5.", "-", "•"))
+    assert copy_data.selected_headline == "O melhor produto para a sua casa!"
+    assert "#" not in copy_data.selected_headline
+
+
+def test_caption_normalizes_up_to_5_lowercase_hashtags():
+    raw_json = json.dumps({
+        "headlines": ["H1", "H2", "H3", "H4", "H5"],
+        "selected_headline": "H1",
+        "caption": "Conheça essa novidade incrível! #Inovacao #TopDemais no meio do texto #teste\n#OutraTag",
+        "hashtags": ["#Shopee", "Achadinho", "#UTILIDADES", "#ofertas", "#brasil", "#extra1", "#extra2"],
+    })
+    default_tags = ["#casa", "#achadinhos", "#shopee"]
+    copy_data = viral_studio_copy.parse_viral_copy_response(
+        raw_json,
+        default_hashtags=default_tags,
+    )
+    # At most 5 hashtags
+    assert len(copy_data.hashtags) == 5
+    # All lowercase
+    for tag in copy_data.hashtags:
+        assert tag == tag.lower()
+        assert tag.startswith("#")
+    assert copy_data.hashtags == ["#shopee", "#achadinho", "#utilidades", "#ofertas", "#brasil"]
+
+    # Caption body has no stray hashtags in body and ends strictly with the final 5 hashtags
+    assert "#Inovacao" not in copy_data.caption
+    assert "#TopDemais" not in copy_data.caption
+    lines = copy_data.caption.strip().split("\n\n")
+    assert lines[-1] == " ".join(copy_data.hashtags)
+
+
+def test_visual_task_targets_mapped_to_custom_outputs():
+    template = {
+        "id": "tpl-custom",
+        "generation_tasks": [
+            {
+                "id": "badge_task",
+                "label": "Badge do Topo",
+                "target": "canvas_badge",
+                "instruction": "Texto do badge",
+                "output_type": "text",
+            },
+            {
+                "id": "footer_comment_task",
+                "label": "Card Rodapé",
+                "target": "canvas_extra_image",
+                "instruction": "Pergunta para comentários",
+                "output_type": "text",
+            },
+        ],
+    }
+    raw_json = json.dumps({
+        "badge_task": "🔥 OFERTA EXCLUSIVA",
+        "footer_comment_task": "Qual o seu modelo preferido?",
+        "headlines": ["H1", "H2", "H3", "H4", "H5"],
+        "selected_headline": "H1",
+        "caption": "Legenda bacana",
+        "hashtags": ["#tag1"],
+    })
+    copy_data = viral_studio_copy.parse_viral_copy_response(
+        raw_json,
+        template=template,
+    )
+    assert copy_data.custom_outputs.get("badge_text") == "🔥 OFERTA EXCLUSIVA"
+    assert copy_data.custom_outputs.get("footer_text") == "Qual o seu modelo preferido?"
+
+
 
 
 

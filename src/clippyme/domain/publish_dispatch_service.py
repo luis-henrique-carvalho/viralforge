@@ -276,7 +276,13 @@ class PublishDispatchService:
         effective_slot, _ = _resolve_target_slot(brand_id, brand, target_channels, scheduled_for, publish_now)
 
         job_id = f"job_pub_{uuid.uuid4().hex[:12]}"
-        title = item.get("selected_headline") or item.get("headline") or brand.get("name")
+        title = (
+            (item.get("ai_copy") or {}).get("social_title")
+            or item.get("social_title")
+            or item.get("selected_headline")
+            or item.get("headline")
+            or brand.get("name")
+        )
         caption = item.get("caption") or brand.get("default_cta") or ""
 
         rel_batch = batch.get("id") or batch.get("batch_id")

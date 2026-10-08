@@ -22,7 +22,19 @@ describe('ItemDetailSheet', () => {
       selected_headline: 'Melhor microfone sem fio para gravar vídeos!',
       caption: 'Testei a bateria e dura mais de 8 horas. Link nos comentários!',
       hashtags: ['#audio', '#tech'],
+      social_title: 'O Segredo Para Gravar Áudio Perfeito',
+      custom_outputs: {
+        badge_text: 'ACHADINHO 🔥',
+        footer_text: 'Já conhecia esse microfone? Comente EU QUERO!',
+        quiz: {
+          question: 'Qual microfone você usa atualmente?',
+          options: ['Celular direto', 'Lapela com fio', 'Sem fio'],
+        },
+      },
     },
+    badge_text: 'ACHADINHO 🔥',
+    footer_text: 'Já conhecia esse microfone? Comente EU QUERO!',
+    social_title: 'O Segredo Para Gravar Áudio Perfeito',
     ai_telemetry: {
       model: 'gemini-2.5-flash',
       latency_ms: 840,
@@ -62,6 +74,17 @@ describe('ItemDetailSheet', () => {
     const copyButtons = screen.getAllByRole('button', { name: /copiar/i })
     await user.click(copyButtons[0])
     expect(writeTextSpy).toHaveBeenCalled()
+
+    // Switch to Tarefas IA tab
+    await user.click(screen.getByRole('tab', { name: /Tarefas IA/i }))
+    await waitFor(() => {
+      expect(screen.getByText('Badge Dinâmico do Canvas')).toBeInTheDocument()
+      expect(screen.getByText('ACHADINHO 🔥')).toBeInTheDocument()
+      expect(screen.getByText('Texto de Rodapé / Comentário')).toBeInTheDocument()
+      expect(screen.getByText('Já conhecia esse microfone? Comente EU QUERO!')).toBeInTheDocument()
+      expect(screen.getByText('O Segredo Para Gravar Áudio Perfeito')).toBeInTheDocument()
+      expect(screen.getByText('Qual microfone você usa atualmente?')).toBeInTheDocument()
+    })
 
     // Switch to Telemetry tab
     await user.click(screen.getByRole('tab', { name: /Telemetria IA/i }))

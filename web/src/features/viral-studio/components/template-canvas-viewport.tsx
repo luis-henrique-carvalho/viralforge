@@ -8,9 +8,14 @@ import type { VisualTemplate } from '../data/template.types'
 interface TemplateCanvasViewportProps {
   template: VisualTemplate
   onChange: (field: keyof VisualTemplate, value: unknown) => void
+  brandHandle?: string
 }
 
-export function TemplateCanvasViewport({ template, onChange }: TemplateCanvasViewportProps) {
+export function TemplateCanvasViewport({
+  template,
+  onChange,
+  brandHandle,
+}: TemplateCanvasViewportProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(0.35)
   const [showSafeZones, setShowSafeZones] = useState(false)
@@ -117,6 +122,7 @@ export function TemplateCanvasViewport({ template, onChange }: TemplateCanvasVie
             scale={scale}
             showSafeZones={showSafeZones}
             onChange={onChange}
+            brandHandle={brandHandle}
           />
         </div>
       </div>

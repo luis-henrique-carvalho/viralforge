@@ -398,3 +398,30 @@ async def test_recover_on_startup_resumes_interrupted_uploading_jobs(mock_brand_
     assert len(fake_publisher.scheduled_calls) == 1
 
 
+@pytest.mark.asyncio
+async def test_enqueue_dispatch_prioritizes_social_title(mock_brand_and_video):
+    """enqueue_dispatch must prioritize social_title over selected_headline."""
+    brand_id, item_id, _ = mock_brand_and_video
+    fake_publisher = FakePublisher(should_fail=False)
+    service = PublishDispatchService(publisher=fake_publisher)
+
+    # Set item with both selected_headline and social_title
+    viral_studio_store.update_item(
+        item_id,
+        {
+            "selected_headline": "Headline Tradicional",
+            "social_title": "Título Social Otimizado para Feed",
+        },
+    )
+
+    job = await service.enqueue_dispatch(
+        brand_id=brand_id,
+        item_id=item_id,
+        channel_ids=["acc_1"],
+        publish_now=True,
+    )
+
+    assert job.title == "Título Social Otimizado para Feed"
+
+
+

@@ -25,6 +25,15 @@ function resolveFormData(item: ViralItem): ItemEditorFormData {
     caption: item.caption || item.ai_copy?.caption || '',
     product_code: item.product_code || '',
     product_url: item.product_url || '',
+    badge_text:
+      item.badge_text || (item.ai_copy?.custom_outputs?.badge_text as string | undefined) || '',
+    footer_text:
+      item.footer_text || (item.ai_copy?.custom_outputs?.footer_text as string | undefined) || '',
+    social_title:
+      item.social_title ||
+      item.ai_copy?.social_title ||
+      (item.ai_copy?.custom_outputs?.social_title as string | undefined) ||
+      '',
   }
 }
 
@@ -54,6 +63,9 @@ export function useItemEditor({ item, batchId, onSaveSuccess }: UseItemEditorOpt
         caption: formData.caption != null ? formData.caption : undefined,
         product_code: formData.product_code?.trim() || null,
         product_url: formData.product_url?.trim() || null,
+        badge_text: formData.badge_text?.trim() || null,
+        footer_text: formData.footer_text?.trim() || null,
+        social_title: formData.social_title?.trim() || null,
       }),
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: viralStudioKeys.batches() })
@@ -79,18 +91,13 @@ export function useItemEditor({ item, batchId, onSaveSuccess }: UseItemEditorOpt
   }
 
   const applyRegeneratedData = (data: { selected_headline?: string; caption?: string }) => {
-    if (data.selected_headline) {
+    if (data.selected_headline)
       form.setValue('selected_headline', data.selected_headline, {
         shouldDirty: true,
         shouldValidate: true,
       })
-    }
-    if (data.caption) {
-      form.setValue('caption', data.caption, {
-        shouldDirty: true,
-        shouldValidate: true,
-      })
-    }
+    if (data.caption)
+      form.setValue('caption', data.caption, { shouldDirty: true, shouldValidate: true })
   }
 
   const handleSave = async (): Promise<boolean> => {

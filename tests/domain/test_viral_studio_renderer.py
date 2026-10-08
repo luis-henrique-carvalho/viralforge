@@ -608,7 +608,7 @@ def test_build_render_ffmpeg_cmd_watermark_placed_on_video_stream():
     idx = cmd.index("-filter_complex")
     filter_graph = cmd[idx + 1]
     # Watermark applied to video stream [vscaled][wmark]overlay=...[vwithlogo]
-    assert "[0:v]scale=1080:608[vscaled]" in filter_graph
+    assert "[0:v]scale=1080:608:flags=lanczos,setsar=1,unsharp=3:3:0.5:3:3:0.0[vscaled]" in filter_graph
     assert "[vscaled][wmark]overlay=" in filter_graph
     assert "[vwithlogo]pad=1080:1920:0:400" in filter_graph
 
@@ -935,6 +935,269 @@ def test_generate_header_overlay_headline_alignment(tmp_path, test_brand, test_t
         assert meta is not None
         assert os.path.isfile(out_png)
         assert os.path.getsize(out_png) > 0
+
+
+def test_renderer_honors_dynamic_badge_and_footer(tmp_path, test_brand, test_template):
+    """Dynamic badge_text and footer_text take precedence over template static values."""
+    out_png = str(tmp_path / "overlay_dynamic.png")
+    t = test_template.model_copy(update={
+        "badge_enabled": True,
+        "custom_badge_text": "ESTÁTICO BADGE",
+        "extra_image_enabled": True,
+        "extra_image_title": "ESTÁTICO RODAPÉ",
+    })
+
+    drawn_texts = []
+    orig_draw = viral_studio_renderer._draw_text_with_emojis
+
+    def spy_draw(img, xy, text, font, fill):
+        drawn_texts.append(text)
+        return orig_draw(img, xy, text, font, fill)
+
+    with patch("clippyme.domain.viral_studio_renderer._draw_text_with_emojis", side_effect=spy_draw):
+        viral_studio_renderer.generate_header_overlay(
+            brand=test_brand,
+            template=t,
+            headline="Headline Teste",
+            output_image_path=out_png,
+            badge_text="DINÂMICO BADGE 🔥",
+            footer_text="DINÂMICO RODAPÉ 💬",
+        )
+
+    assert "DINÂMICO BADGE 🔥" in drawn_texts
+    assert "ESTÁTICO BADGE" not in drawn_texts
+    assert "DINÂMICO RODAPÉ 💬" in drawn_texts
+    assert "ESTÁTICO RODAPÉ" not in drawn_texts
+
+
+def test_renderer_falls_back_to_template_badge_and_footer(tmp_path, test_brand, test_template):
+    """When badge_text and footer_text are None, falls back to template static values."""
+    out_png = str(tmp_path / "overlay_fallback.png")
+    t = test_template.model_copy(update={
+        "badge_enabled": True,
+        "custom_badge_text": "ESTÁTICO BADGE",
+        "extra_image_enabled": True,
+        "extra_image_title": "ESTÁTICO RODAPÉ",
+    })
+
+    drawn_texts = []
+    orig_draw = viral_studio_renderer._draw_text_with_emojis
+
+    def spy_draw(img, xy, text, font, fill):
+        drawn_texts.append(text)
+        return orig_draw(img, xy, text, font, fill)
+
+    with patch("clippyme.domain.viral_studio_renderer._draw_text_with_emojis", side_effect=spy_draw):
+        viral_studio_renderer.generate_header_overlay(
+            brand=test_brand,
+            template=t,
+            headline="Headline Teste",
+            output_image_path=out_png,
+            badge_text=None,
+            footer_text=None,
+        )
+
+    assert "ESTÁTICO BADGE" in drawn_texts
+    assert "ESTÁTICO RODAPÉ" in drawn_texts
+
+
+# ============================================================================
+# 9:16 Full Screen, Watermark Pill & Quality Enhancement Tests
+# ============================================================================
+
+def test_calculate_video_placement_fullscreen_9_16_target_aspect():
+    """target_aspect='9:16' enforces exact 1080x1920 framing at (0, 0)."""
+    placement = viral_studio_renderer.calculate_video_placement(
+        canvas_width=1080,
+        canvas_height=1920,
+        source_width=1080,
+        source_height=1920,
+        target_aspect="9:16",
+    )
+    assert placement["x"] == 0
+    assert placement["y"] == 0
+    assert placement["width"] == 1080
+    assert placement["height"] == 1920
+    assert placement["box_x"] == 0
+    assert placement["box_y"] == 0
+    assert placement["box_width"] == 1080
+    assert placement["box_height"] == 1920
+
+
+def test_calculate_video_placement_fullscreen_9_16_video_aspect():
+    """video_aspect='9:16' enforces exact 1080x1920 framing at (0, 0)."""
+    placement = viral_studio_renderer.calculate_video_placement(
+        canvas_width=1080,
+        canvas_height=1920,
+        source_width=720,
+        source_height=1280,
+        video_aspect="9:16",
+    )
+    assert placement["x"] == 0
+    assert placement["y"] == 0
+    assert placement["width"] == 1080
+    assert placement["height"] == 1920
+
+
+def test_calculate_video_placement_fullscreen_explicit_geometry():
+    """Explicit geometry (x=0, y=0, width=1080, height=1920) returns full screen."""
+    placement = viral_studio_renderer.calculate_video_placement(
+        canvas_width=1080,
+        canvas_height=1920,
+        source_width=1920,
+        source_height=1080,
+        video_x=0,
+        video_y=0,
+        video_width=1080,
+        video_height=1920,
+        video_fit="cover",
+    )
+    assert placement["x"] == 0
+    assert placement["y"] == 0
+    assert placement["width"] == 1080
+    assert placement["height"] == 1920
+    assert placement["fit"] == "cover"
+
+
+def test_generate_header_overlay_renders_watermark_pill_when_logo_missing(tmp_path, test_template):
+    """When watermark_enabled=True and brand has no logo file, draws @handle pill on overlay."""
+    out_png = str(tmp_path / "overlay_wmark_pill.png")
+    brand = {
+        "id": "vale-o-clique",
+        "name": "Vale o Clique?",
+        "handle": "@valeoclique",
+        "logo_path": None,
+    }
+    t = test_template.model_copy(update={
+        "watermark_enabled": True,
+        "watermark_position": "bottom-right",
+        "watermark_opacity": 0.8,
+    })
+
+    meta = viral_studio_renderer.generate_header_overlay(
+        brand=brand,
+        template=t,
+        headline="Test Headline",
+        output_image_path=out_png,
+    )
+
+    assert os.path.isfile(out_png)
+    assert meta.get("watermark_rendered") is True
+    assert meta.get("watermark_type") == "pill"
+    assert meta.get("watermark_handle") == "@valeoclique"
+    assert meta.get("watermark_position") == "bottom-right"
+
+    # Verify visual presence on Pillow image (alpha > 0 in bottom-right corner)
+    with Image.open(out_png) as img:
+        assert img.size == (1080, 1920)
+        # Check area around bottom-right (margin 40, box 240x44 -> x~800-1040, y~1836-1880)
+        box = meta.get("watermark_box", {})
+        bx = box.get("x", 800)
+        by = box.get("y", 1836)
+        bw = box.get("width", 240)
+        bh = box.get("height", 44)
+        sample = img.crop((bx + 10, by + 10, bx + bw - 10, by + bh - 10))
+        # Ensure non-transparent pixels exist in the pill region
+        alphas = [pixel[3] for pixel in sample.getdata()]
+        assert max(alphas) > 0
+
+
+def test_generate_header_overlay_watermark_positions(tmp_path, test_template):
+    """Pill watermark respects different corner and center positions."""
+    brand = {"name": "Test Brand", "handle": "testbrand"}
+    positions = ["top-left", "top-right", "bottom-left", "bottom-right", "center-top", "center-bottom", "center"]
+
+    for pos in positions:
+        out_png = str(tmp_path / f"overlay_{pos}.png")
+        t = test_template.model_copy(update={
+            "watermark_enabled": True,
+            "watermark_position": pos,
+        })
+        meta = viral_studio_renderer.generate_header_overlay(
+            brand=brand,
+            template=t,
+            headline="Test Position",
+            output_image_path=out_png,
+        )
+        assert meta.get("watermark_rendered") is True
+        assert meta.get("watermark_position") == pos
+        box = meta.get("watermark_box", {})
+        assert box["x"] >= 0
+        assert box["y"] >= 0
+        assert box["x"] + box["width"] <= 1080
+        assert box["y"] + box["height"] <= 1920
+
+
+def test_generate_header_overlay_skips_watermark_when_logo_file_exists(tmp_path, test_template):
+    """When brand has a valid logo_path on disk, pill watermark is not drawn on overlay."""
+    logo_file = str(tmp_path / "valid_logo.png")
+    Image.new("RGBA", (100, 100), (0, 255, 0, 255)).save(logo_file)
+
+    brand = {
+        "name": "Test Brand",
+        "handle": "@testbrand",
+        "logo_path": logo_file,
+    }
+    t = test_template.model_copy(update={"watermark_enabled": True})
+    out_png = str(tmp_path / "overlay_no_pill.png")
+
+    meta = viral_studio_renderer.generate_header_overlay(
+        brand=brand,
+        template=t,
+        headline="Test Headline",
+        output_image_path=out_png,
+    )
+    # Since logo file exists, pill is not drawn on Pillow overlay (it will be passed to FFmpeg)
+    assert meta.get("watermark_rendered") is False or meta.get("watermark_type") != "pill"
+
+
+def test_generate_header_overlay_skips_watermark_when_disabled(tmp_path, test_template):
+    """When watermark_enabled=False, watermark pill is skipped completely."""
+    brand = {"name": "Test Brand", "handle": "@testbrand", "logo_path": None}
+    t = test_template.model_copy(update={"watermark_enabled": False})
+    out_png = str(tmp_path / "overlay_disabled_wmark.png")
+
+    meta = viral_studio_renderer.generate_header_overlay(
+        brand=brand,
+        template=t,
+        headline="Test Headline",
+        output_image_path=out_png,
+    )
+    assert meta.get("watermark_rendered") is False
+
+
+def test_build_render_ffmpeg_cmd_high_quality_filters_and_x264_params():
+    """FFmpeg command includes Lanczos, setsar=1, unsharp sharpness, and x264 CRF 17 High profile."""
+    placement = {"x": 0, "y": 0, "width": 1080, "height": 1920, "fit": "cover"}
+    cmd = viral_studio_renderer.build_render_ffmpeg_cmd(
+        source_path="/tmp/source.mp4",
+        overlay_path="/tmp/overlay.png",
+        output_path="/tmp/rendered.mp4",
+        canvas_width=1080,
+        canvas_height=1920,
+        video_placement=placement,
+        background_color="#0D1117",
+    )
+    idx = cmd.index("-filter_complex")
+    filter_graph = cmd[idx + 1]
+
+    # Video quality filters
+    assert "flags=lanczos" in filter_graph
+    assert "setsar=1" in filter_graph
+    assert "unsharp=3:3:0.5:3:3:0.0" in filter_graph
+
+    # libx264 high quality settings
+    assert "-crf" in cmd
+    crf_idx = cmd.index("-crf")
+    assert cmd[crf_idx + 1] == "17"
+
+    assert "-profile:v" in cmd
+    prof_idx = cmd.index("-profile:v")
+    assert cmd[prof_idx + 1] == "high"
+
+    assert "-level:v" in cmd
+    lvl_idx = cmd.index("-level:v")
+    assert cmd[lvl_idx + 1] == "4.2"
 
 
 

@@ -172,7 +172,7 @@ class VisualTemplate(BaseModel):
 
     # Video Box & Geometry
     video_fit: str = Field("contain", pattern=r"^(contain|cover|crop)$")
-    video_aspect: str = Field("1:1", pattern=r"^(1:1|4:5|16:9|free)$")
+    video_aspect: str = Field("1:1", pattern=r"^(1:1|4:5|16:9|9:16|free)$")
     video_x: Optional[int] = None
     video_y: int = Field(360, ge=0, le=1920)
     video_width: Optional[int] = None
@@ -293,7 +293,7 @@ class TemplateCreate(BaseModel):
     background_color: str = Field("#FFFFFF", max_length=9)
 
     video_fit: str = Field("contain", pattern=r"^(contain|cover|crop)$")
-    video_aspect: str = Field("1:1", pattern=r"^(1:1|4:5|16:9|free)$")
+    video_aspect: str = Field("1:1", pattern=r"^(1:1|4:5|16:9|9:16|free)$")
     video_x: Optional[int] = None
     video_y: int = Field(360, ge=0, le=1920)
     video_width: Optional[int] = None
@@ -411,7 +411,7 @@ class TemplateUpdate(BaseModel):
     background_color: Optional[str] = Field(None, max_length=9)
 
     video_fit: Optional[str] = Field(None, pattern=r"^(contain|cover|crop)$")
-    video_aspect: Optional[str] = Field(None, pattern=r"^(1:1|4:5|16:9|free)$")
+    video_aspect: Optional[str] = Field(None, pattern=r"^(1:1|4:5|16:9|9:16|free)$")
     video_x: Optional[int] = None
     video_y: Optional[int] = Field(None, ge=0, le=1920)
     video_width: Optional[int] = None
@@ -671,6 +671,9 @@ class ViralItem(BaseModel):
     additional_instructions: Optional[str] = None
     selected_headline: Optional[str] = None
     caption: Optional[str] = None
+    badge_text: Optional[str] = Field(None, max_length=60)
+    footer_text: Optional[str] = Field(None, max_length=240)
+    social_title: Optional[str] = Field(None, max_length=120)
     ai_copy: Optional[AICopyData] = None
     provenance: Optional[ImportProvenance] = None
     status: ViralItemStatus = ViralItemStatus.PENDING
@@ -755,6 +758,9 @@ class ViralItemUpdate(BaseModel):
     manual_headline: Optional[str] = Field(None, max_length=300)
     additional_instructions: Optional[str] = Field(None, max_length=1000)
     model: Optional[str] = Field(None, max_length=128)
+    badge_text: Optional[str] = Field(None, max_length=60)
+    footer_text: Optional[str] = Field(None, max_length=240)
+    social_title: Optional[str] = Field(None, max_length=120)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -764,10 +770,16 @@ class ViralItemUpdate(BaseModel):
         return validate_affiliate_url(v)
 
 
+ItemUpdateRequest = ViralItemUpdate
+ViralItemUpdatePayload = ViralItemUpdate
+
+
 class ItemRenderRequest(BaseModel):
     headline: Optional[str] = Field(None, max_length=300)
     template_id: Optional[str] = Field(None, max_length=64)
     watermark: bool = True
+    badge_text: Optional[str] = Field(None, max_length=60)
+    footer_text: Optional[str] = Field(None, max_length=240)
 
 
 class ItemRegenerateCopyRequest(BaseModel):

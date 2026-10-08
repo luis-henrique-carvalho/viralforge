@@ -701,9 +701,111 @@ async def test_regenerate_item_copy_overwrites_stale_headlines_end_to_end(tmp_st
 
     # Must NOT keep "Old Manual Headline" or "Old Stale Caption"
     assert res["selected_headline"] == "Headline Fresca 1"
-    assert res["caption"] == "Nova Legenda Fresca 📌 Produto PROD-99"
+    assert res["caption"].startswith("Nova Legenda Fresca 📌 Produto PROD-99")
+    assert "#novo" in res["caption"]
     assert res["ai_copy"]["product"] == "Produto Fresco e Novo"
     assert res["manual_instructions"] == "Instrucao nova"
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_propagates_and_persists_badge_and_footer(tmp_store_and_output, dummy_video_file, monkeypatch):
+    """process_viral_item passes dynamic badge_text and footer_text to renderer and saves on item."""
+    batch = viral_studio_store.create_batch({
+        "brand_id": "vale-o-clique",
+        "items": [
+            {
+                "source_url": "https://www.instagram.com/reel/C_TEST_DYNAMIC/",
+                "product_code": "PROD_DYN",
+            }
+        ],
+    })
+    item_id = batch["items"][0]["id"]
+    monkeypatch.setattr("clippyme.domain.viral_studio_download.download_viral_video", lambda url, path: dummy_video_file)
+
+    async def fake_copy_with_custom(*args, **kwargs):
+        return AICopyData(
+            product="Produto Dinâmico",
+            headlines=["H1", "H2", "H3", "H4", "H5"],
+            selected_headline="H1",
+            caption="Legenda",
+            hashtags=["#tag"],
+            social_title="Título Social IA",
+            custom_outputs={
+                "badge_text": "OFERTA IA 🔥",
+                "footer_text": "RODAPÉ IA 💬",
+            },
+        )
+
+    monkeypatch.setattr("clippyme.domain.viral_studio_copy.generate_viral_copy", fake_copy_with_custom)
+
+    render_calls = []
+    def fake_render(source_path, brand, template, headline, output_path, watermark=True, badge_text=None, footer_text=None):
+        render_calls.append({
+            "headline": headline,
+            "badge_text": badge_text,
+            "footer_text": footer_text,
+        })
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        with open(output_path, "wb") as f:
+            f.write(b"dummy mp4")
+        return output_path
+
+    monkeypatch.setattr("clippyme.domain.viral_studio_renderer.render_viral_video", fake_render)
+
+    res = await viral_studio_orchestrator.process_viral_item(item_id)
+    assert len(render_calls) == 1
+    assert render_calls[0]["badge_text"] == "OFERTA IA 🔥"
+    assert render_calls[0]["footer_text"] == "RODAPÉ IA 💬"
+
+    item = viral_studio_store.get_item_or_raise(item_id)
+    assert item["badge_text"] == "OFERTA IA 🔥"
+    assert item["footer_text"] == "RODAPÉ IA 💬"
+    assert item["social_title"] == "Título Social IA"
+
+
+@pytest.mark.asyncio
+async def test_rerender_propagates_badge_and_footer(tmp_store_and_output, dummy_video_file, monkeypatch):
+    """rerender_item accepts and propagates badge_text and footer_text to renderer and store."""
+    batch = viral_studio_store.create_batch({
+        "brand_id": "vale-o-clique",
+        "items": [
+            {
+                "source_url": "https://www.instagram.com/reel/C_TEST_RERENDER/",
+                "product_code": "PROD_RERENDER",
+                "source_path": dummy_video_file,
+                "status": "READY_FOR_REVIEW",
+            }
+        ],
+    })
+    item_id = batch["items"][0]["id"]
+
+    render_calls = []
+    def fake_render(source_path, brand, template, headline, output_path, watermark=True, badge_text=None, footer_text=None):
+        render_calls.append({
+            "headline": headline,
+            "badge_text": badge_text,
+            "footer_text": footer_text,
+        })
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        with open(output_path, "wb") as f:
+            f.write(b"dummy mp4")
+        return output_path
+
+    monkeypatch.setattr("clippyme.domain.viral_studio_renderer.render_viral_video", fake_render)
+
+    res = await viral_studio_orchestrator.rerender_item(
+        item_id,
+        headline="Headline Re-render",
+        badge_text="NOVO BADGE 🔥",
+        footer_text="NOVO RODAPÉ 💬",
+    )
+    assert len(render_calls) == 1
+    assert render_calls[0]["badge_text"] == "NOVO BADGE 🔥"
+    assert render_calls[0]["footer_text"] == "NOVO RODAPÉ 💬"
+
+    item = viral_studio_store.get_item_or_raise(item_id)
+    assert item["badge_text"] == "NOVO BADGE 🔥"
+    assert item["footer_text"] == "NOVO RODAPÉ 💬"
 
 
 

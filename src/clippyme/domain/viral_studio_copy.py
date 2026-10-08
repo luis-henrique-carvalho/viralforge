@@ -533,6 +533,57 @@ def _to_dict_safe(obj: Any) -> Dict[str, Any]:
     return {}
 
 
+def _clean_headline_text(text: str) -> str:
+    """Sanitize headline text: strip list bullets, remove all hashtags, trim trailing punct."""
+    if not text:
+        return ""
+    clean = re.sub(r"^(?:[-*•–—\s]|\d+[\.\-\)])+\s*", "", str(text).strip())
+    clean = re.sub(r"#[\w-]+", "", clean)
+    clean = re.sub(r"\s+", " ", clean).strip(" -:;,")
+    return clean[:300]
+
+
+def _normalize_hashtags(
+    raw_hashtags: Any,
+    default_hashtags: Optional[List[str]] = None,
+    limit: int = 5,
+) -> List[str]:
+    """Extract, sanitize, lowercase, deduplicate, and bound hashtags to limit (<=5)."""
+    tags: List[str] = []
+    seen = set()
+
+    def _add(cand: Any) -> None:
+        if not cand:
+            return
+        c = str(cand).strip().replace(" ", "").lower()
+        if not c:
+            return
+        if not c.startswith("#"):
+            c = f"#{c}"
+        if len(c) > 1 and c not in seen:
+            seen.add(c)
+            tags.append(c)
+
+    if isinstance(raw_hashtags, str):
+        for part in re.findall(r"#?[\w-]+", raw_hashtags):
+            _add(part)
+    elif isinstance(raw_hashtags, (list, tuple, set)):
+        for item in raw_hashtags:
+            if isinstance(item, str):
+                _add(item)
+
+    if default_hashtags:
+        for dh in default_hashtags:
+            if isinstance(dh, str):
+                _add(dh)
+
+    if not tags:
+        for fallback in DEFAULT_FALLBACK_HASHTAGS:
+            _add(fallback)
+
+    return tags[:limit]
+
+
 def build_viral_copy_prompt(
     template: Optional[Union[VisualTemplate, Dict[str, Any]]] = None,
     brand: Optional[Union[Brand, Dict[str, Any]]] = None,
@@ -678,6 +729,14 @@ def build_viral_copy_prompt(
     if context_lines:
         context_section = "--- CONTEXTO EXTRAÍDO DO VÍDEO ---\n" + "\n".join(context_lines) + "\n\n"
 
+    system_section = ""
+    sys_prompt_raw = _extract_field(template, "system_prompt_template")
+    if sys_prompt_raw and str(sys_prompt_raw).strip():
+        sys_interp = str(sys_prompt_raw).strip()
+        for k, v in subs.items():
+            sys_interp = sys_interp.replace(k, str(v))
+        system_section = f"--- DIRETRIZES MESTRAS DO TEMPLATE (SYSTEM PROMPT) ---\n{sys_interp}\n\n"
+
     # Tasks instructions & JSON contract building
     task_instructions = []
     json_schema_fields = []
@@ -768,6 +827,7 @@ def build_viral_copy_prompt(
         f"{url_instruction}"
         f"{user_instructions}\n"
         f"{context_section}"
+        f"{system_section}"
         f"{goal_rules}"
         f"{tasks_section}"
         "--- FORMATO DE RESPOSTA ---\n"
@@ -816,10 +876,11 @@ def parse_viral_copy_response(
     product_code: Optional[str] = None,
     conversion_goal: str = "engagement",
     default_hashtags: Optional[List[str]] = None,
+    template: Optional[Union[VisualTemplate, Dict[str, Any]]] = None,
 ) -> AICopyData:
     """Parse raw LLM output into a validated AICopyData model with 5-level repair chain."""
     if not raw_text or not raw_text.strip():
-        return _build_fallback_copy_data(default_cta, product_code, conversion_goal, default_hashtags)
+        return _build_fallback_copy_data(default_cta, product_code, conversion_goal, default_hashtags, template=template)
 
     text = raw_text.strip()
     text = _CODE_FENCE_OPEN.sub("", text)
@@ -870,9 +931,11 @@ def parse_viral_copy_response(
 
     # Level 5: Safe graceful fallback construction
     if not parsed_obj:
-        return _build_fallback_copy_data(default_cta, product_code, conversion_goal, default_hashtags)
+        return _build_fallback_copy_data(default_cta, product_code, conversion_goal, default_hashtags, template=template)
 
-    return _normalize_parsed_dict(parsed_obj, default_cta, product_code, conversion_goal, default_hashtags)
+    return _normalize_parsed_dict(
+        parsed_obj, default_cta, product_code, conversion_goal, default_hashtags, template=template
+    )
 
 
 def parse_affiliate_copy_response(
@@ -933,6 +996,7 @@ def _normalize_parsed_dict(
     product_code: Optional[str] = None,
     conversion_goal: str = "engagement",
     default_hashtags: Optional[List[str]] = None,
+    template: Optional[Union[VisualTemplate, Dict[str, Any]]] = None,
 ) -> AICopyData:
     """Ensure all required AICopyData fields are clean, non-empty, and compliant."""
     product = data.get("product") or data.get("product_name") or data.get("produto")
@@ -944,35 +1008,35 @@ def _normalize_parsed_dict(
     social_title = data.get("social_title") or data.get("post_title") or data.get("titulo")
     social_title_str = str(social_title).strip()[:200] if social_title else None
 
-    # Normalize headlines
+    # Normalize headlines strictly removing list bullets, hashtags, and trailing punctuation
     raw_headlines = data.get("headlines") or data.get("headline") or data.get("manchetes")
     headlines: List[str] = []
     if isinstance(raw_headlines, str):
         raw_headlines = [
-            re.sub(r"^(?:[-*•–—]|\d+[\.\-\)])\s*", "", line.strip())
+            line.strip()
             for line in raw_headlines.splitlines()
             if line.strip()
         ]
     if isinstance(raw_headlines, list):
         for h in raw_headlines:
             if isinstance(h, str) and h.strip():
-                clean_h = h.strip()
-                clean_h = re.sub(r"^(?:[-*•–—]|\d+[\.\-\)])\s*", "", clean_h)
-                if clean_h and clean_h[:300] not in headlines:
-                    headlines.append(clean_h[:300])
+                clean_h = _clean_headline_text(h)
+                if clean_h and clean_h not in headlines:
+                    headlines.append(clean_h)
 
     if not headlines:
-        headlines = list(DEFAULT_FALLBACK_HEADLINES)
+        headlines = [_clean_headline_text(h) for h in DEFAULT_FALLBACK_HEADLINES]
     elif len(headlines) < 5:
         for fallback_h in DEFAULT_FALLBACK_HEADLINES:
-            if fallback_h not in headlines:
-                headlines.append(fallback_h)
+            clean_fb = _clean_headline_text(fallback_h)
+            if clean_fb not in headlines:
+                headlines.append(clean_fb)
             if len(headlines) >= 5:
                 break
 
     # Selected headline resolution
     raw_selected = str(data.get("selected_headline") or "").strip()
-    selected_headline = re.sub(r"^(?:[-*•–—]|\d+[\.\-\)])\s*", "", raw_selected).strip()
+    selected_headline = _clean_headline_text(raw_selected)
 
     option_m = re.match(
         r"^(?:op[çc][ãa]o|option)?\s*([1-9]|10)\b(?:\s*[:\-\.]\s*(.*))?$",
@@ -983,7 +1047,7 @@ def _normalize_parsed_dict(
         opt_idx = int(option_m.group(1)) - 1
         tail = (option_m.group(2) or "").strip()
         if tail:
-            selected_headline = tail
+            selected_headline = _clean_headline_text(tail)
         elif 0 <= opt_idx < len(headlines):
             selected_headline = headlines[opt_idx]
         else:
@@ -997,66 +1061,58 @@ def _normalize_parsed_dict(
     headlines = headlines[:10]
     selected_headline = selected_headline[:300]
 
-    # Hashtags
+    # Hashtags normalization: up to 5 lowercase tags
     raw_hashtags = data.get("hashtags") or data.get("tags")
-    hashtags: List[str] = []
-    if isinstance(raw_hashtags, str):
-        raw_hashtags = re.findall(r"#?[\w-]+", raw_hashtags)
-    if isinstance(raw_hashtags, list):
-        for tag in raw_hashtags:
-            if isinstance(tag, str):
-                cleaned_tag = tag.strip().replace(" ", "")
-                if cleaned_tag:
-                    if not cleaned_tag.startswith("#"):
-                        cleaned_tag = f"#{cleaned_tag}"
-                    if cleaned_tag not in hashtags:
-                        hashtags.append(cleaned_tag)
-    if not hashtags:
-        hashtags = list(default_hashtags or DEFAULT_FALLBACK_HASHTAGS)
+    hashtags = _normalize_hashtags(raw_hashtags, default_hashtags=default_hashtags, limit=5)
 
-    # Caption
+    # Caption body assembly: remove any embedded hashtags
     raw_caption = data.get("caption") or data.get("post_caption") or data.get("legenda")
     if isinstance(raw_caption, list):
-        caption = "\n\n".join(str(p).strip() for p in raw_caption if str(p).strip())
+        caption_body = "\n\n".join(str(p).strip() for p in raw_caption if str(p).strip())
     else:
-        caption = str(raw_caption or "").strip()
+        caption_body = str(raw_caption or "").strip()
+
+    caption_body = re.sub(r"#[\w-]+", "", caption_body)
+    cleaned_lines = [re.sub(r"[ \t]+", " ", line).strip() for line in caption_body.splitlines()]
+    non_empty_blocks: List[str] = []
+    cur_block: List[str] = []
+    for l in cleaned_lines:
+        if l:
+            cur_block.append(l)
+        elif cur_block:
+            non_empty_blocks.append("\n".join(cur_block))
+            cur_block = []
+    if cur_block:
+        non_empty_blocks.append("\n".join(cur_block))
+    caption_body = "\n\n".join(non_empty_blocks).strip()
 
     clean_code = str(product_code).strip() if (product_code is not None and str(product_code).strip()) else ""
-    if not caption:
+    if not caption_body:
         parts = [selected_headline] if selected_headline else []
         if product_desc_str:
             parts.append(product_desc_str)
         if clean_code and conversion_goal == "affiliate":
             parts.append(f"📌 Produto {clean_code}")
         parts.append(default_cta)
-        parts.append(" ".join(hashtags))
-        caption = "\n\n".join(parts)
+        caption_body = "\n\n".join(parts)
     else:
         if clean_code and conversion_goal == "affiliate":
             has_code = bool(
                 re.search(
                     rf"(?:produto|código|codigo|cod\.?|ref\.?)\s*:?\s*#?{re.escape(clean_code)}\b",
-                    caption,
+                    caption_body,
                     re.IGNORECASE,
                 )
-                or f"📌 Produto {clean_code}" in caption
-                or f"Código: {clean_code}" in caption
+                or f"📌 Produto {clean_code}" in caption_body
+                or f"Código: {clean_code}" in caption_body
             )
             if not has_code:
-                extra = f"📌 Produto {clean_code}"
-                tag_tail_m = re.search(r"(\n+(?:#[\w-]+\s*)+)$", caption)
-                if tag_tail_m:
-                    head = caption[: tag_tail_m.start()].rstrip()
-                    tail = tag_tail_m.group(1).lstrip()
-                    cand = f"{head}\n\n{extra}\n\n{tail}"
-                else:
-                    cand = f"{caption}\n\n{extra}"
+                caption_body = f"{caption_body}\n\n📌 Produto {clean_code}"
 
-                if len(cand) <= 4000:
-                    caption = cand
-                else:
-                    caption = f"{cand[:4000 - len(extra) - 2]}\n\n{extra}"
-
+    if hashtags:
+        caption = f"{caption_body}\n\n{' '.join(hashtags)}" if caption_body else " ".join(hashtags)
+    else:
+        caption = caption_body
     caption = caption[:4000]
 
     # Collect custom outputs from all remaining keys
@@ -1067,6 +1123,34 @@ def _normalize_parsed_dict(
         "hashtags", "tags",
     }
     custom_outputs = {k: v for k, v in data.items() if k not in known_keys}
+
+    # Map visual task targets
+    tasks = _extract_field(template, "generation_tasks") or []
+    for t in tasks:
+        tid = _extract_field(t, "id")
+        ttarget = _extract_field(t, "target")
+        out_val = data.get(tid)
+        if out_val is None:
+            continue
+        val_str = out_val
+        if isinstance(out_val, dict):
+            val_str = str(out_val.get("question") or out_val)
+        elif not isinstance(out_val, str):
+            val_str = str(out_val)
+        else:
+            val_str = out_val.strip()
+
+        if ttarget == "canvas_badge":
+            custom_outputs["badge_text"] = val_str
+        elif ttarget == "canvas_extra_image":
+            custom_outputs["footer_text"] = val_str
+        elif ttarget == "post_title" and not social_title_str:
+            social_title_str = val_str[:200]
+
+    if "badge_text" in data and "badge_text" not in custom_outputs:
+        custom_outputs["badge_text"] = str(data["badge_text"]).strip()
+    if "footer_text" in data and "footer_text" not in custom_outputs:
+        custom_outputs["footer_text"] = str(data["footer_text"]).strip()
 
     return AICopyData(
         product=product_str,
@@ -1085,11 +1169,21 @@ def _build_fallback_copy_data(
     product_code: Optional[str] = None,
     conversion_goal: str = "engagement",
     default_hashtags: Optional[List[str]] = None,
+    template: Optional[Union[VisualTemplate, Dict[str, Any]]] = None,
 ) -> AICopyData:
     """Generate safe fallback AICopyData when model output is completely missing."""
-    headlines = list(DEFAULT_FALLBACK_HEADLINES)
+    headlines = [_clean_headline_text(h) for h in DEFAULT_FALLBACK_HEADLINES]
     selected_headline = headlines[0]
-    hashtags = list(default_hashtags or DEFAULT_FALLBACK_HASHTAGS)
+    hashtags = _normalize_hashtags(None, default_hashtags=default_hashtags, limit=5)
+
+    custom_outputs: Dict[str, Any] = {}
+    tasks = _extract_field(template, "generation_tasks") or []
+    for t in tasks:
+        ttarget = _extract_field(t, "target")
+        if ttarget == "canvas_badge":
+            custom_outputs["badge_text"] = str(_extract_field(template, "custom_badge_text") or "ACHADINHO 🔥")
+        elif ttarget == "canvas_extra_image":
+            custom_outputs["footer_text"] = str(_extract_field(template, "extra_image_title") or "💬 DEIXE SEU COMENTÁRIO")
 
     if conversion_goal == "affiliate":
         parts = [
@@ -1109,6 +1203,7 @@ def _build_fallback_copy_data(
             caption="\n\n".join(parts),
             hashtags=hashtags,
             social_title=selected_headline,
+            custom_outputs=custom_outputs,
         )
 
     parts = [
@@ -1125,7 +1220,7 @@ def _build_fallback_copy_data(
         caption="\n\n".join(parts),
         hashtags=hashtags,
         social_title="Fato Surpreendente",
-        custom_outputs={},
+        custom_outputs=custom_outputs,
     )
 
 
@@ -1315,6 +1410,7 @@ async def generate_viral_copy(
         product_code=product_code,
         conversion_goal=conversion_goal,
         default_hashtags=default_hashtags,
+        template=template,
     )
 
     copy_data.model = telemetry_data.get("model")
@@ -1326,7 +1422,7 @@ async def generate_viral_copy(
         or _extract_field(item, "selected_headline")
         or copy_data.selected_headline
     )
-    clean_effective_headline = str(effective_selected_headline or "").strip()
+    clean_effective_headline = _clean_headline_text(effective_selected_headline)
     if clean_effective_headline:
         copy_data.selected_headline = clean_effective_headline[:300]
         if clean_effective_headline not in copy_data.headlines:
@@ -1460,6 +1556,7 @@ async def test_copy_generation(
         default_cta=default_cta,
         conversion_goal=conversion_goal,
         default_hashtags=default_hashtags,
+        template=template,
     )
     copy_data.model = telemetry_data.get("model")
     copy_data.telemetry = telemetry_data

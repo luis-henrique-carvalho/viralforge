@@ -1,19 +1,54 @@
 import { Sliders } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { Typography } from '@/components/ui/typography'
+import { TemplateVideoBorderControls } from './template-video-border-controls'
 import { TemplateVideoFreeControls } from './template-video-free-controls'
-import type { VisualTemplate } from '../data/template.types'
+import type { VideoAspect, VisualTemplate } from '../data/template.types'
 
 interface TemplateVisualTabVideoProps {
   template: VisualTemplate
   onChange: (field: keyof VisualTemplate, value: unknown) => void
 }
 
+const ASPECT_PRESETS: Array<{ id: VideoAspect; label: string }> = [
+  { id: '1:1', label: '1:1' },
+  { id: '4:5', label: '4:5' },
+  { id: '16:9', label: '16:9' },
+  { id: '9:16', label: '9:16 (FULL)' },
+  { id: 'free', label: 'FREE' },
+]
+
+const Y_POSITION_PRESETS = [
+  { label: 'Tela Cheia 0px', y: 0 },
+  { label: 'Topo 260px', y: 260 },
+  { label: 'Centro 380px', y: 380 },
+  { label: 'Baixo 550px', y: 550 },
+]
+
 export function TemplateVisualTabVideo({ template, onChange }: TemplateVisualTabVideoProps) {
   const isFree = template.video_aspect === 'free'
+
+  const handleAspectChange = (asp: VideoAspect) => {
+    onChange('video_aspect', asp)
+    if (asp === '9:16') {
+      onChange('video_fit', 'cover')
+      onChange('video_x', 0)
+      onChange('video_y', 0)
+      onChange('video_width', 1080)
+      onChange('video_height', 1920)
+      onChange('video_scale', 100)
+      onChange('video_radius', 0)
+      onChange('video_border_width', 0)
+    } else if (asp === '1:1') {
+      onChange('video_height', 1000)
+    } else if (asp === '4:5') {
+      onChange('video_height', 1250)
+    } else if (asp === '16:9') {
+      onChange('video_height', 620)
+    }
+  }
 
   return (
     // shadcn-ignore: layout
@@ -32,22 +67,17 @@ export function TemplateVisualTabVideo({ template, onChange }: TemplateVisualTab
         {/* Aspect Ratio Presets */}
         <div className="space-y-1.5">
           <Label className="text-xs">Proporção Rápida</Label>
-          <div className="grid grid-cols-4 gap-1.5">
-            {(['1:1', '4:5', '16:9', 'free'] as const).map((asp) => (
+          <div className="grid grid-cols-5 gap-1">
+            {ASPECT_PRESETS.map((asp) => (
               <Button
-                key={asp}
+                key={asp.id}
                 type="button"
                 size="sm"
-                variant={template.video_aspect === asp ? 'default' : 'outline'}
-                onClick={() => {
-                  onChange('video_aspect', asp)
-                  if (asp === '1:1') onChange('video_height', 1000)
-                  if (asp === '4:5') onChange('video_height', 1250)
-                  if (asp === '16:9') onChange('video_height', 620)
-                }}
-                className="h-7 text-xs font-semibold"
+                variant={template.video_aspect === asp.id ? 'default' : 'outline'}
+                onClick={() => handleAspectChange(asp.id)}
+                className="h-7 px-1 text-[11px] font-semibold truncate"
               >
-                {asp.toUpperCase()}
+                {asp.label}
               </Button>
             ))}
           </div>
@@ -101,24 +131,20 @@ export function TemplateVisualTabVideo({ template, onChange }: TemplateVisualTab
           </div>
           <Slider
             value={[template.video_y]}
-            min={40}
+            min={0}
             max={950}
             step={10}
             onValueChange={([val]) => onChange('video_y', val)}
           />
-          <div className="grid grid-cols-3 gap-1.5 pt-1">
-            {[
-              { label: 'Topo 260px', y: 260 },
-              { label: 'Centro 380px', y: 380 },
-              { label: 'Baixo 550px', y: 550 },
-            ].map((preset) => (
+          <div className="grid grid-cols-4 gap-1 pt-1">
+            {Y_POSITION_PRESETS.map((preset) => (
               <Button
                 key={preset.y}
                 type="button"
                 size="sm"
                 variant={template.video_y === preset.y ? 'secondary' : 'outline'}
                 onClick={() => onChange('video_y', preset.y)}
-                className="h-6 text-[11px] px-1"
+                className="h-6 text-[10px] px-1 truncate"
               >
                 {preset.label}
               </Button>
@@ -145,68 +171,17 @@ export function TemplateVisualTabVideo({ template, onChange }: TemplateVisualTab
           <Slider
             value={[template.video_height]}
             min={300}
-            max={1600}
+            max={1920}
             step={20}
             onValueChange={([val]) => onChange('video_height', val)}
           />
         </div>
 
-        {/* Border & Radius */}
-        <div className="grid grid-cols-2 gap-3 pt-1">
-          <div className="space-y-1.5">
-            <Label className="text-xs">Arredondamento</Label>
-            <Slider
-              value={[template.video_radius]}
-              min={0}
-              max={48}
-              step={2}
-              onValueChange={([val]) => onChange('video_radius', val)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs">Borda</Label>
-              <Button
-                type="button"
-                size="sm"
-                variant={template.video_border_width === 0 ? 'secondary' : 'ghost'}
-                onClick={() =>
-                  onChange('video_border_width', template.video_border_width === 0 ? 2 : 0)
-                }
-                className="h-5 px-1.5 text-[10px]"
-              >
-                {template.video_border_width === 0 ? 'Sem Borda ✓' : 'Sem Borda'}
-              </Button>
-            </div>
-            <Slider
-              value={[template.video_border_width]}
-              min={0}
-              max={10}
-              step={1}
-              onValueChange={([val]) => onChange('video_border_width', val)}
-            />
-          </div>
-        </div>
-
-        {/* Border Color */}
-        {template.video_border_width > 0 && (
-          <div className="space-y-1.5">
-            <Label className="text-xs">Cor da Borda</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                type="color"
-                value={template.video_border_color}
-                onChange={(e) => onChange('video_border_color', e.target.value)}
-                className="h-8 w-10 p-0.5"
-              />
-              <Input
-                value={template.video_border_color}
-                onChange={(e) => onChange('video_border_color', e.target.value)}
-                className="h-8 text-xs font-mono"
-              />
-            </div>
-          </div>
-        )}
+        {/* Border, Radius & Color Controls */}
+        <TemplateVideoBorderControls
+          template={template}
+          onChange={onChange}
+        />
       </div>
     </div>
   )

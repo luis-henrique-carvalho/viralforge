@@ -15,6 +15,7 @@ interface TemplateCanvasKonvaProps {
   scale: number
   showSafeZones: boolean
   onChange: (field: keyof VisualTemplate, value: unknown) => void
+  brandHandle?: string
 }
 
 const CANVAS_WIDTH = 1080
@@ -25,10 +26,11 @@ export function TemplateCanvasKonva({
   scale,
   showSafeZones,
   onChange,
+  brandHandle,
 }: TemplateCanvasKonvaProps) {
   const [isDragging, setIsDragging] = useState(false)
 
-  const videoWidth = Math.round(CANVAS_WIDTH * (template.video_scale / 100))
+  const videoWidth = template.video_width ?? Math.round(CANVAS_WIDTH * (template.video_scale / 100))
   const videoX = template.video_x ?? Math.round((CANVAS_WIDTH - videoWidth) / 2)
   const videoY = template.video_y
   const videoHeight = template.video_height
@@ -63,28 +65,7 @@ export function TemplateCanvasKonva({
           />
         )}
 
-        <KonvaBadgeGroup
-          template={template}
-          scale={scale}
-          onDragStart={() => setIsDragging(true)}
-          onDragEnd={(y) => {
-            setIsDragging(false)
-            onChange('badge_y', y)
-          }}
-        />
-
-        <KonvaBrandGroup template={template} />
-
-        <KonvaHeadlineGroup
-          template={template}
-          scale={scale}
-          onDragStart={() => setIsDragging(true)}
-          onDragEnd={(y) => {
-            setIsDragging(false)
-            onChange('headline_y', y)
-          }}
-        />
-
+        {/* Camada 1: Vídeo como camada base (fundo) */}
         <KonvaVideoGroup
           template={template}
           scale={scale}
@@ -110,6 +91,7 @@ export function TemplateCanvasKonva({
           }}
         />
 
+        {/* Camada 2: Rodapé extra / comentário */}
         <KonvaExtraFooterGroup
           template={template}
           scale={scale}
@@ -122,8 +104,38 @@ export function TemplateCanvasKonva({
           }}
         />
 
-        <KonvaWatermarkGroup template={template} />
+        {/* Camada 3: Badges */}
+        <KonvaBadgeGroup
+          template={template}
+          scale={scale}
+          onDragStart={() => setIsDragging(true)}
+          onDragEnd={(y) => {
+            setIsDragging(false)
+            onChange('badge_y', y)
+          }}
+        />
 
+        {/* Camada 4: Identidade da Marca (Header) */}
+        <KonvaBrandGroup template={template} />
+
+        {/* Camada 5: Headline */}
+        <KonvaHeadlineGroup
+          template={template}
+          scale={scale}
+          onDragStart={() => setIsDragging(true)}
+          onDragEnd={(y) => {
+            setIsDragging(false)
+            onChange('headline_y', y)
+          }}
+        />
+
+        {/* Camada 6: Marca d'água com handle dinâmico */}
+        <KonvaWatermarkGroup
+          template={template}
+          brandHandle={brandHandle}
+        />
+
+        {/* Camada 7: Safe Zones */}
         <KonvaSafeZonesGroup showSafeZones={showSafeZones} />
       </Layer>
     </Stage>

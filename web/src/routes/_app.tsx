@@ -11,9 +11,9 @@ function AppLayout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="flex flex-col bg-background min-w-0 w-full overflow-hidden">
+      <SidebarInset className="flex flex-col bg-background min-w-0 w-full overflow-hidden h-svh max-h-svh">
         <TopNav />
-        <main className="flex-1 w-full min-w-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 w-full min-w-0 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
           <div className="mx-auto max-w-7xl w-full min-w-0">
             <Outlet />
           </div>

@@ -95,7 +95,6 @@ export function DiscoveryImportDrawer({
         model: selectedModel || undefined,
         items: selectedItems.map((item) => ({
           source_url: item.url,
-          manual_headline: item.title ? item.title.slice(0, 120) : undefined,
           provenance:
             item.provenance ||
             (searchId
