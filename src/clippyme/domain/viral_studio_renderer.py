@@ -57,6 +57,15 @@ try:
                         return BytesIO(f.read())
                 except Exception:
                     pass
+            # Check alternative cache with/without \ufe0f variation selector
+            alt_code = code.replace("-fe0f", "") if "-fe0f" in code else f"{code}-fe0f"
+            alt_filepath = os.path.join(_EMOJI_CACHE_DIR, f"twemoji_{alt_code}.png")
+            if os.path.isfile(alt_filepath):
+                try:
+                    with open(alt_filepath, "rb") as f:
+                        return BytesIO(f.read())
+                except Exception:
+                    pass
             try:
                 bio = super().get_emoji(emoji_str)
                 if bio:
@@ -67,7 +76,9 @@ try:
             except Exception as exc:
                 logger.debug("Failed to fetch emoji %s from CDN: %s", emoji_str, exc)
             return None
-except Exception:
+except Exception as _pilmoji_exc:
+    logger.warning("Pilmoji Twemoji source unavailable (%s), emoji rendering disabled in video overlays", _pilmoji_exc)
+
     class _CachedTwemojiSource:  # type: ignore
         def get_emoji(self, emoji_str: str) -> Optional[BytesIO]:
             return None

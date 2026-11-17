@@ -177,3 +177,48 @@ def test_resolve_whisper_compute_cloud_ai_routes_to_gpu_if_available(monkeypatch
     assert device == "cuda"
     assert model == "large-v3"
 
+
+def test_resolve_whisper_compute_cpu_defaults_to_small(monkeypatch):
+    """CPU execution should default to 'small' to prevent excessive latency and RAM saturation."""
+    monkeypatch.delenv("WHISPER_DEVICE", raising=False)
+    monkeypatch.delenv("WHISPER_MODEL", raising=False)
+    monkeypatch.delenv("WHISPER_CPU_DEFAULT_MODEL", raising=False)
+    monkeypatch.setattr(hardware, "CUDA_AVAILABLE", False)
+    monkeypatch.setattr(hardware, "_total_ram_gb", 32.0)
+
+    device, model = hardware.resolve_whisper_compute()
+    assert device == "cpu"
+    assert model == "small"
+
+
+def test_resolve_whisper_compute_cpu_custom_override(monkeypatch):
+    """CPU default can be customized via WHISPER_CPU_DEFAULT_MODEL or WHISPER_MODEL."""
+    monkeypatch.setattr(hardware, "CUDA_AVAILABLE", False)
+
+    monkeypatch.setenv("WHISPER_CPU_DEFAULT_MODEL", "base")
+    monkeypatch.delenv("WHISPER_MODEL", raising=False)
+    _, model = hardware.resolve_whisper_compute()
+    assert model == "base"
+
+    monkeypatch.setenv("WHISPER_MODEL", "tiny")
+    _, model = hardware.resolve_whisper_compute()
+    assert model == "tiny"
+
+
+def test_transcribe_faster_whisper_cpu_defaults_to_int8(monkeypatch):
+    """_transcribe_faster_whisper on CPU should default compute_type to int8 and configure threads."""
+    mock_model_class = MagicMock()
+    mock_instance = MagicMock()
+    mock_instance.transcribe.return_value = ([], MagicMock(language="pt", language_probability=0.99))
+    mock_model_class.return_value = mock_instance
+
+    with patch.dict("sys.modules", {"faster_whisper": MagicMock(WhisperModel=mock_model_class)}):
+        monkeypatch.delenv("WHISPER_COMPUTE_TYPE", raising=False)
+        monkeypatch.setenv("WHISPER_CPU_THREADS", "4")
+        wt._transcribe_faster_whisper("dummy.wav", model_name="small", device="cpu", compute_type="default")
+
+    assert mock_model_class.called
+    kwargs = mock_model_class.call_args[1]
+    assert kwargs.get("compute_type") == "int8"
+    assert kwargs.get("cpu_threads") == 4
+

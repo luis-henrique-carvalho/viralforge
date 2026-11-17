@@ -80,8 +80,11 @@ def resolve_whisper_compute(ai_model: str | None = None) -> tuple[str, str]:
         else:
             model = "small"
     else:
-        if _total_ram_gb >= 16:
-            model = "medium"
+        # On CPU, default to 'small' for efficiency, low latency, and low memory usage.
+        # 'medium' on CPU has 769M params and saturates all cores for >60s.
+        cpu_default = os.getenv("WHISPER_CPU_DEFAULT_MODEL")
+        if cpu_default:
+            model = cpu_default.strip()
         elif _total_ram_gb >= 8:
             model = "small"
         else:

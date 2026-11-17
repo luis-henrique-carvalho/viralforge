@@ -806,7 +806,7 @@ class ViralPublishPlatform(BaseModel):
 
 class ViralPublishRequest(BaseModel):
     item_ids: List[str] = Field(..., min_length=1, max_length=100)
-    platforms: List[ViralPublishPlatform] = Field(..., min_length=1, max_length=16)
+    platforms: List[ViralPublishPlatform] = Field(default_factory=list, max_length=16)
     schedule_mode: str = Field("now", pattern=r"^(now|auto|manual)$")
     scheduled_for: Optional[str] = Field(None, max_length=64)
     timezone: Optional[str] = Field(None, max_length=64)

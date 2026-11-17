@@ -282,7 +282,7 @@ def transcribe_video(video_path: str, ai_model: str | None = None):
 
         from clippyme.pipeline.hardware import resolve_whisper_compute
         device, whisper_model = resolve_whisper_compute(ai_model)
-        compute_type = "float16" if device == "cuda" else "default"
+        compute_type = "float16" if device == "cuda" else os.getenv("WHISPER_COMPUTE_TYPE", "int8")
         print(f"🎙️  Transcribing with Whisper [{whisper_model}] ({device.upper()} mode)...")
         # Honor per-job language override (set by main.py --language → CLIPPYME_LANGUAGE).
         # 'multi' / '' / unset → let Whisper auto-detect.

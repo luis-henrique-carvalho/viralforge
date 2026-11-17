@@ -210,7 +210,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     if [ "$ENABLE_WHISPER_DIARIZE" = "1" ]; then \
         pip install 'pyannote.audio>=3.1'; \
     fi && \
-    pip install "playwright>=1.40.0" && \
+    pip install "playwright>=1.40.0" "pilmoji>=2.0.5" "emoji>=2.16.0" && \
     PLAYWRIGHT_BROWSERS_PATH=/opt/playwright playwright install chromium && \
     PLAYWRIGHT_BROWSERS_PATH=/opt/playwright playwright install-deps chromium && \
     chmod -R 777 /opt/playwright

@@ -305,6 +305,64 @@ async def test_publish_viral_items_workflow(tmp_store_and_output, dummy_video_fi
 
 
 @pytest.mark.asyncio
+async def test_publish_failed_receipt_does_not_mark_item_published(tmp_store_and_output, dummy_video_file):
+    """When a publisher adapter returns a failed receipt, the item is NOT marked PUBLISHED."""
+    from clippyme.domain.social_publisher_port import PublicationReceipt, SocialPublisherPort
+
+    batch = viral_studio_store.create_batch({
+        "brand_id": "vale-o-clique",
+        "items": [
+            {"source_url": "https://www.instagram.com/reel/C_PUB_FAIL/", "product_code": "FAIL1"},
+        ],
+    })
+    item_id = batch["items"][0]["id"]
+    rendered_path = str(tmp_store_and_output["output_dir"] / "rendered.mp4")
+    with open(rendered_path, "wb") as f:
+        f.write(b"rendered media")
+
+    viral_studio_store.update_item(item_id, {"status": "APPROVED", "rendered_path": rendered_path})
+
+    class FailingPublisher(SocialPublisherPort):
+        async def publish(self, job):
+            return PublicationReceipt(item_id=job.item_id, status="failed", error="Postiz connection dropped")
+
+        async def schedule(self, job):
+            return PublicationReceipt(item_id=job.item_id, status="failed", error="Postiz connection dropped")
+
+        async def cancel(self, external_id: str) -> bool:
+            return True
+
+        async def get_status(self, external_id: str) -> PublicationReceipt:
+            return PublicationReceipt(item_id="x", status="failed")
+
+        async def get_metrics(self, post_id):
+            return {}
+
+        async def list_channels(self):
+            return []
+
+        async def delete_post(self, post_id):
+            return True
+
+    res = await viral_studio_orchestrator.publish_viral_items(
+        item_ids=[item_id],
+        platforms=[{"platform": "instagram", "accountId": "ig_1"}],
+        schedule_mode="now",
+        publisher=FailingPublisher(),
+    )
+
+    assert res["total"] == 1
+    assert res["successful"] == 0
+    assert res["failed"] == 1
+    assert res["results"][0]["status"] == "failed"
+
+    # Item must REMAIN APPROVED and NEVER become PUBLISHED
+    stored_item = viral_studio_store.get_item(item_id)
+    assert stored_item["status"] == "APPROVED"
+    assert stored_item["error_message"] == "Postiz connection dropped"
+
+
+@pytest.mark.asyncio
 async def test_publish_unapproved_item_rejected(tmp_store_and_output):
     """Publishing unapproved item raises ValidationError."""
     batch = viral_studio_store.create_batch({

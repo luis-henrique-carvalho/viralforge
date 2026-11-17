@@ -286,8 +286,36 @@ def extract_viral_context(
                 except Exception as exc:
                     logger.debug("Could not write keyframe file %s: %s", kf_path, exc)
 
-    # Extract speech / audio transcript
-    transcript = _extract_audio_transcript(video_path, ai_model=ai_model)
+    # Resolve transcript caching path
+    transcript_cache_path = None
+    if target_kf_dir:
+        item_dir = os.path.dirname(target_kf_dir) if os.path.basename(target_kf_dir) == "keyframes" else target_kf_dir
+        transcript_cache_path = os.path.join(item_dir, "transcript.json")
+    elif batch_id and item_id:
+        out_dir = os.environ.get("CLIPPYME_OUTPUT_DIR") or "output"
+        transcript_cache_path = os.path.join(out_dir, "viral_studio", batch_id, item_id, "transcript.json")
+
+    transcript = ""
+    if transcript_cache_path and os.path.isfile(transcript_cache_path):
+        try:
+            with open(transcript_cache_path, "r", encoding="utf-8") as f:
+                cached_payload = json.load(f)
+                if isinstance(cached_payload, dict):
+                    transcript = str(cached_payload.get("transcript") or "").strip()
+                elif isinstance(cached_payload, str):
+                    transcript = cached_payload.strip()
+        except Exception as exc:
+            logger.debug("Failed reading cached transcript from %s: %s", transcript_cache_path, exc)
+
+    # Extract speech / audio transcript if not cached
+    if not transcript:
+        transcript = _extract_audio_transcript(video_path, ai_model=ai_model)
+        if transcript and transcript_cache_path:
+            try:
+                with open(transcript_cache_path, "w", encoding="utf-8") as f:
+                    json.dump({"transcript": transcript}, f, ensure_ascii=False)
+            except Exception as exc:
+                logger.debug("Failed writing transcript cache to %s: %s", transcript_cache_path, exc)
 
     return VideoContext(
         keyframes=keyframes,
