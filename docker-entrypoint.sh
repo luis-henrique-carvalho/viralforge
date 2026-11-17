@@ -48,6 +48,12 @@ if [ "$(id -u)" = "0" ] && [ "${1:-}" = "uvicorn" ]; then
     chmod -R a+rX /app/output 2>/dev/null || true
     chmod 777 /app/.cache /app/.config 2>/dev/null || true
 
+    # Self-healing: ensure emoji rendering dependencies are always present
+    if ! python3 -c "import pilmoji, emoji" 2>/dev/null; then
+        echo "[entrypoint] Installing missing emoji packages (pilmoji, emoji)..."
+        pip install --no-cache-dir "pilmoji>=2.0.5" "emoji>=2.16.0" 2>/dev/null || true
+    fi
+
     export HF_HOME=/app/data/cache/huggingface
     export MPLCONFIGDIR=/app/data/cache/matplotlib
     export TORCH_HOME=/app/data/cache/torch

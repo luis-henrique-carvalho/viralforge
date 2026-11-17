@@ -29,7 +29,7 @@ def transcribe_audio(video_path, ai_model=None):
     from clippyme.pipeline.whisper_transcribe import transcribe_with_whisper
 
     device, whisper_model = resolve_whisper_compute(ai_model)
-    compute_type = "float16" if device == "cuda" else "default"
+    compute_type = "float16" if device == "cuda" else os.getenv("WHISPER_COMPUTE_TYPE", "int8")
     logger.info("🎙️  Transcribing audio [%s] from: %s (%s mode)", whisper_model, video_path, device.upper())
 
     res = transcribe_with_whisper(video_path, model_name=whisper_model, device=device, compute_type=compute_type)

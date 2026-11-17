@@ -328,6 +328,12 @@ Portanto, a comunicação entre o backend do ViralForge e o Postiz funciona imed
 * **`POSTIZ_BASE_URL`**: `http://host.docker.internal:4007`
 * **`POSTIZ_API_KEY`**: Chave de API gerada no painel de administração do Postiz.
 
+### 6.1 Resiliência Pós-Reboot e Prevenção Definitiva de 502 Bad Gateway
+No ambiente Docker Desktop, reinicializações da máquina ou crashes podem fazer o container `postiz` subir antes do `postiz-redis` responder ao handshake ou antes da tabela DNS interna propagar o novo IP. Para blindar contra o erro recorrente de `502 Bad Gateway`:
+1. **Validação Efetiva de Redis via PING/PONG**: No script de inicialização do Postiz (`docker-compose.yaml`), o boot só prossegue após o Redis retornar literalmente `+PONG` na camada de aplicação (não apenas abertura crua de socket TCP).
+2. **Watchdog Interno de Auto-Cura**: Um processo em background monitora a porta interna `3000` (NestJS). Caso 3 verificações consecutivas falhem, ele executa automaticamente `pm2 restart backend`.
+3. **Healthcheck Real Dual (3000 + 5000)**: O healthcheck do container testa tanto a porta `3000` (API NestJS) quanto `5000` (Nginx/Frontend), eliminando falsos positivos de `healthy` quando apenas o frontend Next.js estava ativo.
+
 ---
 
 ## 7. Fluxos Operacionais de Ponta a Ponta

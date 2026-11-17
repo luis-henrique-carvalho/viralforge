@@ -135,7 +135,7 @@ function usePublishSubmission(
   items: ViralItem[],
   isMultiBrand: boolean,
   selectedAccountIds: string[],
-  brandAccounts: SocialAccount[],
+  availableAccounts: SocialAccount[],
   mode: PublishMode,
   onPublished?: () => void,
 ) {
@@ -145,8 +145,10 @@ function usePublishSubmission(
 
   const handlePublish = async () => {
     setPublishError(null)
-    const platforms = isMultiBrand ? [] : resolvePublishPlatforms(selectedAccountIds, brandAccounts)
-    if (!isMultiBrand && selectedAccountIds.length === 0 && brandAccounts.length > 0) return
+    const platforms = isMultiBrand
+      ? []
+      : resolvePublishPlatforms(selectedAccountIds, availableAccounts)
+    if (!isMultiBrand && selectedAccountIds.length === 0 && availableAccounts.length > 0) return
 
     try {
       const res = await publishMutation.mutateAsync({
@@ -167,6 +169,18 @@ function usePublishSubmission(
   }
 
   return { results, publishError, publishMutation, handlePublish, clearSubmission }
+}
+
+function useAccountToggle(setSelectedAccountIds: React.Dispatch<React.SetStateAction<string[]>>) {
+  return (id: string) => {
+    setSelectedAccountIds((prev) =>
+      prev.includes(id)
+        ? prev.length > 1
+          ? prev.filter((accId) => accId !== id)
+          : prev
+        : [...prev, id],
+    )
+  }
 }
 
 export function useViralPublishDialogState({
@@ -199,17 +213,14 @@ export function useViralPublishDialogState({
     setSelectedAccountIds,
   )
 
-  const handleToggleAccount = (id: string) => {
-    setSelectedAccountIds((prev) =>
-      prev.includes(id)
-        ? prev.length > 1
-          ? prev.filter((accId) => accId !== id)
-          : prev
-        : [...prev, id],
-    )
-  }
+  const handleToggleAccount = useAccountToggle(setSelectedAccountIds)
 
-  const primaryAccountId = selectedAccountIds[0] || brandAccounts[0]?.id || accounts[0]?.id
+  const availableAccounts = useMemo(
+    () => (brandAccounts.length > 0 ? brandAccounts : accounts),
+    [brandAccounts, accounts],
+  )
+
+  const primaryAccountId = selectedAccountIds[0] || availableAccounts[0]?.id
   const { data: previewData, isLoading: isLoadingPreview } = usePreviewSlots(
     primaryAccountId,
     items.length,
@@ -224,7 +235,7 @@ export function useViralPublishDialogState({
       items,
       isMultiBrand,
       selectedAccountIds,
-      brandAccounts,
+      availableAccounts,
       mode,
       onPublished,
     )

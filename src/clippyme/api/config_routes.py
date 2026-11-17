@@ -129,8 +129,11 @@ def _probe_lm_studio() -> dict:
         candidates.append(str(configured_base).rstrip("/"))
     candidates.extend([
         "http://host.docker.internal:1234",
+        "http://host.docker.internal:1235",
         "http://localhost:1234",
+        "http://localhost:1235",
         "http://127.0.0.1:1234",
+        "http://127.0.0.1:1235",
     ])
 
     seen_urls = set()

@@ -22,10 +22,18 @@ def _transcribe_openai_whisper(
     model_name: str = "medium",
     device: str = "cuda",
     language: Optional[str] = None,
+    cpu_threads: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Execute transcription using OpenAI-Whisper (PyTorch ROCm/CUDA/CPU)."""
     import torch
     import whisper
+
+    if device == "cpu":
+        threads = cpu_threads or int(os.getenv("WHISPER_CPU_THREADS", "4"))
+        try:
+            torch.set_num_threads(max(1, min(threads, 8)))
+        except Exception:
+            pass
 
     use_fp16 = device == "cuda" and torch.cuda.is_available()
     model = whisper.load_model(model_name, device=device)
@@ -92,15 +100,25 @@ def _transcribe_faster_whisper(
     device: str = "cpu",
     compute_type: str = "default",
     language: Optional[str] = None,
+    cpu_threads: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Execute transcription using Faster-Whisper (CTranslate2)."""
     from faster_whisper import WhisperModel
 
-    if device == "cpu" and compute_type == "float16":
-        compute_type = "default"
+    if device == "cpu":
+        if compute_type in ("float16", "default"):
+            compute_type = os.getenv("WHISPER_COMPUTE_TYPE", "int8")
+
+    threads = cpu_threads or int(os.getenv("WHISPER_CPU_THREADS", "4"))
+    model_kwargs: Dict[str, Any] = {
+        "device": device,
+        "compute_type": compute_type,
+    }
+    if device == "cpu":
+        model_kwargs["cpu_threads"] = max(1, min(threads, 8))
 
     try:
-        model = WhisperModel(model_name, device=device, compute_type=compute_type)
+        model = WhisperModel(model_name, **model_kwargs)
     except Exception as exc:
         if compute_type != "default":
             logger.warning(
@@ -108,7 +126,8 @@ def _transcribe_faster_whisper(
                 compute_type,
                 exc,
             )
-            model = WhisperModel(model_name, device=device, compute_type="default")
+            model_kwargs["compute_type"] = "default"
+            model = WhisperModel(model_name, **model_kwargs)
         else:
             raise exc
 
@@ -172,6 +191,7 @@ def transcribe_audio_direct(
     compute_type: str = "default",
     language: Optional[str] = None,
     engine: Optional[str] = None,
+    cpu_threads: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Execute Whisper transcription in the current process.
 
@@ -197,6 +217,7 @@ def transcribe_audio_direct(
                 model_name=model_name,
                 device=device,
                 language=language,
+                cpu_threads=cpu_threads,
             )
         except Exception as exc:
             logger.warning("openai-whisper failed (%s), falling back...", exc)
@@ -207,6 +228,7 @@ def transcribe_audio_direct(
                         model_name="small" if model_name in ("large-v3", "large") else model_name,
                         device="cpu",
                         language=language,
+                        cpu_threads=cpu_threads,
                     )
                 except Exception as exc_cpu:
                     logger.warning("openai-whisper CPU fallback failed (%s), falling back to faster-whisper", exc_cpu)
@@ -216,6 +238,7 @@ def transcribe_audio_direct(
                         device="cpu",
                         compute_type="default",
                         language=language,
+                        cpu_threads=cpu_threads,
                     )
             else:
                 return _transcribe_faster_whisper(
@@ -224,6 +247,7 @@ def transcribe_audio_direct(
                     device="cpu",
                     compute_type="default",
                     language=language,
+                    cpu_threads=cpu_threads,
                 )
     else:
         try:
@@ -233,6 +257,7 @@ def transcribe_audio_direct(
                 device=device,
                 compute_type=compute_type,
                 language=language,
+                cpu_threads=cpu_threads,
             )
         except Exception as exc:
             logger.warning("faster-whisper failed (%s), falling back to openai-whisper", exc)
@@ -242,6 +267,7 @@ def transcribe_audio_direct(
                     model_name=model_name,
                     device=device,
                     language=language,
+                    cpu_threads=cpu_threads,
                 )
             except Exception as exc2:
                 if device != "cpu":
@@ -251,6 +277,7 @@ def transcribe_audio_direct(
                         model_name="small" if model_name in ("large-v3", "large") else model_name,
                         device="cpu",
                         language=language,
+                        cpu_threads=cpu_threads,
                     )
                 raise exc2
 
@@ -262,11 +289,13 @@ def transcribe_with_whisper(
     compute_type: str = "default",
     language: Optional[str] = None,
     engine: Optional[str] = None,
+    cpu_threads: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Transcribe audio using Whisper via an isolated CLI worker."""
     if not os.path.exists(audio_path):
         raise FileNotFoundError(f"Audio file not found: {audio_path}")
 
+    threads = cpu_threads or int(os.getenv("WHISPER_CPU_THREADS", "4"))
     cmd = [
         sys.executable,
         "-m",
@@ -279,6 +308,8 @@ def transcribe_with_whisper(
         device,
         "--compute-type",
         compute_type,
+        "--cpu-threads",
+        str(threads),
     ]
     if language and language != "None":
         cmd.extend(["--language", language])
@@ -287,6 +318,11 @@ def transcribe_with_whisper(
 
     worker_env = dict(os.environ)
     worker_env["CLIPPYME_NO_TORCH_PREINIT"] = "1"
+    worker_env["OMP_NUM_THREADS"] = str(threads)
+    worker_env["MKL_NUM_THREADS"] = str(threads)
+    worker_env["OPENBLAS_NUM_THREADS"] = str(threads)
+    worker_env["VECLIB_MAXIMUM_THREADS"] = str(threads)
+    worker_env["NUMEXPR_NUM_THREADS"] = str(threads)
 
     proc = subprocess.run(
         cmd,
@@ -324,6 +360,7 @@ def _cli_entrypoint():
     parser.add_argument("--compute-type", default="default", help="Compute type")
     parser.add_argument("--language", default=None, help="Language code")
     parser.add_argument("--engine", default=None, help="Engine (auto/openai-whisper/faster-whisper)")
+    parser.add_argument("--cpu-threads", type=int, default=None, help="CPU thread limit")
     args = parser.parse_args()
 
     result = transcribe_audio_direct(
@@ -333,6 +370,7 @@ def _cli_entrypoint():
         compute_type=args.compute_type,
         language=args.language,
         engine=args.engine,
+        cpu_threads=args.cpu_threads,
     )
     print("###WHISPER_OUTPUT_START###" + json.dumps(result))
 

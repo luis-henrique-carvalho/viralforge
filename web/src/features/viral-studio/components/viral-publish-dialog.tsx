@@ -170,6 +170,21 @@ export function ViralPublishDialog({
                 />
               )}
 
+              {!isMultiBrand && accounts.length === 0 && !isLoadingAccounts && (
+                <Alert
+                  variant="destructive"
+                  className="py-2.5"
+                >
+                  <XCircle className="size-4" />
+                  <AlertTitle className="text-xs font-semibold">
+                    Nenhuma conta encontrada
+                  </AlertTitle>
+                  <AlertDescription className="text-xs">
+                    Não foi possível carregar as contas do Postiz ou nenhum canal está conectado.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {publishError && (
                 <Alert
                   variant="destructive"
@@ -207,7 +222,11 @@ export function ViralPublishDialog({
               <Button
                 size="sm"
                 onClick={handlePublish}
-                disabled={publishMutation.isPending || items.length === 0}
+                disabled={
+                  publishMutation.isPending ||
+                  items.length === 0 ||
+                  (!isMultiBrand && accounts.length === 0)
+                }
                 className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
               >
                 <Send className="size-3.5" />

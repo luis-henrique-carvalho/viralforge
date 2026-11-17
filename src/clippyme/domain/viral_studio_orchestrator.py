@@ -1016,9 +1016,10 @@ async def publish_viral_items(
                         receipt = await pub.schedule(job)
 
                 state = receipt.status
+                is_success = state in ("scheduled", "published") and bool(receipt.post_id)
                 result = {
                     "item_id": item_id,
-                    "status": state,
+                    "status": state if is_success else "failed",
                     "post_id": receipt.post_id,
                     "platform_post_id": receipt.platform_post_id,
                     "published_at": receipt.published_at or (datetime.now(dt_timezone.utc).isoformat() if state == "published" else None),
@@ -1026,15 +1027,34 @@ async def publish_viral_items(
                     "post_url": receipt.post_url,
                     "account_id": account_id,
                     "platform": platform_name,
+                    "error": receipt.error if not is_success else None,
                 }
-                viral_studio_store.finish_publication(
-                    item_id,
-                    key,
-                    {"key": key, "status": state, "result": result, "scheduled_for": result["scheduled_for"], "account_id": account_id, "platform": platform_name},
-                    status="SCHEDULED" if state == "scheduled" else "PUBLISHED",
-                )
-                results.append(result)
-                item_successes.append(result)
+                if is_success:
+                    target_status = "SCHEDULED" if state == "scheduled" else "PUBLISHED"
+                    viral_studio_store.finish_publication(
+                        item_id,
+                        key,
+                        {"key": key, "status": state, "result": result, "scheduled_for": result["scheduled_for"], "account_id": account_id, "platform": platform_name},
+                        status=target_status,
+                    )
+                    results.append(result)
+                    item_successes.append(result)
+                else:
+                    err_msg = receipt.error or "Falha no provedor de publicação"
+                    fail_res = {
+                        "item_id": item_id,
+                        "status": "failed",
+                        "error": err_msg,
+                        "account_id": account_id,
+                        "platform": platform_name,
+                    }
+                    viral_studio_store.finish_publication(
+                        item_id,
+                        key,
+                        {"key": key, "status": "failed", "error": err_msg, "account_id": account_id, "platform": platform_name},
+                    )
+                    results.append(fail_res)
+                    item_failures.append(fail_res)
             except Exception as exc:
                 err_msg = str(exc)
                 fail_res = {

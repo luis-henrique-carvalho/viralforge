@@ -387,8 +387,11 @@ class LMStudioProvider(BaseAIProvider):
             return [str(configured).rstrip("/")]
         return [
             "http://host.docker.internal:1234",
+            "http://host.docker.internal:1235",
             "http://localhost:1234",
+            "http://localhost:1235",
             "http://127.0.0.1:1234",
+            "http://127.0.0.1:1235",
         ]
 
     def _sync_generate(

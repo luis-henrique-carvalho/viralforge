@@ -14,6 +14,7 @@ Este arquivo é a fonte autoritativa de regras do repositório para agentes no C
 - [Workspace de Marcas](docs/gestao-de-marcas-workspace.md): catálogo global e workspace de marcas (`/viral-studio/brands/$brandId`).
 - [Descoberta Assíncrona e Mineração](docs/descoberta-assincrona-e-mineracao.md): especificação do `DiscoveryWorker`, cancelamento e persistência.
 - [Cancelamento de Processamento](docs/cancelamento-processamento-viral-studio.md): encerramento seguro de lotes e vídeos via árvore de processos psutil.
+- [Post-Mortem: Renderização de Emojis](docs/post-mortem-renderizacao-emojis-tofu.md): prevenção definitiva do bug de tofu (`▯`) via auto-cura no boot e persistência de imagem.
 - [Grafo do codebase](graphify-out/GRAPH_REPORT.md): mapa de módulos e relações, quando disponível e atualizado.
 
 ## Invariantes de arquitetura e qualidade
@@ -39,7 +40,7 @@ Este arquivo é a fonte autoritativa de regras do repositório para agentes no C
 10. **Tipagem Estrita e Regras de Componentes no Frontend**:
     TypeScript em modo estrito com **zero `any`**. Máximo de 80 linhas por função e 200 linhas por componente. Listas e tooltips de gráficos devem usar chaves de string únicas (`key={key}`) em vez de índices numéricos de array. Separação clara entre `views/`, `components/`, `hooks/`, `services/` e `data/`.
 11. **Paridade Visual 1:1 no Motor de Renderização**:
-    O renderizador de vídeo FFmpeg/Pillow (`viral_studio_renderer.py`) deve replicar matematicamente o preview do canvas interativo 9:16 do Konva (`react-konva`) em geometria, fontes, posições (`badge_y`, `headline_y`), alinhamentos, bordas e cores de fundo (`#0D1117`). Emojis coloridos DEVEM ser renderizados via `pilmoji` + `Twemoji` com cache local em `data/cache/emojis/`.
+    O renderizador de vídeo FFmpeg/Pillow (`viral_studio_renderer.py`) deve replicar matematicamente o preview do canvas interativo 9:16 do Konva (`react-konva`) em geometria, fontes, posições (`badge_y`, `headline_y`), alinhamentos, bordas e cores de fundo (`#0D1117`). Emojis coloridos DEVEM ser renderizados via `pilmoji` + `Twemoji` com cache local em `data/cache/emojis/`. Para prevenir regressões de emojis ausentes ("tofu" `▯`), as dependências `pilmoji` e `emoji` contam com auto-cura obrigatória em `docker-entrypoint.sh` e persistência na imagem base ([detalhes](docs/post-mortem-renderizacao-emojis-tofu.md)).
 12. **Segurança e Origens de Loopback Agnósticas de Porta**:
     Validação de regex para `job_id` em todos os endpoints. No `security.py`, `is_trusted_origin()` aceita dinamicamente qualquer porta em hostnames de loopback (`localhost`, `127.0.0.1`, `::1`), prevenindo bloqueios falsos de CSRF 403 quando o dev server roda em portas alternativas (5173, 5174, 5180).
 13. **Imutabilidade de Configurações de Qualidade**:

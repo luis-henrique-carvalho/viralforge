@@ -198,6 +198,45 @@ def test_extract_viral_context_saves_keyframes_and_generates_urls(tmp_path):
         summary = ctx.to_summary_dict()
         assert summary["keyframe_urls"] == ctx.keyframe_urls
         assert summary["uploader"] == "@canal_test"
-        assert summary["transcript"] == "Transcrição de teste"
+
+
+def test_extract_viral_context_uses_and_writes_cached_transcript(tmp_path):
+    """extract_viral_context writes transcript.json to item directory and reuses it on subsequent calls."""
+    video = tmp_path / "video.mp4"
+    video.write_bytes(b"dummy video data")
+    item_dir = tmp_path / "item_out"
+    kf_dir = item_dir / "keyframes"
+    cache_file = item_dir / "transcript.json"
+
+    # 1. First run: should call _extract_audio_transcript and write cache file
+    with patch("clippyme.domain.viral_studio_context._probe_duration", return_value=5.0), \
+         patch("clippyme.domain.viral_studio_context._detect_scene_timestamps", return_value=([], 0)), \
+         patch("clippyme.domain.viral_studio_context._extract_audio_transcript", return_value="Áudio transcrito pela primeira vez") as mock_extract:
+
+        ctx = extract_viral_context(
+            str(video),
+            keyframes_dir=str(kf_dir),
+            batch_id="b1",
+            item_id="i1",
+        )
+        assert ctx.transcript == "Áudio transcrito pela primeira vez"
+        assert mock_extract.call_count == 1
+        assert cache_file.is_file()
+
+    # 2. Second run: should read from cache_file and NOT call _extract_audio_transcript
+    with patch("clippyme.domain.viral_studio_context._probe_duration", return_value=5.0), \
+         patch("clippyme.domain.viral_studio_context._detect_scene_timestamps", return_value=([], 0)), \
+         patch("clippyme.domain.viral_studio_context._extract_audio_transcript", return_value="Novo áudio não chamado") as mock_extract2:
+
+        ctx2 = extract_viral_context(
+            str(video),
+            keyframes_dir=str(kf_dir),
+            batch_id="b1",
+            item_id="i1",
+        )
+        assert ctx2.transcript == "Áudio transcrito pela primeira vez"
+        assert mock_extract2.call_count == 0
+        summary2 = ctx2.to_summary_dict()
+        assert summary2["transcript"] == "Áudio transcrito pela primeira vez"
 
 
